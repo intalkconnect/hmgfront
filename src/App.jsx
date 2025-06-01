@@ -1,8 +1,6 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { socket, connectSocket } from './socket'   // <-- importe connectSocket
-
+import { socket, connectSocket } from './socket'
 import Sidebar from './components/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import DetailsPanel from './components/DetailsPanel'
@@ -11,19 +9,20 @@ export default function App() {
   const [conversations, setConversations] = useState([])
   const [userIdSelecionado, setUserIdSelecionado] = useState(null)
 
-  // Conecta o Socket.IO assim que o App montar
+  // 1) Conecta o Socket.IO assim que o componente montar
   useEffect(() => {
     connectSocket()
   }, [])
 
-  // 1) Carrega a lista de conversas iniciais (RPC)
+  // 2) Carrega conversas iniciais
   useEffect(() => {
     fetchConversations()
   }, [])
 
-  // 2) Inscreve no Socket.IO para ouvir “new_message” e atualizar conversas
+  // 3) Inscreve no evento “new_message”
   useEffect(() => {
     const handleNewMessage = (nova) => {
+      console.log('[App] Recebeu new_message:', nova)
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c.user_id === nova.user_id)
         if (idx !== -1) {
@@ -47,8 +46,11 @@ export default function App() {
       })
     }
 
+    console.log('[App] Inscrevendo em socket.on("new_message")')
     socket.on('new_message', handleNewMessage)
+
     return () => {
+      console.log('[App] Removendo listener de new_message')
       socket.off('new_message', handleNewMessage)
     }
   }, [])
