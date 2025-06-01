@@ -21,36 +21,35 @@ export default function App() {
 
   // 3) Inscreve no evento “new_message”
   useEffect(() => {
-    const handleNewMessage = (nova) => {const handleNewMessage = (nova) => {
-  console.log('[App] Recebeu new_message:', nova)
+    const handleNewMessage = (nova) => {
+      console.log('[App] Recebeu new_message:', nova)
 
-  // Atualiza lista de conversas na Sidebar
-  setConversations((prev) => {
-    const idx = prev.findIndex((c) => c.user_id === nova.user_id)
-    if (idx !== -1) {
-      const updated = {
-        user_id: nova.user_id,
-        content: nova.content,
-        timestamp: nova.timestamp,
-        whatsapp_message_id: nova.whatsapp_message_id
-      }
-      const semAntigo = prev.filter((c) => c.user_id !== nova.user_id)
-      return [updated, ...semAntigo]
-    } else {
-      const created = {
-        user_id: nova.user_id,
-        content: nova.content,
-        timestamp: nova.timestamp,
-        whatsapp_message_id: nova.whatsapp_message_id
-      }
-      return [created, ...prev]
+      // Atualiza a lista da Sidebar
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.user_id === nova.user_id)
+        if (idx !== -1) {
+          const updated = {
+            user_id: nova.user_id,
+            content: nova.content,
+            timestamp: nova.timestamp,
+            whatsapp_message_id: nova.whatsapp_message_id
+          }
+          const semAntigo = prev.filter((c) => c.user_id !== nova.user_id)
+          return [updated, ...semAntigo]
+        } else {
+          const created = {
+            user_id: nova.user_id,
+            content: nova.content,
+            timestamp: nova.timestamp,
+            whatsapp_message_id: nova.whatsapp_message_id
+          }
+          return [created, ...prev]
+        }
+      })
+
+      // Força reemissão local para o ChatWindow
+      socket.emit('new_message', nova)
     }
-  })
-
-  // 👇 Força reemissão local para o ChatWindow (se estiver ouvindo)
-  socket.emit('new_message', nova)
-}
-
 
     console.log('[App] Inscrevendo em socket.on("new_message")')
     socket.on('new_message', handleNewMessage)
@@ -76,10 +75,9 @@ export default function App() {
         <Sidebar
           conversations={conversations}
           onSelectUser={(uid) => {
-  const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
-  setUserIdSelecionado(fullId)
-}}
-
+            const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
+            setUserIdSelecionado(fullId)
+          }}
         />
       </aside>
 
