@@ -1,17 +1,19 @@
 // src/components/ChatWindow.jsx
 import React, { useEffect, useRef, useState } from 'react'
-import { socket } from '../socket'
+import { socket, connectSocket } from '../socket'
 import SendMessageForm from './SendMessageForm'
-import { supabase } from '../supabaseClient' // seu supabaseClient.js existente
+import { supabase } from '../supabaseClient'
 
 export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
-  // 1) Busca inicial do histórico via Supabase REST (pode ser .from() ou RPC)
+  // 1) Busca inicial do histórico e garante conexão socket
   useEffect(() => {
     if (!userIdSelecionado) return
+
+    connectSocket() // Garante que o socket esteja conectado
 
     let isMounted = true
     setIsLoading(true)
@@ -39,10 +41,8 @@ export default function ChatWindow({ userIdSelecionado }) {
   useEffect(() => {
     if (!userIdSelecionado) return
 
-    // 2.1) Entra na “sala” do Socket.IO
     socket.emit('join_room', userIdSelecionado)
 
-    // 2.2) Função de callback para novas mensagens
     const handleNewMessage = (novaMsg) => {
       if (novaMsg.user_id !== userIdSelecionado) return
 
@@ -54,7 +54,6 @@ export default function ChatWindow({ userIdSelecionado }) {
       })
     }
 
-    // 2.3) Função de callback para atualização de mensagens
     const handleUpdateMessage = (updatedMsg) => {
       if (updatedMsg.user_id !== userIdSelecionado) return
       setMessages((prev) =>
@@ -72,7 +71,7 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // 3) Auto‐scroll para o fim ao receber/atualizar mensagens
+  // 3) Auto-scroll para o final das mensagens
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
