@@ -32,28 +32,17 @@ export default function SendMessageForm({ userIdSelecionado }) {
   }
 
   return (
-<form onSubmit={handleSend} style={{
-  display: 'flex',
-  flex: 1,
-  gap: '8px'
-}}>
-  <input
-    type="text"
-    placeholder="Responda aqui"
-    value={input}
-    onChange={(e) => setInput(e.target.value)}
-    style={{
-      flex: 1,
-      padding: '10px',
-      borderRadius: '8px',
-      border: '1px solid #ccc',
-      fontSize: '1rem'
-    }}
-  />
-  <button type="submit" disabled={loading || !input.trim()}>
-    {loading ? '...' : 'Enviar'}
-  </button>
-</form>
-
+    <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px', padding: '8px' }}>
+      <input
+        type="text"
+        placeholder="Responda aqui"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
+      />
+      <button type="submit" disabled={loading || !input.trim()}>
+        {loading ? '...' : 'Enviar'}
+      </button>
+    </form>
   )
 }
