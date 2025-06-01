@@ -9,7 +9,7 @@ export const supabase = createClient(
     realtime: {
       // Se você NÃO tiver TLS e o Realtime escutar na porta 4000, use ws://
       // Caso tenha TLS (via nginx, por ex), use wss:// no lugar. 
-      url: import.meta.env.VITE_SUPABASE_REALTIME_URL ?? 'ws://bd.dkdevs.com.br:4000/realtime/v1',
+      url: import.meta.env.VITE_SUPABASE_REALTIME_URL ?? 'https://mensageria-frontend-supabase.9j9goo.easypanel.host/realtime/v1',
       params: {
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY
       }
