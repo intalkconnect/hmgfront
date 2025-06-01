@@ -7,13 +7,22 @@ export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
-  const listenersRef = useRef(false)
+  const currentUserIdRef = useRef(null)
 
-  // 1) Busca inicial do histórico
+  // Garante o socket conectado
+  useEffect(() => {
+    connectSocket()
+  }, [])
+
+  // Atualiza o userId atual em ref
+  useEffect(() => {
+    currentUserIdRef.current = userIdSelecionado
+  }, [userIdSelecionado])
+
+  // Carrega histórico ao trocar de usuário
   useEffect(() => {
     if (!userIdSelecionado) return
 
-    connectSocket()
     let isMounted = true
     setIsLoading(true)
 
@@ -36,43 +45,53 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // 2) Sempre entra na sala do usuário ao trocar
+  // Entra na sala correspondente
   useEffect(() => {
     if (!userIdSelecionado) return
 
-    console.log('[socket] Entrando na sala:', `chat-${userIdSelecionado}`)
+    const room = `chat-${userIdSelecionado}`
+    console.log('[socket] Entrando na sala:', room)
     socket.emit('join_room', userIdSelecionado)
 
     return () => {
-      console.log('[socket] Saindo da sala:', `chat-${userIdSelecionado}`)
+      console.log('[socket] Saindo da sala:', room)
       socket.emit('leave_room', userIdSelecionado)
     }
   }, [userIdSelecionado])
 
-  // 3) Registra os listeners apenas uma vez (global)
+  // Registra apenas uma vez os handlers
   useEffect(() => {
-    if (listenersRef.current) return
-    listenersRef.current = true
-
-    socket.on('new_message', (novaMsg) => {
+    const handleNewMessage = (novaMsg) => {
+      const activeUser = currentUserIdRef.current
       console.log('[socket] ✉️ new_message recebido:', novaMsg)
+
+      if (novaMsg.user_id !== activeUser) return
       setMessages((prev) => {
-        if (!novaMsg.user_id || novaMsg.user_id !== userIdSelecionado) return prev
         if (prev.find((m) => m.id === novaMsg.id)) return prev
         return [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       })
-    })
+    }
 
-    socket.on('update_message', (updatedMsg) => {
+    const handleUpdateMessage = (updatedMsg) => {
+      const activeUser = currentUserIdRef.current
       console.log('[socket] 🔄 update_message recebido:', updatedMsg)
-      if (!updatedMsg.user_id || updatedMsg.user_id !== userIdSelecionado) return
+
+      if (updatedMsg.user_id !== activeUser) return
       setMessages((prev) =>
         prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
       )
-    })
-  }, [userIdSelecionado])
+    }
 
-  // 4) Auto-scroll
+    socket.on('new_message', handleNewMessage)
+    socket.on('update_message', handleUpdateMessage)
+
+    return () => {
+      socket.off('new_message', handleNewMessage)
+      socket.off('update_message', handleUpdateMessage)
+    }
+  }, [])
+
+  // Scroll para o fim
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
@@ -81,16 +100,7 @@ export default function ChatWindow({ userIdSelecionado }) {
 
   if (!userIdSelecionado) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1rem',
-          color: '#555'
-        }}
-      >
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p>Selecione uma conversa</p>
       </div>
     )
@@ -99,60 +109,34 @@ export default function ChatWindow({ userIdSelecionado }) {
   return (
     <>
       <header className="chat-header">
-        <h2 style={{ fontSize: '1.1rem' }}>{userIdSelecionado}</h2>
+        <h2>{userIdSelecionado}</h2>
       </header>
 
-      <div
-        className="messages-list"
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '10px',
-          maxHeight: 'calc(100vh - 200px)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
+      <div className="messages-list" style={{
+        flex: 1, overflowY: 'auto', padding: '10px', maxHeight: 'calc(100vh - 200px)',
+        display: 'flex', flexDirection: 'column'
+      }}>
         {isLoading ? (
           <p>Carregando mensagens...</p>
         ) : (
           messages.map((msg) => {
             const isOutgoing = msg.direction === 'outgoing'
             return (
-              <div
-                key={msg.id}
-                className="message-row"
-                style={{
-                  justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
-                  display: 'flex',
-                  marginBottom: '6px'
-                }}
-              >
-                <div
-                  className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`}
-                  style={{
-                    background: isOutgoing ? '#dcf8c6' : '#fff',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    maxWidth: '70%',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}
-                >
+              <div key={msg.id} className="message-row" style={{
+                justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
+                display: 'flex', marginBottom: '6px'
+              }}>
+                <div className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`} style={{
+                  background: isOutgoing ? '#dcf8c6' : '#fff',
+                  borderRadius: '8px', padding: '8px 12px', maxWidth: '70%',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}>
                   <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
-                  <span
-                    className="message-time"
-                    style={{
-                      fontSize: '0.7rem',
-                      color: '#999',
-                      display: 'block',
-                      marginTop: '4px',
-                      textAlign: isOutgoing ? 'right' : 'left'
-                    }}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <span style={{
+                    fontSize: '0.7rem', color: '#999', display: 'block',
+                    marginTop: '4px', textAlign: isOutgoing ? 'right' : 'left'
+                  }}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>
