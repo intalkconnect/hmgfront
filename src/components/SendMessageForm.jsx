@@ -2,29 +2,34 @@ import React, { useState } from 'react'
 import { supabase } from '../supabaseClient'
 
 export default function SendMessageForm({ userIdSelecionado }) {
-  const [text, setText] = useState('')
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleSend = async (e) => {
     e.preventDefault()
-    if (!text.trim()) return
+    if (!input.trim()) return
 
-    // Constrói o objeto da nova mensagem
-    const novaMensagem = {
-      user_id: userIdSelecionado,
-      whatsapp_message_id: crypto.randomUUID(), // ou use qualquer gerador UUID
-      direction: 'outgoing',
-      type: 'text',
-      content: text.trim(),
-      // flow_id, agent_id, queue_id, metadata, status (default: pending) podem ir aqui
-    }
+    setLoading(true)
 
-    // Insere no Supabase
-    const { error } = await supabase.from('messages').insert(novaMensagem)
-    if (error) {
-      console.error('Erro ao enviar mensagem:', error)
+    try {
+      const to = userIdSelecionado.replace('@w.msgcli.net', '')
+
+      await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to,
+          type: 'text',
+          content: input
+        })
+      })
+
+      setInput('')
+    } catch (err) {
+      console.error('❌ Erro ao enviar mensagem:', err)
+    } finally {
+      setLoading(false)
     }
-    setText('')
-    // A mensagem vai aparecer via Realtime (INSERT), mas se quiser refletir instantâneo, poderia adicionar manualmente ao array de mensagens do ChatWindow
   }
 
   return (
