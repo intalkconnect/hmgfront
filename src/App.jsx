@@ -23,8 +23,6 @@ export default function App() {
   useEffect(() => {
     const handleNewMessage = (nova) => {
       console.log('[App] Recebeu new_message:', nova)
-
-      // Atualiza a lista da Sidebar
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c.user_id === nova.user_id)
         if (idx !== -1) {
@@ -46,9 +44,6 @@ export default function App() {
           return [created, ...prev]
         }
       })
-
-      // Força reemissão local para o ChatWindow
-      socket.emit('new_message', nova)
     }
 
     console.log('[App] Inscrevendo em socket.on("new_message")')
@@ -75,9 +70,10 @@ export default function App() {
         <Sidebar
           conversations={conversations}
           onSelectUser={(uid) => {
-            const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
-            setUserIdSelecionado(fullId)
-          }}
+  const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
+  setUserIdSelecionado(fullId)
+}}
+
         />
       </aside>
 
