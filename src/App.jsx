@@ -32,7 +32,8 @@ export default function App() {
             user_id: nova.user_id,
             content: nova.content,
             timestamp: nova.timestamp,
-            whatsapp_message_id: nova.whatsapp_message_id
+            whatsapp_message_id: nova.whatsapp_message_id,
+            channel: nova.channel
           }
           const semAntigo = prev.filter((c) => c.user_id !== nova.user_id)
           return [updated, ...semAntigo]
@@ -41,7 +42,8 @@ export default function App() {
             user_id: nova.user_id,
             content: nova.content,
             timestamp: nova.timestamp,
-            whatsapp_message_id: nova.whatsapp_message_id
+            whatsapp_message_id: nova.whatsapp_message_id,
+            channel: nova.channel
           }
           return [created, ...prev]
         }
@@ -60,14 +62,16 @@ export default function App() {
     }
   }, [])
 
-  async function fetchConversations() {
-    const { data, error } = await supabase.rpc('listar_conversas')
-    if (error) {
-      console.error('Erro ao buscar conversas:', error)
-    } else {
-      setConversations(data)
-    }
+async function fetchConversations() {
+  const { data, error } = await supabase.rpc('listar_conversas')
+  if (error) {
+    console.error('Erro ao buscar conversas:', error)
+  } else {
+    console.log('[DEBUG] Conversas retornadas:', data) // <-- Adicionado
+    setConversations(data)
   }
+}
+
 
   return (
     <div className="app-container">
