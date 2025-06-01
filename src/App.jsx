@@ -69,7 +69,11 @@ export default function App() {
       <aside className="sidebar">
         <Sidebar
           conversations={conversations}
-          onSelectUser={(uid) => setUserIdSelecionado(uid)}
+          onSelectUser={(uid) => {
+  const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
+  setUserIdSelecionado(fullId)
+}}
+
         />
       </aside>
 
