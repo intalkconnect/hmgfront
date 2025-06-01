@@ -1,43 +1,80 @@
-import React, { useState, useEffect } from 'react'
+// src/components/DetailsPanel.jsx
+import React, { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
 export default function DetailsPanel({ userIdSelecionado }) {
   const [userInfo, setUserInfo] = useState(null)
+  const [loadingUser, setLoadingUser] = useState(false)
+  const [userError, setUserError] = useState(null)
 
-  // Se você tiver uma tabela "users" no Supabase, busque info extra
   useEffect(() => {
-    if (!userIdSelecionado) return
-    async function fetchInfo() {
-      // Exemplo: se existir tabela "users" com coluna "id"
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userIdSelecionado)
-        .single()
-
-      if (!error) {
-        setUserInfo(data)
-      } else {
-        setUserInfo(null)
-      }
+    // Se não há userId selecionado, reseta tudo
+    if (!userIdSelecionado) {
+      setUserInfo(null)
+      setUserError(null)
+      setLoadingUser(false)
+      return
     }
-    fetchInfo()
+
+    let isMounted = true
+    setLoadingUser(true)
+    setUserError(null)
+
+    // Tenta buscar em “users” via REST; se retornar 404, trata como “não encontrado”
+    supabase
+      .from('users')
+      .select('*')
+      .eq('id', userIdSelecionado)
+      .single()
+      .then(({ data, error, status }) => {
+        if (!isMounted) return
+        // Se status == 406 ou >= 400, é possível que a tabela “users” não exista
+        if (status === 406 || (status >= 400 && !data)) {
+          // Tabela “users” não existe ou retorno de erro 404
+          setUserInfo(null)
+          setUserError('Usuário não encontrado')
+        } else if (error) {
+          // Algum outro erro (rejeição de RLS, etc.)
+          console.error('Erro ao buscar usuário:', error)
+          setUserInfo(null)
+          setUserError(error.message)
+        } else {
+          setUserInfo(data)
+          setUserError(null)
+        }
+        setLoadingUser(false)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        console.error('Falha inesperada ao buscar usuário:', err)
+        setUserInfo(null)
+        setUserError('Erro inesperado')
+        setLoadingUser(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [userIdSelecionado])
 
   if (!userIdSelecionado) {
-    return <div style={{ fontSize: '1rem', color: '#555' }}>Selecione um usuário</div>
+    return (
+      <div style={{ fontSize: '1rem', color: '#555' }}>
+        Selecione um usuário
+      </div>
+    )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Tags de status */}
+      {/* Status Tags (fixo/estático) */}
       <div style={{ display: 'flex', gap: '8px' }}>
         <span className="tag">Qualificado</span>
         <span className="tag">Site Cliente</span>
         <span className="tag">Evento Conf</span>
       </div>
 
-      {/* Cartão de “Negócio Selecionado” */}
+      {/* Negócio Selecionado (exemplo estático) */}
       <div>
         <h3 style={{ marginBottom: '8px' }}>Negócio Selecionado</h3>
         <div className="negocio-card">
@@ -53,12 +90,12 @@ export default function DetailsPanel({ userIdSelecionado }) {
         </div>
       </div>
 
-      {/* Seções colapsáveis (aqui apenas títulos e espaço vazio) */}
+      {/* Seção “Negócio” (colapsável, mas vazia) */}
       <div>
         <h4>Negócio</h4>
-        {/* Você pode colocar um formulário ou lista de campos aqui */}
       </div>
 
+      {/* Seção “Notas” */}
       <div>
         <h4>Notas</h4>
         <textarea
@@ -75,13 +112,19 @@ export default function DetailsPanel({ userIdSelecionado }) {
         />
       </div>
 
+      {/* Seção “Histórico” (vazia) */}
       <div>
         <h4>Histórico</h4>
-        {/* Se tiver uma tabela de logs, pode iterar aqui */}
       </div>
 
-      {/* Exibir userInfo (opcional) */}
-      {userInfo && (
+      {/* Seção de informações do usuário: mostra loading, erro ou detalhes */}
+      {loadingUser && <p>Carregando dados do usuário...</p>}
+
+      {!loadingUser && userError && (
+        <p style={{ color: 'red' }}>{userError}</p>
+      )}
+
+      {!loadingUser && !userError && userInfo && (
         <div>
           <h4>Dados do Usuário</h4>
           <pre
