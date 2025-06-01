@@ -74,10 +74,23 @@ export default function App() {
       <aside className="sidebar">
         <Sidebar
           conversations={conversations}
-onSelectUser={(uid) => {
+onSelectUser={async (uid) => {
   const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`
   setUserIdSelecionado(fullId)
+
+  // Recarrega mensagens para evitar perdas
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('user_id', fullId)
+    .order('timestamp', { ascending: true })
+
+  if (!error) {
+    socket.emit('join_room', fullId) // Garante nova sala
+    socket.emit('force_refresh', fullId) // (opcional) para casos de broadcast manual
+  }
 }}
+
 
         />
       </aside>
