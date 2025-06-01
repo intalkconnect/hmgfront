@@ -1,51 +1,47 @@
 import React, { useState } from 'react'
-import { supabase } from '../supabaseClient'
 
 export default function SendMessageForm({ userIdSelecionado }) {
-  const [text, setText] = useState('')
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleSend = async (e) => {
     e.preventDefault()
-    if (!text.trim()) return
+    if (!input.trim()) return
 
-    // Constrói o objeto da nova mensagem
-    const novaMensagem = {
-      user_id: userIdSelecionado,
-      whatsapp_message_id: crypto.randomUUID(), // ou use qualquer gerador UUID
-      direction: 'outgoing',
-      type: 'text',
-      content: text.trim(),
-      // flow_id, agent_id, queue_id, metadata, status (default: pending) podem ir aqui
-    }
+    setLoading(true)
 
-    // Insere no Supabase
-    const { error } = await supabase.from('messages').insert(novaMensagem)
-    if (error) {
-      console.error('Erro ao enviar mensagem:', error)
+    try {
+      const to = userIdSelecionado.replace('@w.msgcli.net', '')
+
+      await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to,
+          type: 'text',
+          content: input
+        })
+      })
+
+      setInput('')
+    } catch (err) {
+      console.error('❌ Erro ao enviar mensagem:', err)
+    } finally {
+      setLoading(false)
     }
-    setText('')
-    // A mensagem vai aparecer via Realtime (INSERT), mas se quiser refletir instantâneo, poderia adicionar manualmente ao array de mensagens do ChatWindow
   }
 
   return (
-    <form onSubmit={handleSend} style={{ display: 'flex', width: '100%' }}>
+    <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px', padding: '8px' }}>
       <input
         type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
         placeholder="Responda aqui"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
       />
-      <button type="submit">
-        {/* Ícone de enviar (aviãozinho) */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          fill="#fff"
-          viewBox="0 0 24 24"
-        >
-          <path d="M2.01 21l20.99-9L2.01 3v7l15 2-15 2z" />
-        </svg>
+      <button type="submit" disabled={loading || !input.trim()}>
+        {loading ? '...' : 'Enviar'}
       </button>
     </form>
   )
