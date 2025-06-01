@@ -1,86 +1,59 @@
+// src/App.jsx
 import React, { useState, useEffect } from 'react'
-import { supabase } from './supabaseClient'
-
+import { supabase } from './supabaseClient' // só para chamar RPC ou fetch REST se quiser
 import Sidebar from './components/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import DetailsPanel from './components/DetailsPanel'
+import { socket } from './socket' // importa o cliente Socket.IO que você configurou
 
 export default function App() {
   const [conversations, setConversations] = useState([])
   const [userIdSelecionado, setUserIdSelecionado] = useState(null)
 
-  // 1) Carrega a lista de conversas iniciais (última mensagem por user_id)
+  // 1) Carrega a lista de conversas iniciais (RPC ou fetch manual)
   useEffect(() => {
     fetchConversations()
+  }, [])
 
-    // 2) Inscrever no canal de Realtime para novos INSERTs em "messages"
-    const channel = supabase
-      .channel('realtime-conversations')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const nova = payload.new
-          setConversations((prev) => {
-            // Se já existe conversa com este user_id, atualize
-            const idx = prev.findIndex((c) => c.user_id === nova.user_id)
-            if (idx !== -1) {
-              const updated = {
-                user_id: nova.user_id,
-                content: nova.content,
-                timestamp: nova.timestamp,
-                whatsapp_message_id: nova.whatsapp_message_id
-              }
-              // Remove o antigo e insere o novo no topo
-              const semAntigo = prev.filter((c) => c.user_id !== nova.user_id)
-              return [updated, ...semAntigo]
-            } else {
-              // Nova conversa: coloca no topo
-              const created = {
-                user_id: nova.user_id,
-                content: nova.content,
-                timestamp: nova.timestamp,
-                whatsapp_message_id: nova.whatsapp_message_id
-              }
-              return [created, ...prev]
-            }
-          })
+  // 2) Inscreve no Socket.IO para ouvir “new_message” e atualizar conversas
+  useEffect(() => {
+    const handleNewMessage = (nova) => {
+      // Mesma lógica de antes: move/insere conversa ao topo
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.user_id === nova.user_id)
+        if (idx !== -1) {
+          const updated = {
+            user_id: nova.user_id,
+            content: nova.content,
+            timestamp: nova.timestamp,
+            whatsapp_message_id: nova.whatsapp_message_id
+          }
+          const semAntigo = prev.filter((c) => c.user_id !== nova.user_id)
+          return [updated, ...semAntigo]
+        } else {
+          const created = {
+            user_id: nova.user_id,
+            content: nova.content,
+            timestamp: nova.timestamp,
+            whatsapp_message_id: nova.whatsapp_message_id
+          }
+          return [created, ...prev]
         }
-      )
-      .subscribe()
+      })
+    }
+
+    // Assina o evento “new_message” vindo do servidor Socket.IO
+    socket.on('new_message', handleNewMessage)
 
     return () => {
-      supabase.removeChannel(channel)
+      socket.off('new_message', handleNewMessage)
     }
   }, [])
 
   // Função para carregar as conversas pela primeira vez
   async function fetchConversations() {
-    /**
-     * Aqui usamos uma RPC (função do Postgres) chamada "listar_conversas"
-     * que retorna, para cada user_id, a última mensagem (ordenada por timestamp DESC).
-     *
-     * Caso ainda não tenha criado essa RPC no banco, você pode usar esta query SQL no Supabase SQL Editor:
-     *
-     * CREATE OR REPLACE FUNCTION public.listar_conversas()
-     *   RETURNS TABLE (
-     *     user_id text,
-     *     whatsapp_message_id text,
-     *     content text,
-     *     timestamp timestamptz
-     *   ) AS $$
-     *     SELECT DISTINCT ON (user_id)
-     *       user_id,
-     *       whatsapp_message_id,
-     *       content,
-     *       timestamp
-     *     FROM public.messages
-     *     ORDER BY user_id, timestamp DESC;
-     *   $$ LANGUAGE SQL STABLE;
-     *
-     * Se você preferir não usar RPC, pode fazer a subconsulta manual dentro do JS,
-     * mas a versão RPC é mais performática para grandes volumes.
-     */
+    // Aqui você pode optar por chamar a RPC “listar_conversas” ou
+    // fazer um fetch REST supabase.from(…) manualmente. Exemplo com RPC:
     const { data, error } = await supabase.rpc('listar_conversas')
     if (error) {
       console.error('Erro ao buscar conversas:', error)
