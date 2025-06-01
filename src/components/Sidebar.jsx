@@ -24,7 +24,14 @@ export default function Sidebar({ conversations, onSelectUser }) {
         {conversations.map((conv) => (
           <li
             key={conv.user_id}
-            onClick={() => onSelectUser(conv.user_id)}
+            onClick={() => {
+              const fullId = conv.user_id.includes('@')
+                ? conv.user_id
+                : `${conv.user_id}@w.msgcli.net`
+
+              console.log('[Sidebar] Selecionado:', fullId)
+              onSelectUser(fullId)
+            }}
           >
             <div className="avatar-placeholder" />
 
