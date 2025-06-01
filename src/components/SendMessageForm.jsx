@@ -2,35 +2,38 @@ import React, { useState } from 'react'
 import { supabase } from '../supabaseClient'
 
 export default function SendMessageForm({ userIdSelecionado }) {
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [text, setText] = useState('')
 
   const handleSend = async (e) => {
-    e.preventDefault()
-    if (!input.trim()) return
+  e.preventDefault()
+  if (!text.trim()) return
 
-    setLoading(true)
-
-    try {
-      const to = userIdSelecionado.replace('@w.msgcli.net', '')
-
-      await fetch('/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to,
-          type: 'text',
-          content: input
-        })
-      })
-
-      setInput('')
-    } catch (err) {
-      console.error('❌ Erro ao enviar mensagem:', err)
-    } finally {
-      setLoading(false)
-    }
+  const payload = {
+    to: userIdSelecionado.replace('@w.msgcli.net', ''),
+    type: 'text',
+    content: text.trim()
   }
+
+  try {
+    const res = await fetch('/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      console.error('Erro ao enviar mensagem:', err)
+    }
+  } catch (err) {
+    console.error('Erro de rede ao enviar mensagem:', err)
+  }
+
+  setText('')
+}
+
 
   return (
     <form onSubmit={handleSend} style={{ display: 'flex', width: '100%' }}>
