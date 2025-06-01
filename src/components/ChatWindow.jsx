@@ -9,17 +9,17 @@ export default function ChatWindow({ userIdSelecionado }) {
   const messagesEndRef = useRef(null)
   const currentUserIdRef = useRef(null)
 
-  // Garante o socket conectado
+  // Conecta socket
   useEffect(() => {
     connectSocket()
   }, [])
 
-  // Atualiza o userId atual em ref
+  // Atualiza referência do usuário atual
   useEffect(() => {
     currentUserIdRef.current = userIdSelecionado
   }, [userIdSelecionado])
 
-  // Carrega histórico ao trocar de usuário
+  // Busca histórico
   useEffect(() => {
     if (!userIdSelecionado) return
 
@@ -45,10 +45,9 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // Entra na sala correspondente
+  // Sala socket
   useEffect(() => {
     if (!userIdSelecionado) return
-
     const room = `chat-${userIdSelecionado}`
     console.log('[socket] Entrando na sala:', room)
     socket.emit('join_room', userIdSelecionado)
@@ -59,12 +58,10 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // Registra apenas uma vez os handlers
+  // Listeners (uma vez)
   useEffect(() => {
     const handleNewMessage = (novaMsg) => {
       const activeUser = currentUserIdRef.current
-      console.log('[socket] ✉️ new_message recebido:', novaMsg)
-
       if (novaMsg.user_id !== activeUser) return
       setMessages((prev) => {
         if (prev.find((m) => m.id === novaMsg.id)) return prev
@@ -74,8 +71,6 @@ export default function ChatWindow({ userIdSelecionado }) {
 
     const handleUpdateMessage = (updatedMsg) => {
       const activeUser = currentUserIdRef.current
-      console.log('[socket] 🔄 update_message recebido:', updatedMsg)
-
       if (updatedMsg.user_id !== activeUser) return
       setMessages((prev) =>
         prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
@@ -91,7 +86,7 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [])
 
-  // Scroll para o fim
+  // Scroll para última mensagem
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
@@ -107,14 +102,22 @@ export default function ChatWindow({ userIdSelecionado }) {
   }
 
   return (
-    <>
-      <header className="chat-header">
+    <div className="chat-window" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      position: 'relative'
+    }}>
+      <header className="chat-header" style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>
         <h2>{userIdSelecionado}</h2>
       </header>
 
       <div className="messages-list" style={{
-        flex: 1, overflowY: 'auto', padding: '10px', maxHeight: 'calc(100vh - 200px)',
-        display: 'flex', flexDirection: 'column'
+        flex: 1,
+        overflowY: 'auto',
+        padding: '10px',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
         {isLoading ? (
           <p>Carregando mensagens...</p>
@@ -124,19 +127,28 @@ export default function ChatWindow({ userIdSelecionado }) {
             return (
               <div key={msg.id} className="message-row" style={{
                 justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
-                display: 'flex', marginBottom: '6px'
+                display: 'flex',
+                marginBottom: '6px'
               }}>
                 <div className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`} style={{
                   background: isOutgoing ? '#dcf8c6' : '#fff',
-                  borderRadius: '8px', padding: '8px 12px', maxWidth: '70%',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  maxWidth: '70%',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
                   <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
                   <span style={{
-                    fontSize: '0.7rem', color: '#999', display: 'block',
-                    marginTop: '4px', textAlign: isOutgoing ? 'right' : 'left'
+                    fontSize: '0.7rem',
+                    color: '#999',
+                    display: 'block',
+                    marginTop: '4px',
+                    textAlign: isOutgoing ? 'right' : 'left'
                   }}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </span>
                 </div>
               </div>
@@ -146,10 +158,16 @@ export default function ChatWindow({ userIdSelecionado }) {
         <div ref={messagesEndRef} />
       </div>
 
-<div className="chat-input" >
-  <SendMessageForm userIdSelecionado={userIdSelecionado} />
-</div>
-
-    </>
+      <div className="chat-input" style={{
+        position: 'sticky',
+        bottom: 0,
+        background: '#fff',
+        padding: '10px',
+        borderTop: '1px solid #ccc',
+        zIndex: 10
+      }}>
+        <SendMessageForm userIdSelecionado={userIdSelecionado} />
+      </div>
+    </div>
   )
 }
