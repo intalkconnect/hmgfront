@@ -146,9 +146,17 @@ export default function ChatWindow({ userIdSelecionado }) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input">
-        <SendMessageForm userIdSelecionado={userIdSelecionado} />
-      </div>
+<div className="chat-input" style={{
+  borderTop: '1px solid #ddd',
+  padding: '10px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  background: '#fff'
+}}>
+  <SendMessageForm userIdSelecionado={userIdSelecionado} />
+</div>
+
     </>
   )
 }
