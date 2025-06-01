@@ -1,17 +1,24 @@
+// src/supabaseClient.js
 import { createClient } from '@supabase/supabase-js'
 
+const supabaseUrl         = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey     = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// Lê uma variável opcional do .env para o endpoint de Realtime
+// Exemplo: ws://bd.dkdevs.com.br:4000/realtime/v1  (sem TLS)
+//     ou  wss://bd.dkdevs.com.br/realtime/v1       (com TLS via proxy)
+const supabaseRealtimeUrl = import.meta.env.VITE_SUPABASE_REALTIME_URL
 
 export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL, 
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseAnonKey,
   {
-    // sobrescreve o endpoint de Realtime
     realtime: {
-      // Se você NÃO tiver TLS e o Realtime escutar na porta 4000, use ws://
-      // Caso tenha TLS (via nginx, por ex), use wss:// no lugar. 
-      url: import.meta.env.VITE_SUPABASE_REALTIME_URL ?? 'https://mensageria-frontend-supabase.9j9goo.easypanel.host/realtime/v1',
+      // Se você definiu VITE_SUPABASE_REALTIME_URL no seu .env, use-a.
+      // Caso contrário, será undefined e o SDK usará a URL padrão (supabaseUrl + "/realtime/v1").
+      url: supabaseRealtimeUrl,
       params: {
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY
+        apikey: supabaseAnonKey
       }
     }
   }
