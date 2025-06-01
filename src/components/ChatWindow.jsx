@@ -13,7 +13,7 @@ export default function ChatWindow({ userIdSelecionado }) {
   useEffect(() => {
     if (!userIdSelecionado) return
 
-    connectSocket() // Garante que o socket esteja conectado
+    connectSocket()
 
     let isMounted = true
     setIsLoading(true)
@@ -37,7 +37,7 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // 2) Ao trocar userIdSelecionado, entra na sala e escuta eventos
+  // 2) Entra na sala e escuta eventos via WebSocket
   useEffect(() => {
     if (!userIdSelecionado) return
 
@@ -45,20 +45,15 @@ export default function ChatWindow({ userIdSelecionado }) {
 
     const handleNewMessage = (novaMsg) => {
       if (novaMsg.user_id !== userIdSelecionado) return
-
       setMessages((prev) => {
         if (prev.find((m) => m.id === novaMsg.id)) return prev
-        return [...prev, novaMsg].sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        )
+        return [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       })
     }
 
     const handleUpdateMessage = (updatedMsg) => {
       if (updatedMsg.user_id !== userIdSelecionado) return
-      setMessages((prev) =>
-        prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
-      )
+      setMessages((prev) => prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m)))
     }
 
     socket.on('new_message', handleNewMessage)
@@ -71,7 +66,7 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // 3) Auto-scroll para o final das mensagens
+  // 3) Auto-scroll
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
@@ -101,7 +96,15 @@ export default function ChatWindow({ userIdSelecionado }) {
         <h2 style={{ fontSize: '1.1rem' }}>{userIdSelecionado}</h2>
       </header>
 
-      <div className="messages-list">
+      <div
+        className="messages-list"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '10px',
+          maxHeight: 'calc(100vh - 200px)'
+        }}
+      >
         {isLoading ? (
           <p>Carregando mensagens...</p>
         ) : (
@@ -112,20 +115,29 @@ export default function ChatWindow({ userIdSelecionado }) {
                 key={msg.id}
                 className="message-row"
                 style={{
-                  justifyContent: isOutgoing ? 'flex-end' : 'flex-start'
+                  justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
+                  display: 'flex',
+                  marginBottom: '6px'
                 }}
               >
                 <div
-                  className={`message-bubble ${
-                    isOutgoing ? 'outgoing' : 'incoming'
-                  }`}
+                  className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`}
+                  style={{
+                    background: isOutgoing ? '#dcf8c6' : '#fff',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    maxWidth: '70%',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}
                 >
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {msg.content}
-                  </p>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
                   <span
                     className="message-time"
                     style={{
+                      fontSize: '0.7rem',
+                      color: '#999',
+                      display: 'block',
+                      marginTop: '4px',
                       textAlign: isOutgoing ? 'right' : 'left'
                     }}
                   >
