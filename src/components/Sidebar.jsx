@@ -1,54 +1,62 @@
+// Sidebar.js
 import React from 'react'
+import './Sidebar.css'
 
 export default function Sidebar({ conversations, onSelectUser }) {
   return (
-    <>
-      {/* Campo de busca (não implementado em lógica, apenas UI) */}
-      <div style={{ padding: '12px' }}>
+    <div className="sidebar-container">
+      <div className="sidebar-search">
         <input
           type="text"
           placeholder="Pesquisar..."
-          style={{
-            width: '100%',
-            padding: '8px',
-            borderRadius: '8px',
-            border: '1px solid #ccc',
-            outline: 'none',
-            fontSize: '0.9rem'
-          }}
+          className="sidebar-input"
         />
       </div>
 
-      {/* Lista de conversas */}
       <ul className="chat-list">
-        {conversations.map((conv) => (
-          <li
-            key={conv.user_id}
-            onClick={() => {
-              const fullId = conv.user_id.includes('@')
-                ? conv.user_id
-                : `${conv.user_id}@w.msgcli.net`
+        {conversations.map((conv) => {
+          const fullId = conv.user_id.includes('@')
+            ? conv.user_id
+            : `${conv.user_id}@w.msgcli.net`
+          const isWhatsapp = conv.channel === 'whatsapp'
 
-              console.log('[Sidebar] Selecionado:', fullId)
-              onSelectUser(fullId)
-            }}
-          >
-            <div className="avatar-placeholder" />
+          return (
+            <li
+              key={conv.user_id}
+              className="chat-list-item"
+              onClick={() => onSelectUser(fullId)}
+            >
+              <div className="chat-avatar">
+                {isWhatsapp && (
+                  <img
+                    src="/icons/whatsapp.png"
+                    alt="whatsapp"
+                    className="avatar-img"
+                  />
+                )}
+              </div>
 
-            <div className="chat-info">
-              <div className="chat-title">{conv.user_id}</div>
-              <div className="chat-last-message">{conv.content}</div>
-            </div>
+              <div className="chat-details">
+                <div className="chat-title">{conv.nome || conv.user_id}</div>
+                <div className="chat-snippet">{conv.content}</div>
+                <div className="chat-meta">
+                  <span className="chat-ticket">#{conv.ticket || '000000'}</span>
+                  <span className="chat-queue">Fila:{conv.fila || 'Orçamento'}</span>
+                </div>
+              </div>
 
-            <div className="chat-time">
-              {new Date(conv.timestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-          </li>
-        ))}
+              <div className="chat-time">
+                {conv.timestamp
+                  ? new Date(conv.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : '--:--'}
+              </div>
+            </li>
+          )
+        })}
       </ul>
-    </>
+    </div>
   )
 }
