@@ -1,89 +1,84 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { supabase } from '../supabaseClient'
+// src/components/ChatWindow.jsx
+import React, { useEffect, useRef, useState } from 'react'
+import { socket } from '../socket'
 import SendMessageForm from './SendMessageForm'
+import { supabase } from '../supabaseClient' // seu supabaseClient.js existente
 
 export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
-  // 1) Ao trocar userIdSelecionado, buscar histórico
+  // 1) Busca inicial do histórico via Supabase REST (pode ser .from() ou RPC)
   useEffect(() => {
     if (!userIdSelecionado) return
 
-    let subscription = null
+    let isMounted = true
+    setIsLoading(true)
 
-    async function fetchInitial() {
-      setIsLoading(true)
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('user_id', userIdSelecionado)
-        .order('timestamp', { ascending: true })
-
-      if (error) {
-        console.error('Erro ao buscar mensagens:', error)
-      } else {
-        setMessages(data)
-      }
-      setIsLoading(false)
-    }
-
-    fetchInitial()
-
-    // 2) Inscrever no canal de Realtime só para este userId
-    subscription = supabase
-      .channel(`chat-${userIdSelecionado}`)
-      // INSERT: nova mensagem
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `user_id=eq.${userIdSelecionado}`
-        },
-        (payload) => {
-          const novaMsg = payload.new
-          setMessages((prev) => {
-            // evita duplicatas
-            const exists = prev.find((m) => m.id === novaMsg.id)
-            if (exists) return prev
-            return [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-          })
+    supabase
+      .from('messages')
+      .select('*')
+      .eq('user_id', userIdSelecionado)
+      .order('timestamp', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Erro ao buscar mensagens:', error)
+        } else if (isMounted) {
+          setMessages(data)
         }
-      )
-      // UPDATE: se, por exemplo, status da mensagem mudar
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `user_id=eq.${userIdSelecionado}`
-        },
-        (payload) => {
-          const updated = payload.new
-          setMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? updated : m))
-          )
-        }
-      )
-      .subscribe()
+        setIsLoading(false)
+      })
 
     return () => {
-      supabase.removeChannel(subscription)
+      isMounted = false
     }
   }, [userIdSelecionado])
 
-  // 3) Scroll automático para o fim quando mensagens mudam
+  // 2) Ao trocar userIdSelecionado, entra na sala e escuta eventos
+  useEffect(() => {
+    if (!userIdSelecionado) return
+
+    // 2.1) Entra na “sala” do Socket.IO
+    socket.emit('join_room', userIdSelecionado)
+
+    // 2.2) Função de callback para novas mensagens
+    const handleNewMessage = (novaMsg) => {
+      if (novaMsg.user_id !== userIdSelecionado) return
+
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === novaMsg.id)) return prev
+        return [...prev, novaMsg].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        )
+      })
+    }
+
+    // 2.3) Função de callback para atualização de mensagens
+    const handleUpdateMessage = (updatedMsg) => {
+      if (updatedMsg.user_id !== userIdSelecionado) return
+      setMessages((prev) =>
+        prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
+      )
+    }
+
+    socket.on('new_message', handleNewMessage)
+    socket.on('update_message', handleUpdateMessage)
+
+    return () => {
+      socket.emit('leave_room', userIdSelecionado)
+      socket.off('new_message', handleNewMessage)
+      socket.off('update_message', handleUpdateMessage)
+    }
+  }, [userIdSelecionado])
+
+  // 3) Auto‐scroll para o fim ao receber/atualizar mensagens
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
-  // 4) Se não há conversa selecionada, mostre mensagem “Selecione uma conversa”
   if (!userIdSelecionado) {
     return (
       <div
@@ -103,12 +98,10 @@ export default function ChatWindow({ userIdSelecionado }) {
 
   return (
     <>
-      {/* Cabeçalho do chat */}
       <header className="chat-header">
         <h2 style={{ fontSize: '1.1rem' }}>{userIdSelecionado}</h2>
       </header>
 
-      {/* Lista de mensagens */}
       <div className="messages-list">
         {isLoading ? (
           <p>Carregando mensagens...</p>
@@ -124,10 +117,19 @@ export default function ChatWindow({ userIdSelecionado }) {
                 }}
               >
                 <div
-                  className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`}
+                  className={`message-bubble ${
+                    isOutgoing ? 'outgoing' : 'incoming'
+                  }`}
                 >
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
-                  <span className="message-time" style={{ textAlign: isOutgoing ? 'right' : 'left' }}>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {msg.content}
+                  </p>
+                  <span
+                    className="message-time"
+                    style={{
+                      textAlign: isOutgoing ? 'right' : 'left'
+                    }}
+                  >
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit'
@@ -141,7 +143,6 @@ export default function ChatWindow({ userIdSelecionado }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Formulário para enviar nova mensagem */}
       <div className="chat-input">
         <SendMessageForm userIdSelecionado={userIdSelecionado} />
       </div>
