@@ -40,15 +40,3 @@
 .read-the-docs {
   color: #888;
 }
-
-.app-container {
-  display: flex;
-  flex-direction: row; /* ou column se full-page */
-  height: 100vh;
-}
-
-.chat-window {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
