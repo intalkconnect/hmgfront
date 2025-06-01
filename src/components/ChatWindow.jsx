@@ -7,6 +7,7 @@ export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
+  const listenersRef = useRef(false)
 
   // 1) Busca inicial do histórico
   useEffect(() => {
@@ -35,44 +36,43 @@ export default function ChatWindow({ userIdSelecionado }) {
     }
   }, [userIdSelecionado])
 
-  // 2) Entra na sala e escuta eventos WebSocket
+  // 2) Sempre entra na sala do usuário ao trocar
   useEffect(() => {
     if (!userIdSelecionado) return
 
     console.log('[socket] Entrando na sala:', `chat-${userIdSelecionado}`)
     socket.emit('join_room', userIdSelecionado)
 
-    const handleNewMessage = (novaMsg) => {
-      console.log('[socket] ✉️ new_message recebido:', novaMsg)
-      if (novaMsg.user_id !== userIdSelecionado) return
-      setMessages((prev) => {
-        if (prev.find((m) => m.id === novaMsg.id)) return prev
-        return [...prev, novaMsg].sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        )
-      })
-    }
-
-    const handleUpdateMessage = (updatedMsg) => {
-      console.log('[socket] 🔄 update_message recebido:', updatedMsg)
-      if (updatedMsg.user_id !== userIdSelecionado) return
-      setMessages((prev) =>
-        prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
-      )
-    }
-
-    socket.on('new_message', handleNewMessage)
-    socket.on('update_message', handleUpdateMessage)
-
     return () => {
       console.log('[socket] Saindo da sala:', `chat-${userIdSelecionado}`)
       socket.emit('leave_room', userIdSelecionado)
-      socket.off('new_message', handleNewMessage)
-      socket.off('update_message', handleUpdateMessage)
     }
   }, [userIdSelecionado])
 
-  // 3) Auto-scroll
+  // 3) Registra os listeners apenas uma vez (global)
+  useEffect(() => {
+    if (listenersRef.current) return
+    listenersRef.current = true
+
+    socket.on('new_message', (novaMsg) => {
+      console.log('[socket] ✉️ new_message recebido:', novaMsg)
+      setMessages((prev) => {
+        if (!novaMsg.user_id || novaMsg.user_id !== userIdSelecionado) return prev
+        if (prev.find((m) => m.id === novaMsg.id)) return prev
+        return [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+      })
+    })
+
+    socket.on('update_message', (updatedMsg) => {
+      console.log('[socket] 🔄 update_message recebido:', updatedMsg)
+      if (!updatedMsg.user_id || updatedMsg.user_id !== userIdSelecionado) return
+      setMessages((prev) =>
+        prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m))
+      )
+    })
+  }, [userIdSelecionado])
+
+  // 4) Auto-scroll
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
