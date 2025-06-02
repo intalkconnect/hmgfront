@@ -14,12 +14,18 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const [showEmoji, setShowEmoji] = useState(false);
   // Controle para habilitar/desabilitar spinner e botão de enviar
   const [isSending, setIsSending] = useState(false);
-
-  const pickerRef = useRef(null);
+  // Controle para indicar se estamos gravando áudio
+  const [isRecording, setIsRecording] = useState(false);
+  // Instância do MediaRecorder
+  const mediaRecorderRef = useRef(null);
+  // Partes de áudio capturadas
+  const audioChunksRef = useRef([]);
+  // Referência ao input de arquivo para limpar quando necessário
   const fileInputRef = useRef(null);
+  const pickerRef = useRef(null);
 
   // ----------------------------------------------------------------------
-  // Lista de MIME types permitidos
+  // Lista de MIME types permitidos (texto, docs, áudio ogg será tratado separadamente)
   // ----------------------------------------------------------------------
   const ALLOWED_MIME_TYPES = [
     'text/plain',                                                                       // .txt
@@ -62,39 +68,67 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleSend: chamado quando o formulário é submetido
+  // handleSend: chamado quando o usuário clica no botão SEND/REC
   // ----------------------------------------------------------------------
   const handleSend = async (e) => {
     e.preventDefault();
-    // Se não há texto nem arquivo, não faz nada
+
+    // Se estamos gravando, parar a gravação
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    // Se houver texto ou arquivo, fazer envio
+    if (text.trim() || file) {
+      // Se não há texto e o file é um objeto que não seja áudio, validar extensão/tamanho
+      if (!text.trim() && file) {
+        // arquivo já validado em handleFileSelect; prosseguimos
+      }
+
+      // Preparar envio
+      await sendMessageOrFile();
+      return;
+    }
+
+    // Se não há texto nem arquivo, iniciar gravação de áudio
+    startRecording();
+  };
+
+  // ----------------------------------------------------------------------
+  // sendMessageOrFile: lógica de upload + envio de texto, arquivo ou áudio
+  // ----------------------------------------------------------------------
+  const sendMessageOrFile = async () => {
+    // Se não há texto nem file (pode ser áudio gerado), ignora
     if (!text.trim() && !file) {
-      toast.warn('Digite uma mensagem ou selecione um arquivo antes de enviar.', {
+      toast.warn('Digite algo ou grave áudio antes de enviar.', {
         position: 'bottom-right',
         autoClose: 2000
       });
       return;
     }
 
-    // Guarda cópia do arquivo (File) e do texto atual antes de limpar estados
+    // Guarda o arquivo em variável local antes de limpar estado
     const fileToSend = file;
     const textToSend = text.trim();
 
-    // Cria mensagem provisória (Optimistic UI) e repassa ao componente pai,
-    // apenas se onMessageAdded for função.
+    // Cria mensagem provisória (Optimistic UI)
     const tempId = Date.now();
     const now = new Date();
     const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     let provisionalMessage = null;
     if (fileToSend) {
+      // Se o file for de tipo áudio/ogg
       const realFileName = fileToSend.name;
       const captionText = textToSend !== '' ? textToSend : realFileName;
 
       provisionalMessage = {
         id: tempId,
-        type: fileToSend.type.startsWith('image/') ? 'image' : 'document',
+        type: fileToSend.type.startsWith('audio/') ? 'audio' :
+              fileToSend.type.startsWith('image/') ? 'image' : 'document',
         content: {
-          url: null,           // Ainda sem URL final
+          url: null,
           filename: realFileName,
           caption: captionText
         },
@@ -102,7 +136,6 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         timestamp
       };
     } else {
-      // Mensagem de texto puro
       provisionalMessage = {
         id: tempId,
         type: 'text',
@@ -116,27 +149,24 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       onMessageAdded(provisionalMessage);
     }
 
-    // Limpa o formulário local (campo de texto e preview de arquivo)
+    // Limpa formulário local
     setFile(null);
     setText('');
     setShowEmoji(false);
 
-    // Habilita spinner/desabilita botões
     setIsSending(true);
 
-    // Exibe toast informando que começou a enviar
     toast.info('Enviando mensagem…', {
       position: 'bottom-right',
       autoClose: 1500
     });
 
     try {
-      // Constrói payload para envio ao backend
       const to = userIdSelecionado.replace('@w.msgcli.net', '');
       const payload = { to };
 
       if (fileToSend) {
-        // Faz upload do arquivo ao bucket
+        // Se for áudio, fazemos upload do blob
         const fileUrl = await uploadFileAndGetURL(fileToSend);
         if (!fileUrl) {
           throw new Error('Não foi possível obter URL de upload.');
@@ -145,12 +175,22 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         const realFileName = fileToSend.name;
         const captionText = textToSend !== '' ? textToSend : realFileName;
 
-        payload.type = fileToSend.type.startsWith('image/') ? 'image' : 'document';
-        payload.content = {
-          url: fileUrl,
-          filename: realFileName,
-          caption: captionText
-        };
+        const mime = fileToSend.type;
+        if (mime.startsWith('audio/')) {
+          payload.type = 'audio';
+          payload.content = {
+            url: fileUrl,
+            filename: realFileName,
+            caption: captionText
+          };
+        } else {
+          payload.type = fileToSend.type.startsWith('image/') ? 'image' : 'document';
+          payload.content = {
+            url: fileUrl,
+            filename: realFileName,
+            caption: captionText
+          };
+        }
       } else {
         payload.type = 'text';
         payload.content = textToSend;
@@ -158,7 +198,6 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
       console.log('[📨 Enviando payload]', payload);
 
-      // Chama o endpoint para envio de mensagem
       const resp = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +210,6 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         throw new Error(`Servidor retornou ${resp.status}: ${responseText}`);
       }
 
-      // Ao obter sucesso, atualiza o status da mensagem provisória para “sent”
       if (typeof onMessageAdded === 'function') {
         const serverData = responseText ? JSON.parse(responseText) : null;
         onMessageAdded({
@@ -187,7 +225,6 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       });
     } catch (err) {
       console.error('[❌ Erro ao enviar mensagem]', err);
-      // Marca a mensagem provisória como “error”
       if (typeof onMessageAdded === 'function') {
         onMessageAdded({
           id: tempId,
@@ -195,7 +232,6 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
           errorMessage: err.message
         });
       }
-
       toast.error('Falha ao enviar mensagem.', {
         position: 'bottom-right',
         autoClose: 2000
@@ -214,24 +250,26 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     console.log('[📎 Arquivo selecionado]', selectedFile.name);
 
-    // 1) Verifica se o MIME type está na lista permitida
-    if (!ALLOWED_MIME_TYPES.includes(selectedFile.type)) {
+    // Verifica se é MP3, WAV, OGG ou tipos permitidos para docs
+    if (
+      !ALLOWED_MIME_TYPES.includes(selectedFile.type) &&
+      !selectedFile.type.startsWith('audio/')
+    ) {
       alert(
         'Tipo de arquivo não permitido.\n\n' +
-          'Somente os formatos .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx e .pdf são aceitos.'
+          'Somente os formatos .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio (ogg) são aceitos.'
       );
       e.target.value = '';
       return;
     }
 
-    // 2) Verifica se o tamanho não excede 5 MB
+    // Verifica tamanho máximo
     if (selectedFile.size > MAX_FILE_SIZE) {
       alert('Arquivo muito grande. O tamanho máximo permitido é 5 MB.');
       e.target.value = '';
       return;
     }
 
-    // Se passou nas duas checagens, guarda o arquivo
     setFile(selectedFile);
   };
 
@@ -240,10 +278,77 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // ----------------------------------------------------------------------
   const handleRemoveFile = () => {
     setFile(null);
-    // Limpa o input para permitir re-seleção do mesmo arquivo, se necessário
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // ----------------------------------------------------------------------
+  // startRecording: solicita permissão e inicia gravação via MediaRecorder
+  // ----------------------------------------------------------------------
+  const startRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Gravação de áudio não suportada neste navegador.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const options = { mimeType: 'audio/ogg; codecs=opus' };
+      const mediaRecorder = new MediaRecorder(stream, options);
+
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = handleRecordingStop;
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast.info('Gravando áudio… clique novamente para parar.', {
+        position: 'bottom-right',
+        autoClose: 1500
+      });
+    } catch (err) {
+      console.error('[❌ Erro ao iniciar gravação]', err);
+      alert('Não foi possível iniciar gravação de áudio.');
+    }
+  };
+
+  // ----------------------------------------------------------------------
+  // stopRecording: para o MediaRecorder e finaliza fluxo de gravação
+  // ----------------------------------------------------------------------
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+    }
+    setIsRecording(false);
+  };
+
+  // ----------------------------------------------------------------------
+  // handleRecordingStop: invocado quando a gravação é interrompida
+  // ----------------------------------------------------------------------
+  const handleRecordingStop = () => {
+    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+    if (audioBlob.size > MAX_FILE_SIZE) {
+      toast.error('Áudio muito grande. Máximo permitido é 5 MB.', {
+        position: 'bottom-right',
+        autoClose: 2000
+      });
+      return;
+    }
+
+    const audioFile = new File([audioBlob], `gravacao_${Date.now()}.ogg`, {
+      type: 'audio/ogg'
+    });
+    setFile(audioFile);
+    toast.success('Gravação concluída. Toque em enviar para enviar o áudio.', {
+      position: 'bottom-right',
+      autoClose: 2000
+    });
   };
 
   // ----------------------------------------------------------------------
@@ -300,8 +405,14 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={file ? 'Digite uma legenda para o anexo...' : 'Digite sua mensagem...'}
-              disabled={isSending}
+              placeholder={
+                file
+                  ? 'Digite uma legenda para o anexo...'
+                  : isRecording
+                  ? 'Gravando áudio...'
+                  : 'Digite sua mensagem...'
+              }
+              disabled={isSending || isRecording}
               style={{
                 flex: 1,
                 border: 'none',
@@ -318,7 +429,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
                 e.stopPropagation();
                 setShowEmoji((prev) => !prev);
               }}
-              disabled={isSending}
+              disabled={isSending || isRecording}
               style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
               <span role="img" aria-label="emoji" style={{ fontSize: '20px' }}>
@@ -330,7 +441,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isSending}
+              disabled={isSending || isRecording}
               style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#555" viewBox="0 0 24 24">
@@ -343,11 +454,11 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
-              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf"
+              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/ogg"
               onChange={handleFileSelect}
             />
 
-            {/* Botão de enviar (com spinner quando isSending===true) */}
+            {/* Botão de enviar / gravar áudio */}
             <button
               type="submit"
               disabled={isSending}
@@ -358,35 +469,20 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
                 opacity: isSending ? 0.6 : 1
               }}
             >
-              {isSending ? (
-                // SVG de Spinner
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 38 38"
-                  xmlns="http://www.w3.org/2000/svg"
-                  stroke="#0084ff"
-                >
-                  <g fill="none" fillRule="evenodd">
-                    <g transform="translate(1 1)" strokeWidth="2">
-                      <circle strokeOpacity=".5" cx="18" cy="18" r="18" />
-                      <path d="M36 18c0-9.94-8.06-18-18-18">
-                        <animateTransform
-                          attributeName="transform"
-                          type="rotate"
-                          from="0 18 18"
-                          to="360 18 18"
-                          dur="1s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-                    </g>
-                  </g>
+              {isRecording ? (
+                // Ícone de parar gravação
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#e3342f" viewBox="0 0 24 24">
+                  <path d="M6 6h12v12H6z" />
                 </svg>
-              ) : (
-                // Ícone de Enviar normal
+              ) : text.trim() || file ? (
+                // Ícone de enviar
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#0084ff" viewBox="0 0 24 24">
                   <path d="M2.01 21l20.99-9L2.01 3v7l15 2-15 2z" />
+                </svg>
+              ) : (
+                // Ícone de microfone para iniciar gravação
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#000" viewBox="0 0 24 24">
+                  <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zM11 19.93A7.002 7.002 0 0 1 5 13H3a9 9 0 0 0 18 0h-2a7.002 7.002 0 0 1-6 6.93V23h-2v-3.07z" />
                 </svg>
               )}
             </button>
@@ -405,11 +501,12 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
                 gap: '8px'
               }}
             >
-              📎 Anexado: <strong>{file.name}</strong>
+              {file.type.startsWith('audio/') ? '🔉 Áudio:' : '📎 Anexado:'}{' '}
+              <strong>{file.name}</strong>
               <button
                 type="button"
                 onClick={handleRemoveFile}
-                disabled={isSending}
+                disabled={isSending || isRecording}
                 style={{
                   background: 'none',
                   border: 'none',
