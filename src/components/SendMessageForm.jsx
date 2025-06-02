@@ -1,90 +1,96 @@
-import React, { useState, useEffect, useRef } from 'react';
-import 'emoji-picker-element';
+import React, { useState, useEffect, useRef } from 'react'
+import 'emoji-picker-element'
 
 export default function SendMessageForm({ userIdSelecionado }) {
-  const [text, setText] = useState('');
-  const [file, setFile] = useState(null);
-  const [showEmoji, setShowEmoji] = useState(false);
-  const pickerRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const [text, setText] = useState('')
+  const [file, setFile] = useState(null)
+  const [showEmoji, setShowEmoji] = useState(false)
+  const pickerRef = useRef(null)
+  const fileInputRef = useRef(null)
 
-  // Função de upload (presume que retorna { url: 'https://...' })
+  // Função que faz upload e retorna uma URL pública
   const uploadFileAndGetURL = async (file) => {
-    const formData = new FormData();
-    // Aqui já passa o file, e o próprio File object traz o .name original
-    formData.append('file', file);
+    const formData = new FormData()
+    formData.append('file', file)
 
     try {
       const res = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/bucket/upload', {
         method: 'POST',
         body: formData
-      });
-      const data = await res.json();
+      })
+      const data = await res.json()
       if (!res.ok || !data.url) {
-        console.error('[❌ Upload erro]', data);
-        return null;
+        console.error('[❌ Upload erro]', data)
+        return null
       }
-      console.log('[✅ Upload URL]', data.url);
-      return data.url;
+      console.log('[✅ Upload URL]', data.url)
+      return data.url
     } catch (err) {
-      console.error('[❌ Upload falhou]', err);
-      return null;
+      console.error('[❌ Upload falhou]', err)
+      return null
     }
-  };
+  }
 
   const handleSend = async (e) => {
-    e.preventDefault();
-    console.log('►► handleSend disparado! file=', file, 'text=', text);
+    e.preventDefault()
+    console.log('►► handleSend disparado! file=', file, 'text=', text)
 
-    // Se não tiver texto nem arquivo, não faz nada
+    // Se não houver texto nem arquivo, não enviar
     if (!text.trim() && !file) {
-      console.log('►► Abortei: nem texto nem arquivo.');
-      return;
+      console.log('►► Abortei: nem texto nem arquivo.')
+      return
     }
 
-    // Guardo uma cópia do File antes de limpar o estado
-    const fileToSend = file;
-    const textToSend = text.trim();
-    // Não limpo o estado ainda aqui; só após confirmar o envio bem-sucedido
-    // setFile(null);
-    // setText('');
-    // setShowEmoji(false);
+    // Guardo o objeto File num variável local antes de limpar o state
+    const fileToSend = file
+    const textToSend = text.trim()
 
-    const to = userIdSelecionado.replace('@w.msgcli.net', '');
-    const payload = { to };
+    // Não limpamos o estado aqui, só depois de confirmar o envio
+    // setFile(null)
+    // setText('')
+    // setShowEmoji(false)
+
+    const to = userIdSelecionado.replace('@w.msgcli.net', '')
+    const payload = { to }
 
     if (fileToSend) {
-      console.log('►► Iniciando upload do arquivo:', fileToSend.name);
-      const fileUrl = await uploadFileAndGetURL(fileToSend);
-      console.log('►► uploadFileAndGetURL retornou:', fileUrl);
+      console.log('►► Iniciando upload do arquivo:', fileToSend.name)
+      const fileUrl = await uploadFileAndGetURL(fileToSend)
+      console.log('►► uploadFileAndGetURL retornou:', fileUrl)
 
       if (!fileUrl) {
-        console.log('►► Abortei: não recebi URL de upload.');
-        return;
+        console.log('►► Abortei: não recebi URL de upload.')
+        return
       }
 
-      // Capturo o nome real do arquivo (com extensão) antes de enviar:
-      const realFileName = fileToSend.name; 
-      // Verifico se é imagem apenas para montar payload corretamente
-      const isImage = fileToSend.type.startsWith('image/');
-      payload.type = isImage ? 'image' : 'document';
-      payload.content = isImage
-        ? {
-            url: fileUrl,
-            caption: textToSend,
-            filename: realFileName   // incluímos o filename real aqui
-          }
-        : {
-            url: fileUrl,
-            filename: realFileName   // o backend vai receber o nome real
-          };
+      // Capturo o nome real do arquivo antes de limpar o estado
+      const realFileName = fileToSend.name
 
-      console.log('[📨 Enviando arquivo]', payload);
+      // Determino se é imagem ou documento
+      const isImage = fileToSend.type.startsWith('image/')
+      payload.type = isImage ? 'image' : 'document'
+
+      // Montagem de content sempre com caption = realFileName
+      if (isImage) {
+        payload.content = {
+          url: fileUrl,
+          caption: realFileName,     // caption igual ao filename
+          filename: realFileName     // mantemos também o filename
+        }
+      } else {
+        payload.content = {
+          url: fileUrl,
+          filename: realFileName,    // nome original do arquivo
+          caption: realFileName      // caption igual ao filename
+        }
+      }
+
+      console.log('[📨 Enviando arquivo]', payload)
     } else {
-      // Se só tiver texto simples
-      payload.type = 'text';
-      payload.content = textToSend;
-      console.log('[📨 Enviando texto]', payload);
+      // Só texto sem arquivo
+      payload.type = 'text'
+      payload.content = textToSend
+      console.log('[📨 Enviando texto]', payload)
     }
 
     try {
@@ -92,48 +98,47 @@ export default function SendMessageForm({ userIdSelecionado }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      });
-      console.log('►► Resposta do /messages/send:', resp.status, await resp.text());
+      })
+      console.log('►► Resposta do /messages/send:', resp.status, await resp.text())
 
       if (resp.ok) {
-        // Só aqui, após o envio ter sucesso, limpamos o estado:
-        setFile(null);
-        setText('');
-        setShowEmoji(false);
+        // Se enviou com sucesso, aí sim limpamos o estado
+        setFile(null)
+        setText('')
+        setShowEmoji(false)
       } else {
-        console.warn('►► /messages/send retornou erro:', resp.status);
+        console.warn('►► /messages/send retornou erro:', resp.status)
       }
     } catch (err) {
-      console.error('[❌ Erro ao enviar mensagem]', err);
+      console.error('[❌ Erro ao enviar mensagem]', err)
     }
-  };
+  }
 
   const handleFileSelect = (e) => {
-    const selectedFile = e.target.files[0];
+    const selectedFile = e.target.files[0]
     if (selectedFile) {
-      console.log('[📎 Arquivo selecionado]', selectedFile.name);
-      setFile(selectedFile);
+      console.log('[📎 Arquivo selecionado]', selectedFile.name)
+      setFile(selectedFile)
     }
-  };
+  }
 
-  // Lógica de emoji picker (sem alterações)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setShowEmoji(false);
+        setShowEmoji(false)
       }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     if (pickerRef.current) {
       pickerRef.current.addEventListener('emoji-click', (e) => {
-        setText((prev) => prev + e.detail.unicode);
-      });
+        setText((prev) => prev + e.detail.unicode)
+      })
     }
-  }, [showEmoji]);
+  }, [showEmoji])
 
   return (
     <form
@@ -170,8 +175,8 @@ export default function SendMessageForm({ userIdSelecionado }) {
           <button
             type="button"
             onClick={(e) => {
-              e.stopPropagation();
-              setShowEmoji((prev) => !prev);
+              e.stopPropagation()
+              setShowEmoji((prev) => !prev)
             }}
             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
           >
@@ -203,14 +208,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
 
         {/* Preview do nome do arquivo */}
         {file && (
-          <div
-            style={{
-              marginTop: '8px',
-              fontSize: '0.9rem',
-              color: '#444',
-              paddingLeft: '12px'
-            }}
-          >
+          <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#444', paddingLeft: '12px' }}>
             📎 Anexado: <strong>{file.name}</strong>
           </div>
         )}
@@ -234,5 +232,5 @@ export default function SendMessageForm({ userIdSelecionado }) {
         </div>
       )}
     </form>
-  );
+  )
 }
