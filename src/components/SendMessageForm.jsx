@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import 'emoji-picker-element';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import lamejs from 'lamejs';
 
 export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // Texto digitado pelo usuário
@@ -19,7 +18,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const [isRecording, setIsRecording] = useState(false);
   // Instância do MediaRecorder
   const mediaRecorderRef = useRef(null);
-  // Partes de áudio capturadas (WebM/Opus)
+  // Partes de áudio capturadas (OGG/Opus)
   const audioChunksRef = useRef([]);
   // Referência ao input de arquivo para limpar quando necessário
   const fileInputRef = useRef(null);
@@ -27,7 +26,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const pickerRef = useRef(null);
 
   // ----------------------------------------------------------------------
-  // Lista de MIME types permitidos (texto, docs e áudio mp3/ogg)
+  // Lista de MIME types permitidos (texto, docs e áudio ogg)
   // ----------------------------------------------------------------------
   const ALLOWED_MIME_TYPES = [
     'text/plain',                                                                       // .txt
@@ -38,8 +37,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     'application/vnd.ms-powerpoint',                                                     // .ppt
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',         // .pptx
     'application/pdf',                                                                   // .pdf
-    'audio/mp3',                                                                         // .mp3
-    'audio/ogg'                                                                          // .ogg (para uploads manuais)
+    'audio/ogg'                                                                          // .ogg (para uploads manuais e gravações)
   ];
 
   // Tamanho máximo (em bytes) - 5 MB
@@ -241,11 +239,11 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     if (
       !ALLOWED_MIME_TYPES.includes(selectedFile.type) &&
-      !selectedFile.type.startsWith('audio/')
+      !selectedFile.type.startsWith('audio/ogg')
     ) {
       alert(
         'Tipo de arquivo não permitido.\n\n' +
-          'Apenas .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf, .mp3 e .ogg são aceitos.'
+          'Apenas .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio .ogg são aceitos.'
       );
       e.target.value = '';
       return;
@@ -299,7 +297,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         return;
       }
 
-      // Grava inicialmente em OGG/Opus, depois converteremos para MP3
+      // Grava em OGG/Opus diretamente
       const options = { mimeType: 'audio/ogg; codecs=opus' };
       const mediaRecorder = new MediaRecorder(stream, options);
 
@@ -337,77 +335,29 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleRecordingStop: converte OGG para MP3 e cria File
+  // handleRecordingStop: cria Blob OGG e File, sem converter para MP3
   // ----------------------------------------------------------------------
-  const handleRecordingStop = async () => {
-    try {
-      // 1) Combina todos os chunks num Blob OGG/Opus
-      const oggBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
-      if (oggBlob.size > MAX_FILE_SIZE) {
-        toast.error('Áudio muito grande. Máximo permitido: 5 MB.', {
-          position: 'bottom-right',
-          autoClose: 2000
-        });
-        return;
-      }
-
-      // 2) Decodifica Blob OGG em ArrayBuffer
-      const arrayBuffer = await oggBlob.arrayBuffer();
-      const audioContext = new AudioContext();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-      // 3) Extrai canais PCM (Float32Array)
-      const channelData = audioBuffer.getChannelData(0); // mono
-      const sampleRate = audioBuffer.sampleRate;
-      const leftData = channelData;
-
-      // 4) Converte Float32 (-1.0..1.0) para Int16 PCM
-      const samples = new Int16Array(leftData.length);
-      for (let i = 0; i < leftData.length; i++) {
-        let s = Math.max(-1, Math.min(1, leftData[i]));
-        samples[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-      }
-
-      // 5) Configura o encoder MP3 (1 canal, mesma taxa de amostragem, bitrate 128 kbps)
-      const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
-
-      const mp3Chunks = [];
-      const maxSamples = 1152;
-      for (let i = 0; i < samples.length; i += maxSamples) {
-        const chunk = samples.subarray(i, i + maxSamples);
-        const mp3buf = mp3encoder.encodeBuffer(chunk);
-        if (mp3buf.length > 0) mp3Chunks.push(mp3buf);
-      }
-      const mp3buf = mp3encoder.flush();
-      if (mp3buf.length > 0) mp3Chunks.push(mp3buf);
-
-      // 6) Concatena todos os pedaços de MP3 num único Uint8Array
-      const mp3BlobData = new Uint8Array(mp3Chunks.reduce((sum, arr) => sum + arr.length, 0));
-      let offset = 0;
-      mp3Chunks.forEach((chunk) => {
-        mp3BlobData.set(chunk, offset);
-        offset += chunk.length;
-      });
-
-      // 7) Cria Blob e File MP3
-      const mp3Blob = new Blob([mp3BlobData], { type: 'audio/mp3' });
-      const mp3File = new File([mp3Blob], `gravacao_${Date.now()}.mp3`, {
-        type: 'audio/mp3'
-      });
-
-      // 8) Atualiza estado com o File MP3
-      setFile(mp3File);
-      toast.success('Gravação convertida para MP3. Toque em enviar para enviar o áudio.', {
+  const handleRecordingStop = () => {
+    // Combina todos os chunks num Blob OGG/Opus
+    const oggBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+    if (oggBlob.size > MAX_FILE_SIZE) {
+      toast.error('Áudio muito grande. Máximo permitido: 5 MB.', {
         position: 'bottom-right',
         autoClose: 2000
       });
-    } catch (err) {
-      console.error('[❌ Erro ao converter para MP3]', err);
-      toast.error('Falha ao converter áudio para MP3.', {
-        position: 'bottom-right',
-        autoClose: 2000
-      });
+      return;
     }
+
+    // Cria um File com extensão .ogg para enviar ao bucket
+    const oggFile = new File([oggBlob], `gravacao_${Date.now()}.ogg`, {
+      type: 'audio/ogg; codecs=opus'
+    });
+
+    setFile(oggFile);
+    toast.success('Gravação concluída. Toque em enviar para enviar o áudio.', {
+      position: 'bottom-right',
+      autoClose: 2000
+    });
   };
 
   // ----------------------------------------------------------------------
@@ -510,12 +460,12 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               </svg>
             </button>
 
-            {/* Input de arquivo oculto (permitido: docs e áudio) */}
+            {/* Input de arquivo oculto (permitido: docs e áudio ogg) */}
             <input
               type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
-              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/*"
+              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/ogg"
               onChange={handleFileSelect}
             />
 
@@ -549,7 +499,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             </button>
           </div>
 
-          {/* Preview: se for áudio MP3, exibe player; se for documento/imagem, exibe nome + “×” */}
+          {/* Preview: se for áudio OGG, exibe player; se for documento/imagem, exibe nome + “×” */}
           {file && (
             <div
               style={{
@@ -563,7 +513,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               }}
             >
               {file.type.startsWith('audio/') ? (
-                // Player de áudio MP3
+                // Player de áudio OGG
                 <audio controls src={URL.createObjectURL(file)} style={{ width: '100%' }} />
               ) : (
                 // Nome do arquivo e botão “×”
