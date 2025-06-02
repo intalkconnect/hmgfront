@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // Texto digitado pelo usuário
   const [text, setText] = useState('');
-  // Arquivo selecionado (File object) ou null
+  // Arquivo ou gravação de áudio selecionada (File object) ou null
   const [file, setFile] = useState(null);
   // Controle para exibir/esconder o emoji picker
   const [showEmoji, setShowEmoji] = useState(false);
@@ -22,10 +22,11 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const audioChunksRef = useRef([]);
   // Referência ao input de arquivo para limpar quando necessário
   const fileInputRef = useRef(null);
+  // Referência do emoji picker
   const pickerRef = useRef(null);
 
   // ----------------------------------------------------------------------
-  // Lista de MIME types permitidos (texto, docs, áudio ogg será tratado separadamente)
+  // Lista de MIME types permitidos (texto, docs e áudio ogg)
   // ----------------------------------------------------------------------
   const ALLOWED_MIME_TYPES = [
     'text/plain',                                                                       // .txt
@@ -35,7 +36,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',          // .docx
     'application/vnd.ms-powerpoint',                                                     // .ppt
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',         // .pptx
-    'application/pdf'                                                                    // .pdf
+    'application/pdf',                                                                   // .pdf
+    'audio/ogg'                                                                          // .ogg (gravação)
   ];
 
   // Tamanho máximo (em bytes) - 5 MB
@@ -68,7 +70,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleSend: chamado quando o usuário clica no botão SEND/REC
+  // handleSend: chamado quando o formulário é submetido ou botão é clicado
   // ----------------------------------------------------------------------
   const handleSend = async (e) => {
     e.preventDefault();
@@ -79,14 +81,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       return;
     }
 
-    // Se houver texto ou arquivo, fazer envio
+    // Se houver texto ou arquivo (incluindo áudio), fazer envio
     if (text.trim() || file) {
-      // Se não há texto e o file é um objeto que não seja áudio, validar extensão/tamanho
-      if (!text.trim() && file) {
-        // arquivo já validado em handleFileSelect; prosseguimos
-      }
-
-      // Preparar envio
       await sendMessageOrFile();
       return;
     }
@@ -99,7 +95,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // sendMessageOrFile: lógica de upload + envio de texto, arquivo ou áudio
   // ----------------------------------------------------------------------
   const sendMessageOrFile = async () => {
-    // Se não há texto nem file (pode ser áudio gerado), ignora
+    // Se não há texto nem file (pode acontecer), ignora
     if (!text.trim() && !file) {
       toast.warn('Digite algo ou grave áudio antes de enviar.', {
         position: 'bottom-right',
@@ -119,23 +115,34 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     let provisionalMessage = null;
     if (fileToSend) {
-      // Se o file for de tipo áudio/ogg
-      const realFileName = fileToSend.name;
-      const captionText = textToSend !== '' ? textToSend : realFileName;
+      // Se for áudio
+      if (fileToSend.type.startsWith('audio/')) {
+        provisionalMessage = {
+          id: tempId,
+          type: 'audio',
+          content: { url: null },   // ainda sem link
+          status: 'sending',
+          timestamp
+        };
+      } else {
+        // Documentos/imagens
+        const realFileName = fileToSend.name;
+        const captionText = textToSend !== '' ? textToSend : realFileName;
 
-      provisionalMessage = {
-        id: tempId,
-        type: fileToSend.type.startsWith('audio/') ? 'audio' :
-              fileToSend.type.startsWith('image/') ? 'image' : 'document',
-        content: {
-          url: null,
-          filename: realFileName,
-          caption: captionText
-        },
-        status: 'sending',
-        timestamp
-      };
+        provisionalMessage = {
+          id: tempId,
+          type: fileToSend.type.startsWith('image/') ? 'image' : 'document',
+          content: {
+            url: null,
+            filename: realFileName,
+            caption: captionText
+          },
+          status: 'sending',
+          timestamp
+        };
+      }
     } else {
+      // Mensagem de texto puro
       provisionalMessage = {
         id: tempId,
         type: 'text',
@@ -149,14 +156,14 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       onMessageAdded(provisionalMessage);
     }
 
-    // Limpa formulário local
+    // Limpa o formulário local
     setFile(null);
     setText('');
     setShowEmoji(false);
 
     setIsSending(true);
 
-    toast.info('Enviando mensagem…', {
+    toast.info('Enviando…', {
       position: 'bottom-right',
       autoClose: 1500
     });
@@ -166,29 +173,30 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       const payload = { to };
 
       if (fileToSend) {
-        // Se for áudio, fazemos upload do blob
+        // Faz upload do arquivo ou áudio
         const fileUrl = await uploadFileAndGetURL(fileToSend);
         if (!fileUrl) {
           throw new Error('Não foi possível obter URL de upload.');
         }
 
-        const realFileName = fileToSend.name;
-        const captionText = textToSend !== '' ? textToSend : realFileName;
-
-        const mime = fileToSend.type;
-        if (mime.startsWith('audio/')) {
+        if (fileToSend.type.startsWith('audio/')) {
           payload.type = 'audio';
+          payload.audio = {
+            link: fileUrl
+          };
+        } else if (fileToSend.type.startsWith('image/')) {
+          payload.type = 'image';
           payload.content = {
             url: fileUrl,
-            filename: realFileName,
-            caption: captionText
+            filename: fileToSend.name,
+            caption: textToSend !== '' ? textToSend : fileToSend.name
           };
         } else {
-          payload.type = fileToSend.type.startsWith('image/') ? 'image' : 'document';
+          payload.type = 'document';
           payload.content = {
             url: fileUrl,
-            filename: realFileName,
-            caption: captionText
+            filename: fileToSend.name,
+            caption: textToSend !== '' ? textToSend : fileToSend.name
           };
         }
       } else {
@@ -219,7 +227,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         });
       }
 
-      toast.success('Mensagem enviada!', {
+      toast.success('Enviado com sucesso!', {
         position: 'bottom-right',
         autoClose: 1500
       });
@@ -232,7 +240,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
           errorMessage: err.message
         });
       }
-      toast.error('Falha ao enviar mensagem.', {
+      toast.error('Falha ao enviar.', {
         position: 'bottom-right',
         autoClose: 2000
       });
@@ -250,14 +258,14 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     console.log('[📎 Arquivo selecionado]', selectedFile.name);
 
-    // Verifica se é MP3, WAV, OGG ou tipos permitidos para docs
+    // Verifica se é áudio .ogg ou documentos permitidos
     if (
       !ALLOWED_MIME_TYPES.includes(selectedFile.type) &&
       !selectedFile.type.startsWith('audio/')
     ) {
       alert(
         'Tipo de arquivo não permitido.\n\n' +
-          'Somente os formatos .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio (ogg) são aceitos.'
+          'Somente os formatos .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio .ogg são aceitos.'
       );
       e.target.value = '';
       return;
@@ -265,7 +273,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     // Verifica tamanho máximo
     if (selectedFile.size > MAX_FILE_SIZE) {
-      alert('Arquivo muito grande. O tamanho máximo permitido é 5 MB.');
+      alert('Arquivo muito grande. Máximo permitido: 5 MB.');
       e.target.value = '';
       return;
     }
@@ -274,7 +282,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleRemoveFile: remove o anexo atualmente selecionado
+  // handleRemoveFile: remove o anexo ou gravação atualmente selecionada
   // ----------------------------------------------------------------------
   const handleRemoveFile = () => {
     setFile(null);
@@ -286,70 +294,62 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // ----------------------------------------------------------------------
   // startRecording: solicita permissão e inicia gravação via MediaRecorder
   // ----------------------------------------------------------------------
-  // dentro do seu componente SendMessageForm.jsx
-// ...
-
-const startRecording = async () => {
-  // 1) Contexto seguro
-  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-    alert('Gravação de áudio só funciona em HTTPS ou em localhost.');
-    return;
-  }
-
-  // 2) Verifica suporte mínimo
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Este navegador não suporta captura de áudio (getUserMedia).');
-    return;
-  }
-  if (!window.MediaRecorder) {
-    alert('Este navegador não suporta gravação via MediaRecorder.');
-    return;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    // 3) Descobre qual MIME type está disponível
-    let options = {};
-    if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
-      options = { mimeType: 'audio/ogg; codecs=opus' };
-    } else if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
-      options = { mimeType: 'audio/webm; codecs=opus' };
-    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-      options = { mimeType: 'audio/mp4' }; // só Safari mais atual talvez suporte
-    } else {
-      // nenhum formato específico suportado: tenta construtor padrão sem options
-      options = {};
+  const startRecording = async () => {
+    // Contexto seguro (HTTPS ou localhost)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      alert('Gravação de áudio só funciona em HTTPS ou em localhost.');
+      return;
     }
 
-    // 4) Cria o MediaRecorder com o options selecionado
-    const mediaRecorder = Object.keys(options).length
-      ? new MediaRecorder(stream, options)
-      : new MediaRecorder(stream);
+    // Verifica suporte às APIs
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Este navegador não suporta captura de áudio (getUserMedia).');
+      return;
+    }
+    if (!window.MediaRecorder) {
+      alert('Este navegador não suporta gravação via MediaRecorder.');
+      return;
+    }
 
-    audioChunksRef.current = [];
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Descobre um mimeType suportado para gravação
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
+        options = { mimeType: 'audio/ogg; codecs=opus' };
+      } else if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
+        options = { mimeType: 'audio/webm; codecs=opus' };
+      } else {
+        // fallback para construtor padrão
+        options = {};
       }
-    };
-    mediaRecorder.onstop = handleRecordingStop;
 
-    mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start();
-    setIsRecording(true);
+      const mediaRecorder = Object.keys(options).length
+        ? new MediaRecorder(stream, options)
+        : new MediaRecorder(stream);
 
-    toast.info('Gravando áudio… clique novamente para parar.', {
-      position: 'bottom-right',
-      autoClose: 1500
-    });
-  } catch (err) {
-    console.error('[❌ Erro ao iniciar gravação]', err);
-    // Exibe a mensagem de erro completo para diagnóstico
-    alert(`Não foi possível iniciar gravação de áudio:\n${err.name} – ${err.message}`);
-  }
-};
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = handleRecordingStop;
 
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+
+      toast.info('Gravando áudio… clique novamente para parar.', {
+        position: 'bottom-right',
+        autoClose: 1500
+      });
+    } catch (err) {
+      console.error('[❌ Erro ao iniciar gravação]', err);
+      alert(`Não foi possível iniciar gravação de áudio:\n${err.name} – ${err.message}`);
+    }
+  };
 
   // ----------------------------------------------------------------------
   // stopRecording: para o MediaRecorder e finaliza fluxo de gravação
@@ -366,9 +366,10 @@ const startRecording = async () => {
   // handleRecordingStop: invocado quando a gravação é interrompida
   // ----------------------------------------------------------------------
   const handleRecordingStop = () => {
-    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+    const mimeType = mediaRecorderRef.current.mimeType || 'audio/ogg';
+    const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
     if (audioBlob.size > MAX_FILE_SIZE) {
-      toast.error('Áudio muito grande. Máximo permitido é 5 MB.', {
+      toast.error('Áudio muito grande. Máximo permitido: 5 MB.', {
         position: 'bottom-right',
         autoClose: 2000
       });
@@ -376,7 +377,7 @@ const startRecording = async () => {
     }
 
     const audioFile = new File([audioBlob], `gravacao_${Date.now()}.ogg`, {
-      type: 'audio/ogg'
+      type: mimeType
     });
     setFile(audioFile);
     toast.success('Gravação concluída. Toque em enviar para enviar o áudio.', {
@@ -441,7 +442,9 @@ const startRecording = async () => {
               onChange={(e) => setText(e.target.value)}
               placeholder={
                 file
-                  ? 'Digite uma legenda para o anexo...'
+                  ? file.type.startsWith('audio/')
+                    ? 'Gravação pronta (aperte enviar) ou digite legenda...'
+                    : 'Digite uma legenda para o anexo...'
                   : isRecording
                   ? 'Gravando áudio...'
                   : 'Digite sua mensagem...'
@@ -483,7 +486,7 @@ const startRecording = async () => {
               </svg>
             </button>
 
-            {/* Input de arquivo oculto (apenas extensões permitidas) */}
+            {/* Input de arquivo oculto (permitido: docs e audio/ogg) */}
             <input
               type="file"
               ref={fileInputRef}
@@ -504,12 +507,12 @@ const startRecording = async () => {
               }}
             >
               {isRecording ? (
-                // Ícone de parar gravação
+                // Ícone de parar gravação (quadrado vermelho)
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#e3342f" viewBox="0 0 24 24">
                   <path d="M6 6h12v12H6z" />
                 </svg>
               ) : text.trim() || file ? (
-                // Ícone de enviar
+                // Ícone de enviar (seta azul)
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#0084ff" viewBox="0 0 24 24">
                   <path d="M2.01 21l20.99-9L2.01 3v7l15 2-15 2z" />
                 </svg>
@@ -522,7 +525,7 @@ const startRecording = async () => {
             </button>
           </div>
 
-          {/* Preview do nome do arquivo + botão “×” para remover */}
+          {/* Preview: se for áudio, exibe player; se for documento/imagem, exibe nome + “×” */}
           {file && (
             <div
               style={{
@@ -531,29 +534,36 @@ const startRecording = async () => {
                 color: '#444',
                 paddingLeft: '12px',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                flexDirection: 'column',
+                gap: '6px'
               }}
             >
-              {file.type.startsWith('audio/') ? '🔉 Áudio:' : '📎 Anexado:'}{' '}
-              <strong>{file.name}</strong>
-              <button
-                type="button"
-                onClick={handleRemoveFile}
-                disabled={isSending || isRecording}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#e3342f',
-                  fontSize: '1.1rem',
-                  lineHeight: '1',
-                  padding: '0'
-                }}
-                aria-label="Remover anexo"
-              >
-                ×
-              </button>
+              {file.type.startsWith('audio/') ? (
+                // Player de áudio
+                <audio controls src={URL.createObjectURL(file)} style={{ width: '100%' }} />
+              ) : (
+                // Nome do arquivo e botão “×”
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📎 Anexado: <strong>{file.name}</strong>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    disabled={isSending || isRecording}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#e3342f',
+                      fontSize: '1.1rem',
+                      lineHeight: '1',
+                      padding: '0'
+                    }}
+                    aria-label="Remover anexo"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
