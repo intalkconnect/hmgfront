@@ -69,7 +69,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     // Se não há texto nem arquivo, não faz nada
     if (!text.trim() && !file) {
       toast.warn('Digite uma mensagem ou selecione um arquivo antes de enviar.', {
-        position: toast.POSITION.BOTTOM_RIGHT,
+        position: 'bottom-right',
         autoClose: 2000
       });
       return;
@@ -126,7 +126,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     // Exibe toast informando que começou a enviar
     toast.info('Enviando mensagem…', {
-      position: toast.POSITION.BOTTOM_RIGHT,
+      position: 'bottom-right',
       autoClose: 1500
     });
 
@@ -182,7 +182,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       }
 
       toast.success('Mensagem enviada!', {
-        position: toast.POSITION.BOTTOM_RIGHT,
+        position: 'bottom-right',
         autoClose: 1500
       });
     } catch (err) {
@@ -197,7 +197,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       }
 
       toast.error('Falha ao enviar mensagem.', {
-        position: toast.POSITION.BOTTOM_RIGHT,
+        position: 'bottom-right',
         autoClose: 2000
       });
     } finally {
@@ -392,7 +392,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             </button>
           </div>
 
-          {/* Preview do nome do arquivo + botão “x” para remover */}
+          {/* Preview do nome do arquivo + botão “×” para remover */}
           {file && (
             <div
               style={{
