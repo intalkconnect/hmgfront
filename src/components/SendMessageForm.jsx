@@ -287,6 +287,23 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // startRecording: solicita permissão e inicia gravação via MediaRecorder
   // ----------------------------------------------------------------------
   const startRecording = async () => {
+ // 1) Contexto seguro
+  // Se não estiver em https (fora “localhost”), getUserMedia falhará.
+  if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+    alert('Gravação de áudio só funciona em HTTPS ou em localhost.');
+    return;
+  }
+
+  // 2) Verifica suporte
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Este navegador não suporta captura de áudio (getUserMedia).');
+    return;
+  }
+if (!window.MediaRecorder) {
+  alert('MediaRecorder não suportado neste navegador.');
+  return;
+}
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('Gravação de áudio não suportada neste navegador.');
       return;
@@ -312,8 +329,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         autoClose: 1500
       });
     } catch (err) {
-      console.error('[❌ Erro ao iniciar gravação]', err);
-      alert('Não foi possível iniciar gravação de áudio.');
+  console.error('[❌ Erro ao iniciar gravação]', err);
+  alert(`Não foi possível iniciar gravação de áudio:\n${err.name} – ${err.message}`);
     }
   };
 
