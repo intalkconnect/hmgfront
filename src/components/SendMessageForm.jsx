@@ -79,9 +79,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     const fileToSend = file;
     const textToSend = text.trim();
 
-    // Cria mensagem provisória (Optimistic UI) e repassa ao componente pai
-    // onMessageAdded deve adicionar ao array de mensagens com status “sending”
-    // Estrutura esperada: { id, type, content, status, timestamp }
+    // Cria mensagem provisória (Optimistic UI) e repassa ao componente pai,
+    // apenas se onMessageAdded for função.
     const tempId = Date.now();
     const now = new Date();
     const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -103,6 +102,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         timestamp
       };
     } else {
+      // Mensagem de texto puro
       provisionalMessage = {
         id: tempId,
         type: 'text',
@@ -112,8 +112,9 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       };
     }
 
-    // Adiciona a mensagem provisória à lista (via callback do pai)
-    onMessageAdded(provisionalMessage);
+    if (typeof onMessageAdded === 'function') {
+      onMessageAdded(provisionalMessage);
+    }
 
     // Limpa o formulário local (campo de texto e preview de arquivo)
     setFile(null);
@@ -170,13 +171,15 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         throw new Error(`Servidor retornou ${resp.status}: ${responseText}`);
       }
 
-      // Ao obter sucesso, atualiza o status da mensagem provisória (chama callback do pai novamente)
-      const serverData = responseText ? JSON.parse(responseText) : null;
-      onMessageAdded({
-        id: tempId,
-        status: 'sent',
-        serverResponse: serverData
-      });
+      // Ao obter sucesso, atualiza o status da mensagem provisória para “sent”
+      if (typeof onMessageAdded === 'function') {
+        const serverData = responseText ? JSON.parse(responseText) : null;
+        onMessageAdded({
+          id: tempId,
+          status: 'sent',
+          serverResponse: serverData
+        });
+      }
 
       toast.success('Mensagem enviada!', {
         position: toast.POSITION.BOTTOM_RIGHT,
@@ -185,11 +188,13 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     } catch (err) {
       console.error('[❌ Erro ao enviar mensagem]', err);
       // Marca a mensagem provisória como “error”
-      onMessageAdded({
-        id: tempId,
-        status: 'error',
-        errorMessage: err.message
-      });
+      if (typeof onMessageAdded === 'function') {
+        onMessageAdded({
+          id: tempId,
+          status: 'error',
+          errorMessage: err.message
+        });
+      }
 
       toast.error('Falha ao enviar mensagem.', {
         position: toast.POSITION.BOTTOM_RIGHT,
@@ -228,6 +233,17 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     // Se passou nas duas checagens, guarda o arquivo
     setFile(selectedFile);
+  };
+
+  // ----------------------------------------------------------------------
+  // handleRemoveFile: remove o anexo atualmente selecionado
+  // ----------------------------------------------------------------------
+  const handleRemoveFile = () => {
+    setFile(null);
+    // Limpa o input para permitir re-seleção do mesmo arquivo, se necessário
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // ----------------------------------------------------------------------
@@ -376,10 +392,37 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             </button>
           </div>
 
-          {/* Preview do nome do arquivo */}
+          {/* Preview do nome do arquivo + botão “x” para remover */}
           {file && (
-            <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#444', paddingLeft: '12px' }}>
+            <div
+              style={{
+                marginTop: '8px',
+                fontSize: '0.9rem',
+                color: '#444',
+                paddingLeft: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
               📎 Anexado: <strong>{file.name}</strong>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                disabled={isSending}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#e3342f',
+                  fontSize: '1.1rem',
+                  lineHeight: '1',
+                  padding: '0'
+                }}
+                aria-label="Remover anexo"
+              >
+                ×
+              </button>
             </div>
           )}
         </div>
