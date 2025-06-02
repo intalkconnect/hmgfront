@@ -8,8 +8,10 @@ export default function SendMessageForm({ userIdSelecionado }) {
   const pickerRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Função de upload (presume que retorna { url: 'https://...' })
   const uploadFileAndGetURL = async (file) => {
     const formData = new FormData();
+    // Aqui já passa o file, e o próprio File object traz o .name original
     formData.append('file', file);
 
     try {
@@ -34,15 +36,16 @@ export default function SendMessageForm({ userIdSelecionado }) {
     e.preventDefault();
     console.log('►► handleSend disparado! file=', file, 'text=', text);
 
+    // Se não tiver texto nem arquivo, não faz nada
     if (!text.trim() && !file) {
       console.log('►► Abortei: nem texto nem arquivo.');
       return;
     }
 
+    // Guardo uma cópia do File antes de limpar o estado
     const fileToSend = file;
     const textToSend = text.trim();
-
-    // Não limpar ainda o state; só depois de tudo dar certo:
+    // Não limpo o estado ainda aqui; só após confirmar o envio bem-sucedido
     // setFile(null);
     // setText('');
     // setShowEmoji(false);
@@ -51,7 +54,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
     const payload = { to };
 
     if (fileToSend) {
-      console.log('►► Iniciando upload do arquivo:', fileToSend);
+      console.log('►► Iniciando upload do arquivo:', fileToSend.name);
       const fileUrl = await uploadFileAndGetURL(fileToSend);
       console.log('►► uploadFileAndGetURL retornou:', fileUrl);
 
@@ -60,14 +63,25 @@ export default function SendMessageForm({ userIdSelecionado }) {
         return;
       }
 
+      // Capturo o nome real do arquivo (com extensão) antes de enviar:
+      const realFileName = fileToSend.name; 
+      // Verifico se é imagem apenas para montar payload corretamente
       const isImage = fileToSend.type.startsWith('image/');
       payload.type = isImage ? 'image' : 'document';
       payload.content = isImage
-        ? { url: fileUrl, caption: textToSend }
-        : { url: fileUrl, filename: fileToSend.name };
+        ? {
+            url: fileUrl,
+            caption: textToSend,
+            filename: realFileName   // incluímos o filename real aqui
+          }
+        : {
+            url: fileUrl,
+            filename: realFileName   // o backend vai receber o nome real
+          };
 
       console.log('[📨 Enviando arquivo]', payload);
     } else {
+      // Se só tiver texto simples
       payload.type = 'text';
       payload.content = textToSend;
       console.log('[📨 Enviando texto]', payload);
@@ -82,7 +96,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
       console.log('►► Resposta do /messages/send:', resp.status, await resp.text());
 
       if (resp.ok) {
-        // Tudo certo: limpa o form
+        // Só aqui, após o envio ter sucesso, limpamos o estado:
         setFile(null);
         setText('');
         setShowEmoji(false);
@@ -95,16 +109,14 @@ export default function SendMessageForm({ userIdSelecionado }) {
   };
 
   const handleFileSelect = (e) => {
-    console.log('>>> handleFileSelect disparado, fileInputRef.current =', fileInputRef.current);
-    console.log('>>> e.target.files =', e.target.files);
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       console.log('[📎 Arquivo selecionado]', selectedFile.name);
       setFile(selectedFile);
-      console.log('>>> Estado “file” atualizado para:', selectedFile);
     }
   };
 
+  // Lógica de emoji picker (sem alterações)
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
@@ -189,7 +201,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
           </button>
         </div>
 
-        {/* Preview do arquivo só aparece se “file” NÃO for null */}
+        {/* Preview do nome do arquivo */}
         {file && (
           <div
             style={{
