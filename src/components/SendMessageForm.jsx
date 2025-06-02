@@ -8,7 +8,22 @@ export default function SendMessageForm({ userIdSelecionado }) {
   const pickerRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  // Função que faz upload e retorna uma URL pública
+  // Lista de MIME types permitidos
+  const ALLOWED_MIME_TYPES = [
+    'text/plain', // .txt
+    'application/vnd.ms-excel', // .xls
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.ms-powerpoint', // .ppt
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+    'application/pdf' // .pdf
+  ]
+
+  // Tamanho máximo em bytes (5 MB)
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // = 5 242 880 bytes
+
+  // ---------------- Função de upload que retorna URL ----------------
   const uploadFileAndGetURL = async (file) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -31,6 +46,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
     }
   }
 
+  // ---------------- Manipulador de envio do formulário ----------------
   const handleSend = async (e) => {
     e.preventDefault()
     console.log('►► handleSend disparado! file=', file, 'text=', text)
@@ -41,58 +57,44 @@ export default function SendMessageForm({ userIdSelecionado }) {
       return
     }
 
-    // Guardo o objeto File num variável local antes de limpar o state
+    // Guarda o File em variável local antes de limpar o estado
     const fileToSend = file
     const textToSend = text.trim()
 
-    // Não limpamos o estado aqui, só depois de confirmar o envio
-    // setFile(null)
-    // setText('')
-    // setShowEmoji(false)
-
+    // Constroi o payload
     const to = userIdSelecionado.replace('@w.msgcli.net', '')
     const payload = { to }
 
     if (fileToSend) {
+      // 1) Faz upload e obtém URL
       console.log('►► Iniciando upload do arquivo:', fileToSend.name)
       const fileUrl = await uploadFileAndGetURL(fileToSend)
-      console.log('►► uploadFileAndGetURL retornou:', fileUrl)
-
       if (!fileUrl) {
         console.log('►► Abortei: não recebi URL de upload.')
         return
       }
 
-      // Capturo o nome real do arquivo antes de limpar o estado
+      // 2) Decide qual será o caption: texto digitado, se existir, ou nome do arquivo
       const realFileName = fileToSend.name
+      const captionText = textToSend
 
-      // Determino se é imagem ou documento
-      const isImage = fileToSend.type.startsWith('image/')
-      payload.type = isImage ? 'image' : 'document'
-
-      // Montagem de content sempre com caption = realFileName
-      if (isImage) {
-        payload.content = {
-          url: fileUrl,
-          caption: realFileName,     // caption igual ao filename
-          filename: realFileName     // mantemos também o filename
-        }
-      } else {
-        payload.content = {
-          url: fileUrl,
-          filename: realFileName,    // nome original do arquivo
-          caption: realFileName      // caption igual ao filename
-        }
+      // 3) Monta o payload conforme tipo de arquivo
+      payload.type = fileToSend.type.startsWith('image/') ? 'image' : 'document'
+      payload.content = {
+        url: fileUrl,
+        filename: realFileName,
+        caption: captionText
       }
 
       console.log('[📨 Enviando arquivo]', payload)
     } else {
-      // Só texto sem arquivo
+      // Apenas texto simples
       payload.type = 'text'
       payload.content = textToSend
       console.log('[📨 Enviando texto]', payload)
     }
 
+    // 4) Chama o endpoint para enviar mensagem
     try {
       const resp = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/messages/send', {
         method: 'POST',
@@ -102,7 +104,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
       console.log('►► Resposta do /messages/send:', resp.status, await resp.text())
 
       if (resp.ok) {
-        // Se enviou com sucesso, aí sim limpamos o estado
+        // Só então limpo o estado do formulário
         setFile(null)
         setText('')
         setShowEmoji(false)
@@ -114,14 +116,35 @@ export default function SendMessageForm({ userIdSelecionado }) {
     }
   }
 
+  // ---------------- Manipulador de seleção de arquivo ----------------
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0]
-    if (selectedFile) {
-      console.log('[📎 Arquivo selecionado]', selectedFile.name)
-      setFile(selectedFile)
+    if (!selectedFile) return
+
+    console.log('[📎 Arquivo selecionado]', selectedFile.name)
+
+    // 1) Verifica se o tipo MIME está na lista permitida
+    if (!ALLOWED_MIME_TYPES.includes(selectedFile.type)) {
+      alert(
+        'Tipo de arquivo não permitido.\n\n' +
+          'Somente os formatos .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx e .pdf são aceitos.'
+      )
+      e.target.value = '' // limpa o input
+      return
     }
+
+    // 2) Verifica se o tamanho não excede 5 MB
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      alert('Arquivo muito grande. O tamanho máximo permitido é 5 MB.')
+      e.target.value = '' // limpa o input
+      return
+    }
+
+    // Se passou nas duas checagens, podemos guardar no estado
+    setFile(selectedFile)
   }
 
+  // ---------------- Efeitos para emoji picker ----------------
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
@@ -164,14 +187,22 @@ export default function SendMessageForm({ userIdSelecionado }) {
             gap: '10px'
           }}
         >
+          {/* Campo de texto (ou legenda) */}
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={file ? 'Digite uma legenda para o anexo...' : 'Digite sua mensagem...'}
-            style={{ flex: 1, border: 'none', outline: 'none', fontSize: '1rem', background: 'transparent' }}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: '1rem',
+              background: 'transparent'
+            }}
           />
 
+          {/* Botão para abrir emoji picker */}
           <button
             type="button"
             onClick={(e) => {
@@ -185,6 +216,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
             </span>
           </button>
 
+          {/* Botão para selecionar arquivo */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -194,8 +226,17 @@ export default function SendMessageForm({ userIdSelecionado }) {
               <path d="M16.5 2a2.5 2.5 0 0 1 1.768 4.268l-9.193 9.192a1.5 1.5 0 1 1-2.122-2.122l9.193-9.193A2.5 2.5 0 0 1 16.5 2zm0 1a1.5 1.5 0 0 0-1.06 2.56l-9.193 9.193a2.5 2.5 0 1 0 3.536 3.536l9.192-9.193A1.5 1.5 0 0 0 16.5 3z" />
             </svg>
           </button>
-          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
 
+          {/* Input de arquivo oculto, com accept para tipos permitidos */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf"
+            onChange={handleFileSelect}
+          />
+
+          {/* Botão de enviar */}
           <button
             type="submit"
             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
@@ -214,6 +255,7 @@ export default function SendMessageForm({ userIdSelecionado }) {
         )}
       </div>
 
+      {/* Emoji picker */}
       {showEmoji && (
         <div
           style={{
