@@ -286,53 +286,70 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // ----------------------------------------------------------------------
   // startRecording: solicita permissão e inicia gravação via MediaRecorder
   // ----------------------------------------------------------------------
-  const startRecording = async () => {
- // 1) Contexto seguro
-  // Se não estiver em https (fora “localhost”), getUserMedia falhará.
+  // dentro do seu componente SendMessageForm.jsx
+// ...
+
+const startRecording = async () => {
+  // 1) Contexto seguro
   if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
     alert('Gravação de áudio só funciona em HTTPS ou em localhost.');
     return;
   }
 
-  // 2) Verifica suporte
+  // 2) Verifica suporte mínimo
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     alert('Este navegador não suporta captura de áudio (getUserMedia).');
     return;
   }
-if (!window.MediaRecorder) {
-  alert('MediaRecorder não suportado neste navegador.');
-  return;
-}
+  if (!window.MediaRecorder) {
+    alert('Este navegador não suporta gravação via MediaRecorder.');
+    return;
+  }
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Gravação de áudio não suportada neste navegador.');
-      return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // 3) Descobre qual MIME type está disponível
+    let options = {};
+    if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
+      options = { mimeType: 'audio/ogg; codecs=opus' };
+    } else if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
+      options = { mimeType: 'audio/webm; codecs=opus' };
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      options = { mimeType: 'audio/mp4' }; // só Safari mais atual talvez suporte
+    } else {
+      // nenhum formato específico suportado: tenta construtor padrão sem options
+      options = {};
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const options = { mimeType: 'audio/ogg; codecs=opus' };
-      const mediaRecorder = new MediaRecorder(stream, options);
 
-      audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      mediaRecorder.onstop = handleRecordingStop;
+    // 4) Cria o MediaRecorder com o options selecionado
+    const mediaRecorder = Object.keys(options).length
+      ? new MediaRecorder(stream, options)
+      : new MediaRecorder(stream);
 
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
-      setIsRecording(true);
-      toast.info('Gravando áudio… clique novamente para parar.', {
-        position: 'bottom-right',
-        autoClose: 1500
-      });
-    } catch (err) {
-  console.error('[❌ Erro ao iniciar gravação]', err);
-  alert(`Não foi possível iniciar gravação de áudio:\n${err.name} – ${err.message}`);
-    }
-  };
+    audioChunksRef.current = [];
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+    mediaRecorder.onstop = handleRecordingStop;
+
+    mediaRecorderRef.current = mediaRecorder;
+    mediaRecorder.start();
+    setIsRecording(true);
+
+    toast.info('Gravando áudio… clique novamente para parar.', {
+      position: 'bottom-right',
+      autoClose: 1500
+    });
+  } catch (err) {
+    console.error('[❌ Erro ao iniciar gravação]', err);
+    // Exibe a mensagem de erro completo para diagnóstico
+    alert(`Não foi possível iniciar gravação de áudio:\n${err.name} – ${err.message}`);
+  }
+};
+
 
   // ----------------------------------------------------------------------
   // stopRecording: para o MediaRecorder e finaliza fluxo de gravação
