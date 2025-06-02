@@ -18,7 +18,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const [isRecording, setIsRecording] = useState(false);
   // Instância do MediaRecorder
   const mediaRecorderRef = useRef(null);
-  // Partes de áudio capturadas (OGG/Opus)
+  // Partes de áudio capturadas (OGG/Opus ou WebM/Opus)
   const audioChunksRef = useRef([]);
   // Referência ao input de arquivo para limpar quando necessário
   const fileInputRef = useRef(null);
@@ -26,7 +26,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const pickerRef = useRef(null);
 
   // ----------------------------------------------------------------------
-  // Lista de MIME types permitidos (texto, docs e áudio ogg)
+  // Lista de MIME types permitidos (texto, docs e áudio .ogg/.webm)
   // ----------------------------------------------------------------------
   const ALLOWED_MIME_TYPES = [
     'text/plain',                                                                       // .txt
@@ -37,7 +37,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     'application/vnd.ms-powerpoint',                                                     // .ppt
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',         // .pptx
     'application/pdf',                                                                   // .pdf
-    'audio/ogg'                                                                          // .ogg (para uploads manuais e gravações)
+    'audio/ogg',                                                                         // .ogg (OPUS)
+    'audio/webm'                                                                         // .webm (OPUS)
   ];
 
   // Tamanho máximo (em bytes) - 5 MB
@@ -75,19 +76,19 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   const handleSend = async (e) => {
     e.preventDefault();
 
-    // Se estamos gravando, parar a gravação
+    // Se ainda estiver gravando, interromper a gravação
     if (isRecording) {
       stopRecording();
       return;
     }
 
-    // Se houver texto ou arquivo (incluindo áudio), fazer envio
+    // Se houver texto ou arquivo, faz envio
     if (text.trim() || file) {
       await sendMessageOrFile();
       return;
     }
 
-    // Se não há texto nem arquivo, iniciar gravação de áudio
+    // Se não há texto nem arquivo, inicia a gravação de áudio
     startRecording();
   };
 
@@ -163,9 +164,13 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       const payload = { to };
 
       if (fileToSend) {
+        // 1) Faz upload do arquivo (OGG ou WebM) para o bucket
         const fileUrl = await uploadFileAndGetURL(fileToSend);
         if (!fileUrl) throw new Error('Não foi possível obter URL de upload.');
 
+        // 2) Monta payload para WhatsApp:
+        //    - Se for áudio, enviamos { type: 'audio', audio: { link } }  
+        //    OBS: se for WebM, o backend DEVERÁ converter para OGG antes de chegar ao WhatsApp.
         if (fileToSend.type.startsWith('audio/')) {
           payload.type = 'audio';
           payload.audio = { link: fileUrl };
@@ -237,18 +242,20 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
     console.log('[📎 Arquivo selecionado]', selectedFile.name);
 
+    // 1) Verifica tipo permitido (OGG ou WebM ou documentos)
     if (
       !ALLOWED_MIME_TYPES.includes(selectedFile.type) &&
-      !selectedFile.type.startsWith('audio/ogg')
+      !selectedFile.type.startsWith('audio/')
     ) {
       alert(
         'Tipo de arquivo não permitido.\n\n' +
-          'Apenas .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio .ogg são aceitos.'
+          'Apenas .txt, .xls, .xlsx, .doc, .docx, .ppt, .pptx, .pdf e áudio (.ogg ou .webm) são aceitos.'
       );
       e.target.value = '';
       return;
     }
 
+    // 2) Tamanho máximo
     if (selectedFile.size > MAX_FILE_SIZE) {
       alert('Arquivo muito grande. Máximo permitido: 5 MB.');
       e.target.value = '';
@@ -259,7 +266,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleRemoveFile: remove o anexo ou gravação atualmente selecionada
+  // handleRemoveFile: remove o anexo ou gravação selecionada
   // ----------------------------------------------------------------------
   const handleRemoveFile = () => {
     setFile(null);
@@ -269,16 +276,15 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // startRecording: solicita permissão e inicia gravação via MediaRecorder
+  // startRecording: inicia a gravação (OGG/Opus ou, se não suportar, WebM/Opus)
   // ----------------------------------------------------------------------
   const startRecording = async () => {
-    // Contexto seguro (HTTPS ou localhost)
+    // HTTPS ou localhost obrigatório
     if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
       alert('Gravação de áudio só funciona em HTTPS ou em localhost.');
       return;
     }
 
-    // Verifica suporte às APIs
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('Este navegador não suporta captura de áudio (getUserMedia).');
       return;
@@ -291,14 +297,20 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Verifica suporte OGG/Opus; se não, não grava
-      if (!MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
-        alert('Seu navegador não suporta gravação em OGG/Opus. Use Chrome ou Firefox.');
+      let options = null;
+
+      // 1) Primeiro tenta OGG/Opus
+      if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
+        options = { mimeType: 'audio/ogg; codecs=opus' };
+      }
+      // 2) Se OGG/Opus *não* for suportado, tenta WebM/Opus
+      else if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
+        options = { mimeType: 'audio/webm; codecs=opus' };
+      } else {
+        alert('Não foi possível gravar áudio: o navegador não suporta OGG/Opus nem WebM/Opus.');
         return;
       }
 
-      // Grava em OGG/Opus diretamente
-      const options = { mimeType: 'audio/ogg; codecs=opus' };
       const mediaRecorder = new MediaRecorder(stream, options);
 
       audioChunksRef.current = [];
@@ -324,7 +336,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // stopRecording: para o MediaRecorder e finaliza fluxo de gravação
+  // stopRecording: para o MediaRecorder e finaliza o fluxo de gravação
   // ----------------------------------------------------------------------
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
@@ -335,12 +347,19 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   };
 
   // ----------------------------------------------------------------------
-  // handleRecordingStop: cria Blob OGG e File, sem converter para MP3
+  // handleRecordingStop: cria Blob + File final (OGG ou WebM), sem converter
   // ----------------------------------------------------------------------
   const handleRecordingStop = () => {
-    // Combina todos os chunks num Blob OGG/Opus
-    const oggBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
-    if (oggBlob.size > MAX_FILE_SIZE) {
+    // 1) Combina todos os chunks num único Blob
+    //    O Blob terá o mesmo mimeType que foi usado pelo MediaRecorder
+    const recorder = mediaRecorderRef.current;
+    const mime = recorder.mimeType; // ex: "audio/ogg; codecs=opus" ou "audio/webm; codecs=opus"
+
+    // NB: extraímos somente a parte antes do ponto e vírgula, ex: "audio/ogg"
+    const baseMime = mime.split(';')[0];
+
+    const blob = new Blob(audioChunksRef.current, { type: mime });
+    if (blob.size > MAX_FILE_SIZE) {
       toast.error('Áudio muito grande. Máximo permitido: 5 MB.', {
         position: 'bottom-right',
         autoClose: 2000
@@ -348,16 +367,24 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       return;
     }
 
-    // Cria um File com extensão .ogg para enviar ao bucket
-    const oggFile = new File([oggBlob], `gravacao_${Date.now()}.ogg`, {
-      type: 'audio/ogg; codecs=opus'
-    });
+    // 2) Cria o File com a extensão correta: .ogg ou .webm
+    let ext = 'ogg';
+    if (baseMime === 'audio/webm') ext = 'webm';
+    // nome do arquivo:
+    const filename = `gravacao_${Date.now()}.${ext}`;
 
-    setFile(oggFile);
-    toast.success('Gravação concluída. Toque em enviar para enviar o áudio.', {
-      position: 'bottom-right',
-      autoClose: 2000
-    });
+    const fileObj = new File([blob], filename, { type: mime });
+    setFile(fileObj);
+
+    toast.success(
+      baseMime === 'audio/ogg'
+        ? 'Gravação OGG concluída. Toque em enviar para enviar o áudio.'
+        : 'Gravação WebM concluída. Toque em enviar para enviar o áudio.',
+      {
+        position: 'bottom-right',
+        autoClose: 2000
+      }
+    );
   };
 
   // ----------------------------------------------------------------------
@@ -460,12 +487,12 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               </svg>
             </button>
 
-            {/* Input de arquivo oculto (permitido: docs e áudio ogg) */}
+            {/* Input de arquivo oculto (permitido: docs e áudio .ogg/.webm) */}
             <input
               type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
-              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/ogg"
+              accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/ogg,audio/webm"
               onChange={handleFileSelect}
             />
 
@@ -499,7 +526,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             </button>
           </div>
 
-          {/* Preview: se for áudio OGG, exibe player; se for documento/imagem, exibe nome + “×” */}
+          {/* Preview: se for áudio, exibe player; se for documento/imagem, exibe nome + “×” */}
           {file && (
             <div
               style={{
@@ -513,7 +540,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
               }}
             >
               {file.type.startsWith('audio/') ? (
-                // Player de áudio OGG
+                // Player de áudio OGG ou WebM
                 <audio controls src={URL.createObjectURL(file)} style={{ width: '100%' }} />
               ) : (
                 // Nome do arquivo e botão “×”
