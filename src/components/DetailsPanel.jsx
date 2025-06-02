@@ -1,6 +1,6 @@
 // src/components/DetailsPanel.jsx
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase } from '../services/supabaseClient'
 
 export default function DetailsPanel({ userIdSelecionado }) {
   const [userInfo, setUserInfo] = useState(null)

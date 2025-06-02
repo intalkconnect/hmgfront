@@ -1,6 +1,6 @@
 // Sidebar.js
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase } from '../services/supabaseClient'
 import './Sidebar.css'
 
 export default function Sidebar({ conversations, onSelectUser }) {

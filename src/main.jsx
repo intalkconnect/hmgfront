@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-import { connectSocket } from './socket'
+import { connectSocket } from './services/socket'
 
 // Conecta o socket assim que a aplicação inicia
 connectSocket()

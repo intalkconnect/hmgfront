@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from './supabaseClient'
-import { socket, connectSocket } from './socket'
+import { supabase } from './services/supabaseClient'
+import { socket, connectSocket } from './services/socket'
 import Sidebar from './components/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import DetailsPanel from './components/DetailsPanel'

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { socket, connectSocket } from '../socket'
+import { socket, connectSocket } from '../services/socket'
 import SendMessageForm from './SendMessageForm'
-import { supabase } from '../supabaseClient'
+import { supabase } from '../services/supabaseClient'
 
 export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
