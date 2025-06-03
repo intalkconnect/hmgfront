@@ -228,7 +228,8 @@ if (msg.type === 'audio' || content.voice || content.url?.endsWith('.ogg')) {
 
 
 // 🖼️ Imagem
-if (msg.type === 'image' || /\.(jpe?g|png|gif|webp)$/i.test(content.url || '')) {
+if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(content.url))) {
+
   return (
 <div
   onClick={() => setImageModal(content.url)}
@@ -241,16 +242,13 @@ if (msg.type === 'image' || /\.(jpe?g|png|gif|webp)$/i.test(content.url || '')) 
     backgroundColor: '#eee'
   }}
 >
-  <img
-    src={content.url}
-    alt="imagem"
-    style={{
-      width: '100%',
-      height: 'auto',
-      display: 'block',
-      objectFit: 'cover'
-    }}
-  />
+<img
+  src={content.url}
+  alt={content.caption || 'Imagem'}
+  style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '6px', cursor: 'pointer' }}
+  onClick={() => setImageModal(content.url)}
+/>
+
 </div>
 
   );
