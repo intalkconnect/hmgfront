@@ -207,26 +207,34 @@ if (msg.type === 'document' || content.filename) {
 }
 
 // 🎧 Áudio (voz)
-if (msg.type === 'audio' || content.voice) {
+if (msg.type === 'audio' || content.voice || content.url?.endsWith('.ogg')) {
   return (
-    <audio controls style={{ width: '100%', borderRadius: '8px', outline: 'none' }}>
-      <source src={content.url} type="audio/ogg" />
-      Seu navegador não suporta áudio.
-    </audio>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#eee', borderRadius: '12px', padding: '8px 12px' }}>
+      <audio controls style={{ flex: 1 }}>
+        <source src={content.url} type="audio/ogg" />
+        Seu navegador não suporta áudio.
+      </audio>
+    </div>
   );
 }
 
+
 // 🖼️ Imagem
-if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
+if (msg.type === 'image' || /\.(jpe?g|png|gif|webp)$/i.test(content.url || '')) {
   return (
-<img
-  src={content.url}
-  alt={content.caption || 'Imagem'}
-  onClick={() => setModalImage(content.url)}
-  style={{ maxWidth: '120px', borderRadius: '6px', cursor: 'pointer' }}
-/>
+    <div style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => setImageModal(content.url)}>
+      <img
+        src={content.url}
+        alt={content.caption || 'Imagem'}
+        style={{ maxWidth: '240px', borderRadius: '10px' }}
+      />
+      {content.caption && (
+        <p style={{ fontSize: '0.85rem', marginTop: '4px', color: '#444' }}>{content.caption}</p>
+      )}
+    </div>
   );
 }
+
 
     return <p style={{ color: '#999' }}>Tipo de mensagem desconhecido.</p>;
   } catch (err) {
