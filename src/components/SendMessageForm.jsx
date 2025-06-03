@@ -170,7 +170,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         // 2) Monta payload para WhatsApp:
         //    - Se for áudio, enviamos { type: 'audio', audio: { link } }
         payload.type = 'audio';
-        payload.content = { url: fileUrl, voice = true };
+        payload.content = { url: fileUrl, voice: true };
       } else {
         payload.type = 'text';
         payload.content = textToSend;
