@@ -171,6 +171,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
         //    - Se for áudio, enviamos { type: 'audio', audio: { link } }
         payload.type = 'audio';
         payload.content = { url: fileUrl };
+        payload.voice = true
       } else {
         payload.type = 'text';
         payload.content = textToSend;
