@@ -22,6 +22,8 @@ import { supabase } from '../services/supabaseClient'
 export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+    const [modalImage, setModalImage] = useState(null);
+
   const messagesEndRef = useRef(null)
   const currentUserIdRef = useRef(null)
 
@@ -207,7 +209,7 @@ if (msg.type === 'document' || content.filename) {
 // 🎧 Áudio (voz)
 if (msg.type === 'audio' || content.voice) {
   return (
-    <audio controls style={{ width: '100%' }}>
+    <audio controls style={{ width: '100%', borderRadius: '8px', outline: 'none' }}>
       <source src={content.url} type="audio/ogg" />
       Seu navegador não suporta áudio.
     </audio>
@@ -217,11 +219,12 @@ if (msg.type === 'audio' || content.voice) {
 // 🖼️ Imagem
 if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
   return (
-    <img
-      src={content.url}
-      alt={content.caption || 'Imagem'}
-      style={{ maxWidth: '100%', borderRadius: '6px' }}
-    />
+<img
+  src={content.url}
+  alt={content.caption || 'Imagem'}
+  onClick={() => setModalImage(content.url)}
+  style={{ maxWidth: '120px', borderRadius: '6px', cursor: 'pointer' }}
+/>
   );
 }
 
@@ -262,6 +265,36 @@ if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || ''
         zIndex: 10
       }}>
         <SendMessageForm userIdSelecionado={userIdSelecionado} />
+          {modalImage && (
+  <div
+    onClick={() => setModalImage(null)}
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      cursor: 'zoom-out'
+    }}
+  >
+    <img
+      src={modalImage}
+      alt="Imagem ampliada"
+      style={{
+        maxWidth: '90%',
+        maxHeight: '90%',
+        borderRadius: '10px',
+        boxShadow: '0 0 12px rgba(0,0,0,0.5)'
+      }}
+    />
+  </div>
+)}
+
       </div>
     </div>
   )
