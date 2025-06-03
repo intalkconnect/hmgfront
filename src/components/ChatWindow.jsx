@@ -139,18 +139,25 @@ export default function ChatWindow({ userIdSelecionado }) {
                 }}>
                   {(() => {
   try {
-    // Se for texto, renderiza diretamente
-    if (msg.type === 'text') {
-      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>;
+    const raw = msg.content;
+
+    // Se for string pura, renderiza como texto direto
+    if (typeof raw === 'string') {
+      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{raw}</p>;
     }
 
-    // Tenta fazer parse se não for texto
-    let content = msg.content;
-    if (typeof content === 'string') {
-      content = JSON.parse(content);
+    // Tenta interpretar JSON se for string malformada com conteúdo estruturado
+    let content = raw;
+    if (typeof raw === 'string') {
+      try {
+        content = JSON.parse(raw);
+      } catch {
+        return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{raw}</p>;
+      }
     }
 
-    if (msg.type === 'audio') {
+    // Áudio
+    if (msg.type === 'audio' || content.voice || content.url?.endsWith('.ogg') || content.url?.endsWith('.webm')) {
       return (
         <audio controls style={{ width: '100%' }}>
           <source src={content.url} type="audio/ogg" />
@@ -159,17 +166,8 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
-    if (msg.type === 'image') {
-      return (
-        <img
-          src={content.url}
-          alt={content.caption || 'Imagem'}
-          style={{ maxWidth: '100%', borderRadius: '6px' }}
-        />
-      );
-    }
-
-    if (msg.type === 'document') {
+    // Documento
+    if (msg.type === 'document' || content.filename) {
       return (
         <div>
           <p style={{ marginBottom: '4px', fontWeight: 'bold' }}>{content.filename || 'Documento'}</p>
@@ -188,12 +186,22 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
-    return <p style={{ margin: 0, color: '#666' }}>Tipo de mensagem desconhecido.</p>;
+    // Imagem
+    if (msg.type === 'image' || (content.url && content.url.match(/\.(jpe?g|png|gif|webp)$/i))) {
+      return (
+        <img
+          src={content.url}
+          alt={content.caption || 'Imagem'}
+          style={{ maxWidth: '100%', borderRadius: '6px' }}
+        />
+      );
+    }
+
+    return <p style={{ color: '#999' }}>Tipo de mensagem desconhecido.</p>;
   } catch (err) {
     return <p style={{ color: 'red' }}>Erro ao interpretar conteúdo.</p>;
   }
 })()}
-
 
                   <span style={{
                     fontSize: '0.7rem',
