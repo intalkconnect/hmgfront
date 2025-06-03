@@ -137,7 +137,58 @@ export default function ChatWindow({ userIdSelecionado }) {
                   maxWidth: '70%',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                  {(() => {
+  try {
+    const content = typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content;
+
+    if (msg.type === 'text') {
+      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
+    }
+
+    if (msg.type === 'audio') {
+      return (
+        <audio controls style={{ width: '100%' }}>
+          <source src={content.url} type="audio/ogg" />
+          Seu navegador não suporta áudio.
+        </audio>
+      );
+    }
+
+    if (msg.type === 'image') {
+      return (
+        <img
+          src={content.url}
+          alt={content.caption || 'Imagem'}
+          style={{ maxWidth: '100%', borderRadius: '6px' }}
+        />
+      );
+    }
+
+    if (msg.type === 'document') {
+      return (
+        <div>
+          <p style={{ marginBottom: '4px', fontWeight: 'bold' }}>{content.filename || 'Documento'}</p>
+          <a
+            href={content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#007bff', textDecoration: 'underline' }}
+          >
+            Abrir documento
+          </a>
+          {content.caption && (
+            <p style={{ marginTop: '4px', fontStyle: 'italic' }}>{content.caption}</p>
+          )}
+        </div>
+      );
+    }
+
+    return <p style={{ margin: 0, color: '#666' }}>Tipo de mensagem desconhecido.</p>;
+  } catch (err) {
+    return <p style={{ color: 'red' }}>Erro ao interpretar conteúdo.</p>;
+  }
+})()}
+
                   <span style={{
                     fontSize: '0.7rem',
                     color: '#999',
