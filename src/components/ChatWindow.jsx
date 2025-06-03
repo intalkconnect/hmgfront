@@ -249,64 +249,27 @@ if ((msg.type === 'document' || content.filename) && content.filename?.endsWith(
 }
 
 // 🟢 Lista tipo WhatsApp
-if (msg.type === 'list' || content.type === 'list') {
-  const listData = content?.type === 'list'
-  ? content
-  : typeof msg.content === 'string'
-    ? JSON.parse(msg.content)
-    : msg.content;
-
-
-  if (listData?.action?.sections?.length) {
-    return (
-      <div style={{
-        backgroundColor: '#f1f1f1',
-        borderRadius: '8px',
-        padding: '10px 12px',
-        maxWidth: '300px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        {listData.header?.text && (
-          <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '6px' }}>
-            {listData.header.text}
-          </div>
-        )}
-
-        <div style={{ marginBottom: '8px' }}>{listData.body?.text}</div>
-
-        {listData.action.sections.map((section, index) => (
-          <div key={index} style={{ marginBottom: '8px' }}>
-            {section.title && (
-              <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '4px', color: '#333' }}>
-                {section.title}
-              </div>
-            )}
-            {section.rows.map((row) => (
-              <div key={row.id} style={{
-                padding: '8px 10px',
-                marginBottom: '5px',
-                borderRadius: '6px',
-                border: '1px solid #ccc',
-                backgroundColor: '#fff',
-              }}>
-                <div style={{ fontWeight: 'bold' }}>{row.title}</div>
-                {row.description && (
-                  <div style={{ fontSize: '0.8rem', color: '#666' }}>{row.description}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
-
-        {listData.footer?.text && (
-          <div style={{ fontSize: '0.75rem', marginTop: '8px', color: '#666', borderTop: '1px solid #ddd', paddingTop: '6px' }}>
-            {listData.footer.text}
-          </div>
-        )}
-      </div>
-    );
-  }
-}
+const listData = content?.type === 'list' ? content : content?.body?.type === 'list' ? content.body : null;
+                    if (listData?.type === 'list' && listData?.action?.sections?.length) {
+                      return (
+                        <div style={{ padding: '10px', background: '#f0f0f0', borderRadius: '8px' }}>
+                          {listData.header?.text && <h4>{listData.header.text}</h4>}
+                          <p>{listData.body?.text}</p>
+                          {listData.action.sections.map((section, i) => (
+                            <div key={i} style={{ marginBottom: '8px' }}>
+                              {section.title && <strong>{section.title}</strong>}
+                              {section.rows.map(row => (
+                                <div key={row.id} style={{ padding: '6px', marginTop: '4px', background: '#fff', border: '1px solid #ccc', borderRadius: '5px' }}>
+                                  <div>{row.title}</div>
+                                  {row.description && <small style={{ color: '#666' }}>{row.description}</small>}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                          {listData.footer?.text && <small>{listData.footer.text}</small>}
+                        </div>
+                      );
+                    }
 
 
 
