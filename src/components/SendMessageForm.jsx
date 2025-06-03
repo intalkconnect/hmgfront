@@ -281,15 +281,15 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   }
 });
 
+// Tenta WebM/Opus (mais compatível com Chrome)
+if (!MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
+  alert('Seu navegador não suporta gravação em WebM/Opus.');
+  stream.getTracks().forEach((t) => t.stop());
+  return;
+}
 
-      // Tenta OGG/Opus mono
-      if (!MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
-        alert('Seu navegador não suporta gravação em OGG/Opus mono. Use Chrome ou Firefox.');
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+const options = { mimeType: 'audio/webm; codecs=opus' };
 
-      const options = { mimeType: 'audio/ogg; codecs=opus' };
       const mediaRecorder = new MediaRecorder(stream, options);
 
       audioChunksRef.current = [];
@@ -341,9 +341,10 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       return;
     }
 
-    // 2) Cria o File com extensão .ogg
-    const filename = `gravacao_${Date.now()}.ogg`;
-    const fileObj = new File([blob], filename, { type: mime });
+// Cria o File com extensão .webm
+const filename = `gravacao_${Date.now()}.webm`;
+const fileObj = new File([blob], filename, { type: mime });
+
     setFile(fileObj);
 
     toast.success('Gravação OGG concluída. Toque em enviar para enviar o áudio.', {
