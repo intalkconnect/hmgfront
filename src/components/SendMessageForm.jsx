@@ -274,7 +274,13 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+  audio: {
+    channelCount: 1,
+    sampleRate: 48000
+  }
+});
+
 
       // Tenta OGG/Opus mono
       if (!MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
