@@ -278,19 +278,32 @@ const listData = content?.type === 'list' ? content : content?.body?.type === 'l
   }
 })()}
 
+<span style={{
+  fontSize: '0.7rem',
+  color: '#999',
+  display: 'flex',
+  justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
+  alignItems: 'center',
+  gap: '4px',
+  marginTop: '4px'
+}}>
+  {new Date(msg.timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  })}
+  {isOutgoing ? (
+    msg.status === 'delivered' ? (
+      <span style={{ color: '#34b7f1' }}>✔✔</span>
+    ) : msg.status === 'sent' ? (
+      <span style={{ color: '#999' }}>✔✔</span>
+    ) : (
+      <span style={{ color: '#999' }}>✔</span>
+    )
+  ) : (
+    <span style={{ color: '#34b7f1' }}>✔✔</span>
+  )}
+</span>
 
-                  <span style={{
-                    fontSize: '0.7rem',
-                    color: '#999',
-                    display: 'block',
-                    marginTop: '4px',
-                    textAlign: isOutgoing ? 'right' : 'left'
-                  }}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </span>
                 </div>
               </div>
             )
