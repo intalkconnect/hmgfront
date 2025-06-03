@@ -23,6 +23,8 @@ export default function ChatWindow({ userIdSelecionado }) {
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
     const [modalImage, setModalImage] = useState(null);
+    const [pdfModal, setPdfModal] = useState(null);
+
 
   const messagesEndRef = useRef(null)
   const currentUserIdRef = useRef(null)
@@ -216,12 +218,10 @@ if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i
   );
 }
         // 📁 Documentos
-if (msg.type === 'document' || content.filename) {
+if ((msg.type === 'document' || content.filename) && content.filename?.endsWith('.pdf')) {
   return (
-    <a
-      href={content.url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
+      onClick={() => setPdfModal(content.url)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -231,27 +231,23 @@ if (msg.type === 'document' || content.filename) {
         padding: '10px 12px',
         textDecoration: 'none',
         color: 'inherit',
-        maxWidth: '300px'
+        maxWidth: '300px',
+        cursor: 'pointer'
       }}
     >
       <img
         src={getFileIcon(content.filename)}
-        alt="Documento"
+        alt="PDF"
         style={{ width: 36, height: 36 }}
       />
       <div style={{ flex: 1 }}>
-        <strong style={{ fontSize: '0.95rem', display: 'block' }}>
-          {content.filename || 'Documento'}
-        </strong>
-        {content.caption && (
-          <span style={{ fontSize: '0.85rem', color: '#666' }}>
-            {content.caption}
-          </span>
-        )}
+        <strong style={{ fontSize: '0.95rem', display: 'block' }}>{content.filename}</strong>
+        {content.caption && <span style={{ fontSize: '0.85rem', color: '#666' }}>{content.caption}</span>}
       </div>
-    </a>
+    </div>
   );
 }
+
 
 
     return <p style={{ color: '#999' }}>Tipo de mensagem desconhecido.</p>;
@@ -319,6 +315,27 @@ if (msg.type === 'document' || content.filename) {
     />
   </div>
 )}
+          {pdfModal && (
+  <div onClick={() => setPdfModal(null)} style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999
+  }}>
+    <iframe
+      src={pdfModal}
+      style={{ width: '80%', height: '90%', border: 'none', borderRadius: '8px', background: '#fff' }}
+      title="Visualização PDF"
+    />
+  </div>
+)}
+
 
       </div>
     </div>
