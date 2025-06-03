@@ -139,19 +139,15 @@ export default function ChatWindow({ userIdSelecionado }) {
                 }}>
                   {(() => {
   try {
-    let content = msg.content;
-
-if (typeof content === 'string') {
-  try {
-    content = JSON.parse(content);
-  } catch {
-    if (msg.type !== 'text') throw new Error('Conteúdo inválido para tipo não-texto.');
-  }
-}
-
-
+    // Se for texto, renderiza diretamente
     if (msg.type === 'text') {
-      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
+      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>;
+    }
+
+    // Tenta fazer parse se não for texto
+    let content = msg.content;
+    if (typeof content === 'string') {
+      content = JSON.parse(content);
     }
 
     if (msg.type === 'audio') {
@@ -197,6 +193,7 @@ if (typeof content === 'string') {
     return <p style={{ color: 'red' }}>Erro ao interpretar conteúdo.</p>;
   }
 })()}
+
 
                   <span style={{
                     fontSize: '0.7rem',
