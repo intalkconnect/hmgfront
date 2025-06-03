@@ -141,17 +141,12 @@ export default function ChatWindow({ userIdSelecionado }) {
   try {
     let content = msg.content;
 
-// Se não tem type, tratamos como texto puro sem parse
-if (!msg.type) {
-  return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
-}
-
 // Se tiver type, parseamos se necessário
 if (typeof content === 'string') {
   try {
     content = JSON.parse(content);
   } catch {
-    return <p style={{ color: 'red' }}>Conteúdo JSON inválido.</p>;
+    return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
   }
 }
 
