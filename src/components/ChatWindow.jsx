@@ -155,8 +155,6 @@ if (typeof content === 'string') {
   }
 }
 
-    }
-
     // ✅ Caso 2: áudio
     if (msg.type === 'audio' || content.voice) {
       return (
