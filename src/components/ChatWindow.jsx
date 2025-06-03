@@ -25,7 +25,6 @@ export default function ChatWindow({ userIdSelecionado }) {
     const [modalImage, setModalImage] = useState(null);
     const [pdfModal, setPdfModal] = useState(null);
 
-
   const messagesEndRef = useRef(null)
   const currentUserIdRef = useRef(null)
 
