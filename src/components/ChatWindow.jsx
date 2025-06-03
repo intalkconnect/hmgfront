@@ -194,7 +194,7 @@ if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i
 
   return (
 <div
-  onClick={() => setImageModal(content.url)}
+  onClick={() => setModalImage(content.url)}
   style={{
     maxWidth: '220px',
     borderRadius: '10px',
@@ -208,7 +208,7 @@ if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i
   src={content.url}
   alt={content.caption || 'Imagem'}
   style={{ maxWidth: '220px', maxHeight: '200px', borderRadius: '6px', cursor: 'pointer' }}
-  onClick={() => setImageModal(content.url)}
+  onClick={() => setModalImage(content.url)}
 />
 
 </div>
