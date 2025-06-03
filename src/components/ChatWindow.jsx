@@ -139,25 +139,24 @@ export default function ChatWindow({ userIdSelecionado }) {
                 }}>
                   {(() => {
   try {
-    const raw = msg.content;
+    let content = msg.content;
 
-    // Se for string pura, renderiza como texto direto
-    if (typeof raw === 'string') {
-      return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{raw}</p>;
-    }
+    // 1. Se content é string pura e msg.type não é mídia → renderiza como texto
+    if (typeof content === 'string') {
+      if (!msg.type || msg.type === 'text') {
+        return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
+      }
 
-    // Tenta interpretar JSON se for string malformada com conteúdo estruturado
-    let content = raw;
-    if (typeof raw === 'string') {
+      // Tenta parsear se for mídia/documento com content serializado
       try {
-        content = JSON.parse(raw);
+        content = JSON.parse(content);
       } catch {
-        return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{raw}</p>;
+        return <p style={{ color: '#999' }}>Tipo de conteúdo inválido.</p>;
       }
     }
 
-    // Áudio
-    if (msg.type === 'audio' || content.voice || content.url?.endsWith('.ogg') || content.url?.endsWith('.webm')) {
+    // 2. Renderiza tipos conhecidos
+    if (msg.type === 'audio' || content.voice) {
       return (
         <audio controls style={{ width: '100%' }}>
           <source src={content.url} type="audio/ogg" />
@@ -166,7 +165,16 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
-    // Documento
+    if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
+      return (
+        <img
+          src={content.url}
+          alt={content.caption || 'Imagem'}
+          style={{ maxWidth: '100%', borderRadius: '6px' }}
+        />
+      );
+    }
+
     if (msg.type === 'document' || content.filename) {
       return (
         <div>
@@ -186,22 +194,12 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
-    // Imagem
-    if (msg.type === 'image' || (content.url && content.url.match(/\.(jpe?g|png|gif|webp)$/i))) {
-      return (
-        <img
-          src={content.url}
-          alt={content.caption || 'Imagem'}
-          style={{ maxWidth: '100%', borderRadius: '6px' }}
-        />
-      );
-    }
-
     return <p style={{ color: '#999' }}>Tipo de mensagem desconhecido.</p>;
   } catch (err) {
     return <p style={{ color: 'red' }}>Erro ao interpretar conteúdo.</p>;
   }
 })()}
+
 
                   <span style={{
                     fontSize: '0.7rem',
