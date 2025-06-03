@@ -235,7 +235,6 @@ if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || ''
 })()}
 
 
-
                   <span style={{
                     fontSize: '0.7rem',
                     color: '#999',
