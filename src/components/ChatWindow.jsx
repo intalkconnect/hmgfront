@@ -168,44 +168,6 @@ if (typeof content === 'string') {
   }
 }
 
-  // 📁 Documentos
-if (msg.type === 'document' || content.filename) {
-  return (
-    <a
-      href={content.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '8px',
-        padding: '10px 12px',
-        textDecoration: 'none',
-        color: 'inherit',
-        maxWidth: '300px'
-      }}
-    >
-      <img
-        src={getFileIcon(content.filename)}
-        alt="Documento"
-        style={{ width: 36, height: 36 }}
-      />
-      <div style={{ flex: 1 }}>
-        <strong style={{ fontSize: '0.95rem', display: 'block' }}>
-          {content.filename || 'Documento'}
-        </strong>
-        {content.caption && (
-          <span style={{ fontSize: '0.85rem', color: '#666' }}>
-            {content.caption}
-          </span>
-        )}
-      </div>
-    </a>
-  );
-}
-
 // 🎧 Áudio (voz)
 if (msg.type === 'audio' || content.voice || content.url?.endsWith('.ogg')) {
   return (
@@ -251,6 +213,43 @@ if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i
 
 </div>
 
+  );
+}
+        // 📁 Documentos
+if (msg.type === 'document' || content.filename) {
+  return (
+    <a
+      href={content.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px',
+        padding: '10px 12px',
+        textDecoration: 'none',
+        color: 'inherit',
+        maxWidth: '300px'
+      }}
+    >
+      <img
+        src={getFileIcon(content.filename)}
+        alt="Documento"
+        style={{ width: 36, height: 36 }}
+      />
+      <div style={{ flex: 1 }}>
+        <strong style={{ fontSize: '0.95rem', display: 'block' }}>
+          {content.filename || 'Documento'}
+        </strong>
+        {content.caption && (
+          <span style={{ fontSize: '0.85rem', color: '#666' }}>
+            {content.caption}
+          </span>
+        )}
+      </div>
+    </a>
   );
 }
 
