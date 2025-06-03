@@ -141,21 +141,23 @@ export default function ChatWindow({ userIdSelecionado }) {
   try {
     let content = msg.content;
 
-    // 1. Se content é string pura e msg.type não é mídia → renderiza como texto
+    // ✅ Caso 1: conteúdo é string pura
     if (typeof content === 'string') {
+      // se for tipo texto OU não tiver tipo definido, assume texto
       if (!msg.type || msg.type === 'text') {
         return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
       }
 
-      // Tenta parsear se for mídia/documento com content serializado
+      // tenta interpretar como JSON apenas se NÃO for texto
       try {
         content = JSON.parse(content);
       } catch {
-        return <p style={{ color: '#999' }}>Tipo de conteúdo inválido.</p>;
+        // conteúdo é string simples mas tipo não bate
+        return <p style={{ color: '#999' }}>Mensagem textual, mas tipo não reconhecido.</p>;
       }
     }
 
-    // 2. Renderiza tipos conhecidos
+    // ✅ Caso 2: áudio
     if (msg.type === 'audio' || content.voice) {
       return (
         <audio controls style={{ width: '100%' }}>
@@ -165,6 +167,7 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
+    // ✅ Caso 3: imagem
     if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
       return (
         <img
@@ -175,6 +178,7 @@ export default function ChatWindow({ userIdSelecionado }) {
       );
     }
 
+    // ✅ Caso 4: documento
     if (msg.type === 'document' || content.filename) {
       return (
         <div>
@@ -199,6 +203,7 @@ export default function ChatWindow({ userIdSelecionado }) {
     return <p style={{ color: 'red' }}>Erro ao interpretar conteúdo.</p>;
   }
 })()}
+
 
 
                   <span style={{
