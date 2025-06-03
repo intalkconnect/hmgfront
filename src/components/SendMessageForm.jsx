@@ -162,19 +162,31 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       const to = userIdSelecionado.replace('@w.msgcli.net', '');
       const payload = { to };
 
-      if (fileToSend) {
-        // 1) Faz upload do arquivo (.ogg) para o bucket
-        const fileUrl = await uploadFileAndGetURL(fileToSend);
-        if (!fileUrl) throw new Error('Não foi possível obter URL de upload.');
+if (fileToSend) {
+  const fileUrl = await uploadFileAndGetURL(fileToSend);
+  if (!fileUrl) throw new Error('Não foi possível obter URL de upload.');
 
-        // 2) Monta payload para WhatsApp:
-        //    - Se for áudio, enviamos { type: 'audio', audio: { link } }
-        payload.type = 'audio';
-        payload.content = { url: fileUrl, voice: true };
-      } else {
-        payload.type = 'text';
-        payload.content = textToSend;
-      }
+  const isAudio = fileToSend.type.startsWith('audio/');
+  const isImage = fileToSend.type.startsWith('image/');
+  const isDocument = !isAudio && !isImage; // tudo que sobrou são documentos
+
+  if (isAudio) {
+    payload.type = 'audio';
+    payload.content = { url: fileUrl, voice: true };
+  } else {
+    const captionText = textToSend || fileToSend.name;
+    payload.type = isImage ? 'image' : 'document';
+    payload.content = {
+      url: fileUrl,
+      filename: fileToSend.name,
+      caption: captionText
+    };
+  }
+} else {
+  payload.type = 'text';
+  payload.content = textToSend;
+}
+
 
       console.log('[📨 Enviando payload]', payload);
 
