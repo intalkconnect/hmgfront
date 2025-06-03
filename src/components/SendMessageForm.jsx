@@ -139,7 +139,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       provisionalMessage = {
         id: tempId,
         type: 'text',
-        content: textToSend,
+        text: textToSend,
         status: 'sending',
         timestamp
       };
