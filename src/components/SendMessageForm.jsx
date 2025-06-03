@@ -139,7 +139,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
       provisionalMessage = {
         id: tempId,
         type: 'text',
-        text: textToSend,
+        content: textToSend,
         status: 'sending',
         timestamp
       };
@@ -185,7 +185,7 @@ if (fileToSend) {
   }
 } else {
   payload.type = 'text';
-  payload.content = textToSend;
+  payload.text = textToSend;
 }
 
 
