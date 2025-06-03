@@ -250,7 +250,12 @@ if ((msg.type === 'document' || content.filename) && content.filename?.endsWith(
 
 // 🟢 Lista tipo WhatsApp
 if (msg.type === 'list' || content.type === 'list') {
-  const listData = content.type === 'list' ? content : msg.content;
+  const listData = content?.type === 'list'
+  ? content
+  : typeof msg.content === 'string'
+    ? JSON.parse(msg.content)
+    : msg.content;
+
 
   if (listData?.action?.sections?.length) {
     return (
