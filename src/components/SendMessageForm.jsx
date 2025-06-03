@@ -185,7 +185,7 @@ if (fileToSend) {
   }
 } else {
   payload.type = 'text';
-  payload.text = { body: textToSend };
+  payload.content = { body: textToSend };
 
 }
 
