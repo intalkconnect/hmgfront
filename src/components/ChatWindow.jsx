@@ -141,20 +141,20 @@ export default function ChatWindow({ userIdSelecionado }) {
   try {
     let content = msg.content;
 
-    // ✅ Caso 1: conteúdo é string pura
-    if (typeof content === 'string') {
-      // se for tipo texto OU não tiver tipo definido, assume texto
-      if (!msg.type || msg.type === 'text') {
-        return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
-      }
+// Se não tem type, tratamos como texto puro sem parse
+if (!msg.type) {
+  return <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{content}</p>;
+}
 
-      // tenta interpretar como JSON apenas se NÃO for texto
-      try {
-        content = JSON.parse(content);
-      } catch {
-        // conteúdo é string simples mas tipo não bate
-        return <p style={{ color: '#999' }}>Mensagem textual, mas tipo não reconhecido.</p>;
-      }
+// Se tiver type, parseamos se necessário
+if (typeof content === 'string') {
+  try {
+    content = JSON.parse(content);
+  } catch {
+    return <p style={{ color: 'red' }}>Conteúdo JSON inválido.</p>;
+  }
+}
+
     }
 
     // ✅ Caso 2: áudio
