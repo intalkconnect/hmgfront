@@ -69,6 +69,23 @@ export default function ChatWindow({ userIdSelecionado }) {
       })
     }
 
+    const getFileIcon = (filename = '') => {
+  const ext = filename.split('.').pop().toLowerCase();
+
+  const icons = {
+    pdf: 'https://cdn-icons-png.flaticon.com/512/337/337946.png',
+    doc: 'https://cdn-icons-png.flaticon.com/512/337/337932.png',
+    docx: 'https://cdn-icons-png.flaticon.com/512/337/337932.png',
+    xls: 'https://cdn-icons-png.flaticon.com/512/337/337959.png',
+    xlsx: 'https://cdn-icons-png.flaticon.com/512/337/337959.png',
+    ppt: 'https://cdn-icons-png.flaticon.com/512/337/337953.png',
+    pptx: 'https://cdn-icons-png.flaticon.com/512/337/337953.png',
+  };
+
+  return icons[ext] || 'https://cdn-icons-png.flaticon.com/512/136/136539.png'; // genérico
+};
+
+
     const handleUpdateMessage = (updatedMsg) => {
       const activeUser = currentUserIdRef.current
       if (updatedMsg.user_id !== activeUser) return
@@ -150,46 +167,64 @@ if (typeof content === 'string') {
   }
 }
 
-    // ✅ Caso 2: áudio
-    if (msg.type === 'audio' || content.voice) {
-      return (
-        <audio controls style={{ width: '100%' }}>
-          <source src={content.url} type="audio/ogg" />
-          Seu navegador não suporta áudio.
-        </audio>
-      );
-    }
+  // 📁 Documentos
+if (msg.type === 'document' || content.filename) {
+  return (
+    <a
+      href={content.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px',
+        padding: '10px 12px',
+        textDecoration: 'none',
+        color: 'inherit',
+        maxWidth: '300px'
+      }}
+    >
+      <img
+        src={getFileIcon(content.filename)}
+        alt="Documento"
+        style={{ width: 36, height: 36 }}
+      />
+      <div style={{ flex: 1 }}>
+        <strong style={{ fontSize: '0.95rem', display: 'block' }}>
+          {content.filename || 'Documento'}
+        </strong>
+        {content.caption && (
+          <span style={{ fontSize: '0.85rem', color: '#666' }}>
+            {content.caption}
+          </span>
+        )}
+      </div>
+    </a>
+  );
+}
 
-    // ✅ Caso 3: imagem
-    if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
-      return (
-        <img
-          src={content.url}
-          alt={content.caption || 'Imagem'}
-          style={{ maxWidth: '100%', borderRadius: '6px' }}
-        />
-      );
-    }
+// 🎧 Áudio (voz)
+if (msg.type === 'audio' || content.voice) {
+  return (
+    <audio controls style={{ width: '100%' }}>
+      <source src={content.url} type="audio/ogg" />
+      Seu navegador não suporta áudio.
+    </audio>
+  );
+}
 
-    // ✅ Caso 4: documento
-    if (msg.type === 'document' || content.filename) {
-      return (
-        <div>
-          <p style={{ marginBottom: '4px', fontWeight: 'bold' }}>{content.filename || 'Documento'}</p>
-          <a
-            href={content.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: '#007bff', textDecoration: 'underline' }}
-          >
-            Abrir documento
-          </a>
-          {content.caption && (
-            <p style={{ marginTop: '4px', fontStyle: 'italic' }}>{content.caption}</p>
-          )}
-        </div>
-      );
-    }
+// 🖼️ Imagem
+if (msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(content.url || '')) {
+  return (
+    <img
+      src={content.url}
+      alt={content.caption || 'Imagem'}
+      style={{ maxWidth: '100%', borderRadius: '6px' }}
+    />
+  );
+}
 
     return <p style={{ color: '#999' }}>Tipo de mensagem desconhecido.</p>;
   } catch (err) {
