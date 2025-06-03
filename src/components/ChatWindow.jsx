@@ -207,7 +207,7 @@ if ((msg.type === 'image') || (content.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i
 <img
   src={content.url}
   alt={content.caption || 'Imagem'}
-  style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '6px', cursor: 'pointer' }}
+  style={{ maxWidth: '220px', maxHeight: '200px', borderRadius: '6px', cursor: 'pointer' }}
   onClick={() => setImageModal(content.url)}
 />
 
