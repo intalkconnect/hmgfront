@@ -29,7 +29,8 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
   // Lista de MIME types permitidos (texto, docs e áudio .ogg)
   // ----------------------------------------------------------------------
   const ALLOWED_MIME_TYPES = [
-    'text/plain',                                                                       // .txt
+    'text/plain',  // .txt
+    'image/png',
     'application/vnd.ms-excel',                                                         // .xls
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',                // .xlsx
     'application/msword',                                                                // .doc
