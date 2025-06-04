@@ -3,7 +3,7 @@ import { supabase } from './services/supabaseClient'
 import { socket, connectSocket } from './services/socket'
 import Sidebar from './components/Sidebar/Sidebar'
 import ChatWindow from './components/ChatWindow'
-import DetailsPanel from './components/DetailsPanel'
+import DetailsPanel from './components/DetailsPanel/DetailsPanel'
 import './App.css';
 
 export default function App() {
