@@ -100,7 +100,7 @@ onSelectUser={async (uid) => {
         />
       </aside>
 
-      <main className="chat-window">
+      <main className="chat-container">
         <ChatWindow userIdSelecionado={userIdSelecionado} />
       </main>
 
