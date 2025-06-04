@@ -75,7 +75,7 @@ async function fetchConversations() {
 
 
   return (
-    <div className="app-windows">
+    <div className="app-container">
       <aside className="sidebar">
         <Sidebar
           conversations={conversations}
@@ -100,7 +100,7 @@ onSelectUser={async (uid) => {
         />
       </aside>
 
-      <main className="chat-container">
+      <main className="chat-window">
         <ChatWindow userIdSelecionado={userIdSelecionado} />
       </main>
 
