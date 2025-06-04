@@ -1,6 +1,6 @@
 // src/components/DetailsPanel.jsx
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../services/supabaseClient'
+import { supabase } from '../../services/supabaseClient'
 import './DetailsPanel.css'  // importe o CSS aqui
 
 export default function DetailsPanel({ userIdSelecionado }) {
