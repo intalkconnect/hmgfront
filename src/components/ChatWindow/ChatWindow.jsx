@@ -1,7 +1,7 @@
 // src/components/ChatWindow/ChatWindow.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { socket, connectSocket } from '../../services/socket';
-import SendMessageForm from './SendMessageForm';
+import SendMessageForm from '../SendMessageForm';
 import { supabase } from '../../services/supabaseClient';
 import './ChatWindow.css';
 
