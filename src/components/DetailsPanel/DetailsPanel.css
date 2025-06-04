@@ -1,90 +1,169 @@
-
 /* src/components/DetailsPanel/DetailsPanel.css */
 
-.details-panel {
+/*===================================================================
+  Variáveis (herdadas de App.css, se estiver usando) 
+  — caso não tenha App.css com :root, substitua essas variáveis por valores fixos.
+===================================================================*/
+:root {
+  --color-surface: #ffffff;
+  --color-border: #e0e0e0;
+  --color-primary: #4a76a8;
+  --color-primary-dark: #3b5d88;
+  --color-text-default: #333333;
+  --color-text-muted: #666666;
+  --color-background: #f2f2f2;
+  --color-tag-bg: #edf4ff;
+  --border-radius: 8px;
+  --box-shadow-light: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+  --transition-fast: 0.2s ease-in-out;
+  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+}
+
+/*===================================================================
+  Container principal do DetailsPanel
+===================================================================*/
+.details-panel-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 16px;
-  background-color: var(--surface);
-}
-
-.details-header {
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.details-header h3 {
-  font-size: 1.1rem;
-  color: var(--text-default);
-}
-
-/* Conteúdo interno */
-.details-content {
-  margin-top: 16px;
-  flex: 1;
+  background-color: var(--color-surface);
   overflow-y: auto;
+  gap: 16px;
+}
+
+/*===================================================================
+  Linha de tags no topo
+===================================================================*/
+.details-tags {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.detail-item {
-  display: flex;
-  flex-direction: column;
+.tag {
+  background-color: var(--color-tag-bg);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
+  white-space: nowrap;
 }
 
-.detail-item label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.detail-item span {
+/*===================================================================
+  Seção “Negócio Selecionado”
+===================================================================*/
+.negocio-section h3 {
+  margin: 0 0 8px 0;
   font-size: 1rem;
-  color: var(--text-default);
+  color: var(--color-text-default);
 }
 
-/* Área de notas */
-.detail-notes label {
+.negocio-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 12px;
+  box-shadow: var(--box-shadow-light);
+}
+
+.negocio-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-default);
+}
+
+.negocio-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.negocio-buttons .btn {
+  flex: 1;
+  padding: 6px 12px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--border-radius);
   font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
-.detail-notes textarea {
+.negocio-buttons .btn:hover {
+  background-color: var(--color-primary-dark);
+}
+
+/*===================================================================
+  Seções genéricas (títulos h4)
+===================================================================*/
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-default);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 4px;
+}
+
+/*===================================================================
+  Textarea de Notas
+===================================================================*/
+.notes-textarea {
   width: 100%;
   min-height: 80px;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   resize: vertical;
   outline: none;
   transition: border-color var(--transition-fast);
 }
 
-.detail-notes textarea:focus {
-  border-color: var(--primary);
+.notes-textarea:focus {
+  border-color: var(--color-primary);
 }
 
-/* Histórico */
-.history-section {
-  margin-top: 8px;
+/*===================================================================
+  Mensagens de loading/erro
+===================================================================*/
+.loading {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
 }
 
-.history-title {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-default);
-  margin-bottom: 6px;
-}
-
-.history-text {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.history-empty {
+.error {
+  font-size: 0.95rem;
   color: #e74c3c;
+}
+
+/*===================================================================
+  Seção “Dados do Usuário”
+===================================================================*/
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-info h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-default);
+}
+
+.user-info-pre {
+  background: #f8f8f8;
+  padding: 8px;
+  border-radius: var(--border-radius);
+  font-size: 0.85rem;
+  overflow-x: auto;
+  color: var(--color-text-default);
+  margin: 0;
 }
