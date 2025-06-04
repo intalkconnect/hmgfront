@@ -4,6 +4,7 @@ import { socket, connectSocket } from './services/socket'
 import Sidebar from './components/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import DetailsPanel from './components/DetailsPanel'
+import './App.css';
 
 export default function App() {
   const [conversations, setConversations] = useState([])
