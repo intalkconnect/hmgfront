@@ -1,0 +1,27 @@
+/* DocumentMessage.css */
+.document-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #f5f5f5;
+  border-radius: var(--border-radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  max-width: 300px;
+}
+.document-container img {
+  width: 36px;
+  height: 36px;
+}
+.document-details {
+  flex: 1;
+}
+.document-details strong {
+  font-size: 0.95rem;
+  display: block;
+  color: var(--color-text-default);
+}
+.document-details span {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
