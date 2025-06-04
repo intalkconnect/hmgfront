@@ -1,1 +1,88 @@
 
+/* src/components/Sidebar/Sidebar.css */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  background-color: var(--surface);
+}
+
+.sidebar-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-header h2 {
+  font-size: 1.2rem;
+  color: var(--text-default);
+}
+
+/* Lista de conversas */
+.sidebar-list {
+  margin-top: 16px;
+  flex: 1; /* ocupa o espaço disponível entre header e footer */
+  overflow-y: auto;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: var(--border-radius);
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.chat-item + .chat-item {
+  margin-top: 8px;
+}
+
+.chat-item:hover {
+  background-color: #f7f7f7;
+}
+
+.chat-item-avatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.chat-item-info {
+  margin-left: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-item-name {
+  font-weight: 500;
+  color: var(--text-default);
+}
+
+.chat-item-snippet {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.sidebar-footer {
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-logout {
+  width: 100%;
+  padding: 8px;
+  background-color: #e74c3c;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.btn-logout:hover {
+  background-color: #c0392b;
+}
