@@ -1,64 +1,57 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* src/App.css */
+
+/* Variáveis de cor (opcional) */
+:root {
+  --background: #f2f2f5;
+  --surface: #ffffff;
+  --primary: #4a76a8;
+  --text-default: #333333;
+  --text-muted: #666666;
+  --border-radius: 8px;
+  --box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+  --transition-fast: 0.2s ease-in-out;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Reset mínimo */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+html, body, #root {
+  height: 100%;
+  background-color: var(--background);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-
-.sidebar {
-  width: 300px;
-  background: #fff;
-  border-right: 1px solid #ddd;
+.app-container {
   display: flex;
-  flex-direction: column;
-}
-
-.chat-window {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  height: 100vh; /* Ocupa toda a altura da tela */
   overflow: hidden;
 }
 
-.details-panel {
-  width: 280px;
-  background: #f9f9f9;
-  border-left: 1px solid #ddd;
+/* Larguras das colunas */
+/* Você pode ajustar conforme a necessidade */
+.sidebar-container {
+  width: 260px;
+  border-right: 1px solid #e0e0e0;
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  flex: 1; /* ocupa todo o espaço disponível */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background);
+}
+
+.details-container {
+  width: 300px;
+  border-left: 1px solid #e0e0e0;
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
 }
