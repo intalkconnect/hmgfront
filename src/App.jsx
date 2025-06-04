@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './services/supabaseClient'
 import { socket, connectSocket } from './services/socket'
-import Sidebar from './components/Sidebar'
+import Sidebar from './components/Sidebar/Sidebar'
 import ChatWindow from './components/ChatWindow'
 import DetailsPanel from './components/DetailsPanel'
 import './App.css';
