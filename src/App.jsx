@@ -75,7 +75,7 @@ async function fetchConversations() {
 
 
   return (
-    <div className="app-container">
+    <div className="app-windows">
       <aside className="sidebar">
         <Sidebar
           conversations={conversations}
