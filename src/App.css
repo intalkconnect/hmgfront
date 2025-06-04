@@ -1,57 +1,121 @@
-/* src/App.css */
-
-/* Variáveis de cor (opcional) */
+/*===================================================================
+  Variáveis de tema (cores, espaçamentos, sombras, etc)
+===================================================================*/
 :root {
-  --background: #f2f2f5;
-  --surface: #ffffff;
-  --primary: #4a76a8;
-  --text-default: #333333;
-  --text-muted: #666666;
+  /* Cores principais */
+  --color-background: #f2f2f2;
+  --color-surface: #ffffff;
+  --color-primary: #4a76a8;
+  --color-primary-dark: #3b5d88;
+  --color-text-default: #333333;
+  --color-text-muted: #666666;
+  --color-border: #e0e0e0;
+  --color-danger: #e74c3c;
+
+  /* Outros tokens */
   --border-radius: 8px;
-  --box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+  --box-shadow-light: rgba(0, 0, 0, 0.1) 0px 2px 8px;
   --transition-fast: 0.2s ease-in-out;
+
+  /* Tipografia */
+  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+  --font-size-base: 16px;
 }
 
-/* Reset mínimo */
+/*===================================================================
+  Reset básico
+===================================================================*/
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
 html, body, #root {
   height: 100%;
-  background-color: var(--background);
+  background-color: var(--color-background);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  color: var(--color-text-default);
 }
 
+/*===================================================================
+  Container geral do App (3 colunas)
+===================================================================*/
 .app-container {
   display: flex;
-  height: 100vh; /* Ocupa toda a altura da tela */
-  overflow: hidden;
+  height: 100vh;           /* ocupa toda altura da janela */
+  overflow: hidden;        /* evita scroll na janela principal */
 }
 
-/* Larguras das colunas */
-/* Você pode ajustar conforme a necessidade */
-.sidebar-container {
-  width: 260px;
-  border-right: 1px solid #e0e0e0;
-  background-color: var(--surface);
+/*-------------------------------------------------------------
+  Coluna da esquerda: Sidebar
+-------------------------------------------------------------*/
+.sidebar {
+  width: 260px;                   /* ajustável conforme necessidade */
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
+  box-shadow: var(--box-shadow-light);
+  /* Espaçamento interno para que o Sidebar.jsx possa usar padding se quiser */
 }
 
-.chat-container {
-  flex: 1; /* ocupa todo o espaço disponível */
+/*-------------------------------------------------------------
+  Coluna central: ChatWindow
+-------------------------------------------------------------*/
+.chat-window {
+  flex: 1;                        /* ocupa todo espaço restante */
   display: flex;
   flex-direction: column;
-  background-color: var(--background);
+  background-color: var(--color-background);
+  /* Se quiser, pode colocar uma borda ou sombra leve no topo/inferior */
 }
 
-.details-container {
-  width: 300px;
-  border-left: 1px solid #e0e0e0;
-  background-color: var(--surface);
+/*-------------------------------------------------------------
+  Coluna da direita: DetailsPanel
+-------------------------------------------------------------*/
+.details-panel {
+  width: 300px;                   /* ajustável conforme necessidade */
+  background-color: var(--color-surface);
+  border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
+  box-shadow: var(--box-shadow-light);
+}
+
+/*===================================================================
+  Scrollbars personalizadas (opcional)
+===================================================================*/
+.sidebar::-webkit-scrollbar,
+.chat-window::-webkit-scrollbar,
+.details-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.chat-window::-webkit-scrollbar-thumb,
+.details-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+/*===================================================================
+  Responsividade básica (exemplo)
+  - Em telas menores, esconder o painel de detalhes ou reorganizar
+===================================================================*/
+@media screen and (max-width: 1024px) {
+  .details-panel {
+    display: none;              /* esconde painel de detalhes em resoluções menores */
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .sidebar {
+    display: none;              /* esconde sidebar em telas bem pequenas */
+  }
+  .chat-window {
+    flex: 1;
+    margin: 0 auto;             /* centraliza chat-window se quiser */
+  }
 }
