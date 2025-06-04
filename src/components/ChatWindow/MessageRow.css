@@ -1,0 +1,44 @@
+/* MessageRow.css */
+.message-row {
+  display: flex;
+  margin-bottom: 6px;
+}
+.message-row.incoming {
+  justify-content: flex-start;
+}
+.message-row.outgoing {
+  justify-content: flex-end;
+}
+.message-bubble {
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  max-width: 70%;
+  box-shadow: var(--box-shadow-light);
+  position: relative;
+  word-wrap: break-word;
+}
+.message-bubble.incoming {
+  background-color: var(--color-surface);
+  color: var(--color-text-default);
+}
+.message-bubble.outgoing {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+.message-time {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.check.delivered {
+  color: #34b7f1;
+}
+.check.sent {
+  color: #999999;
+}
+.check.pending {
+  color: #999999;
+}
