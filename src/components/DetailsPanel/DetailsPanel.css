@@ -1,1 +1,90 @@
 
+/* src/components/DetailsPanel/DetailsPanel.css */
+
+.details-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  background-color: var(--surface);
+}
+
+.details-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.details-header h3 {
+  font-size: 1.1rem;
+  color: var(--text-default);
+}
+
+/* Conteúdo interno */
+.details-content {
+  margin-top: 16px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.detail-item span {
+  font-size: 1rem;
+  color: var(--text-default);
+}
+
+/* Área de notas */
+.detail-notes label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.detail-notes textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.detail-notes textarea:focus {
+  border-color: var(--primary);
+}
+
+/* Histórico */
+.history-section {
+  margin-top: 8px;
+}
+
+.history-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-default);
+  margin-bottom: 6px;
+}
+
+.history-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.history-empty {
+  color: #e74c3c;
+}
