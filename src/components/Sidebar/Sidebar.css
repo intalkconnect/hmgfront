@@ -1,161 +1,110 @@
-/* src/components/Sidebar/Sidebar.css */
+/* Sidebar.css */
 
-/*===================================================================
-  Container geral da Sidebar
-===================================================================*/
 .sidebar-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
+  overflow-y: auto; /* habilita scroll só se realmente ultrapassar a altura */
   background-color: var(--color-surface);
 }
 
-/*===================================================================
-  Área de busca no topo
-===================================================================*/
+/* Área de pesquisa no topo */
 .sidebar-search {
-  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .sidebar-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  color: var(--color-text-default);
+  font-size: 0.9rem;
   outline: none;
-  transition: border-color var(--transition-fast);
 }
 
-.sidebar-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.sidebar-input:focus {
-  border-color: var(--color-primary);
-}
-
-/*===================================================================
-  Lista de conversas
-===================================================================*/
+/* Lista de conversas */
 .chat-list {
   list-style: none;
-  flex: 1;                    /* ocupa todo espaço restante */
-  overflow-y: auto;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  flex: 1;           /* ocupa todo espaço restante */
 }
 
-/* Scroll personalizado */
-.chat-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat-list::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 3px;
-}
-
-/*===================================================================
-  Item de lista de conversa
-===================================================================*/
 .chat-list-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
+  background: #fff;
+  padding: 10px;
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
+  margin-bottom: 8px;
   cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.chat-list-item + .chat-list-item {
-  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  transition: background 0.2s ease;
 }
 
 .chat-list-item:hover {
-  background-color: #f7f7f7;
+  background: var(--color-secondary);
 }
 
-/* Avatar do contato/canal */
+.chat-list-item.active {
+  background: var(--color-secondary); /* Destaque ativo */
+  border: 1px solid var(--color-primary);
+  box-shadow: 0 0 4px rgba(1, 114, 203, 0.3);
+}
+
+/* Avatar (WhatsApp ou outro) */
 .chat-avatar {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  background-color: #e0e0e0;   /* placeholder caso não haja imagem */
-  display: flex;
-  align-items: center;
-  justify-content: center;
   margin-right: 12px;
 }
 
 .avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
 }
 
-/*===================================================================
-  Detalhes do chat (título, snippet, metadados)
-===================================================================*/
+/* Detalhes (nome + snippet + meta) */
 .chat-details {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;        /* garante que o texto não quebre a largura */
 }
 
 .chat-title {
+  font-weight: 600;
   font-size: 1rem;
-  font-weight: 500;
   color: var(--color-text-default);
   margin-bottom: 4px;
+  white-space: nowrap;             /* não quebra linha */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chat-snippet {
   font-size: 0.85rem;
   color: var(--color-text-muted);
-  margin-bottom: 6px;
-  overflow: hidden;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .chat-meta {
-  display: flex;
-  gap: 8px;
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 
-.chat-ticket {
-  /* Exemplo: #000123 */
+.chat-meta .chat-ticket {
+  margin-right: 8px;
 }
 
-.chat-queue {
-  /* Exemplo: Fila: Suporte */
-}
-
-/*===================================================================
-  Horário da última mensagem
-===================================================================*/
+/* Horário à direita */
 .chat-time {
-  flex-shrink: 0;
   font-size: 0.75rem;
   color: var(--color-text-muted);
   margin-left: 12px;
   white-space: nowrap;
-}
-
-/*===================================================================
-  Estado “item selecionado” (opcional)
-===================================================================*/
-.chat-list-item.selected {
-  background-color: #e8f0ff;
-}
-
-.chat-list-item.selected .chat-title {
-  color: var(--color-primary);
 }

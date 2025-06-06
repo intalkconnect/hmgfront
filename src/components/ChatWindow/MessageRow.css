@@ -1,44 +1,115 @@
-/* MessageRow.css */
+/* src/components/ChatWindow/MessageRow.css */
+
+:root {
+  /* Variáveis opcionais para facilitar manutenção */
+  --color-incoming-bg: #9b7f97;
+  --color-outgoing-bg: #454545;
+  --color-text-light: #ffffff;
+  --message-font-size: 0.95rem;
+  --message-line-height: 1.4;
+  --message-gap: 4px;   /* espaçamento interno entre cada linha */
+  --border-radius: 16px;
+  --box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .message-row {
   display: flex;
-  margin-bottom: 6px;
+  /* O “gap” entre mensagens agora vem do padding-bottom,
+     que será medido pelo Virtuoso como parte da altura total da linha */
+  padding-bottom: var(--message-gap);
 }
+
 .message-row.incoming {
   justify-content: flex-start;
 }
+
 .message-row.outgoing {
   justify-content: flex-end;
 }
+
+/* Bolha de mensagem: sem margens externas! (gap já vem do padding do .message-row) */
 .message-bubble {
-  border-radius: var(--border-radius);
-  padding: 8px 12px;
-  max-width: 70%;
-  box-shadow: var(--box-shadow-light);
   position: relative;
+  max-width: 60%;
+  padding: 10px 14px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  font-size: var(--message-font-size);
   word-wrap: break-word;
+  overflow: visible; /* para não cortar sombras, modais e imagens */
 }
+
+/* Cores diferentes para incoming / outgoing */
 .message-bubble.incoming {
-  background-color: var(--color-surface);
-  color: var(--color-text-default);
+  background-color: var(--color-incoming-bg);
+  color: var(--color-text-light);
 }
+
 .message-bubble.outgoing {
-  background-color: var(--color-primary);
-  color: #ffffff;
+  background-color: var(--color-outgoing-bg);
+  color: var(--color-text-light);
 }
+
+/* Conteúdo textual */
+.message-content {
+  line-height: var(--message-line-height);
+}
+
+/* Horário + status (ícones) abaixo do conteúdo */
 .message-time {
   font-size: 0.7rem;
-  color: var(--color-text-muted);
+  margin-top: 6px;
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
+  justify-content: flex-end;
+  color: var(--color-text-light);
+}
+
+/* Esconder “check” em incoming */
+.message-bubble.incoming .check {
+  display: none;
+}
+
+/* Cores do check em outgoing */
+.check.sent {
+  color: #999999;
+  font-size: 0.6rem;
+  line-height: 1;
 }
 .check.delivered {
   color: #34b7f1;
-}
-.check.sent {
-  color: #999999;
+  font-size: 0.6rem;
+  line-height: 1;
 }
 .check.pending {
   color: #999999;
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+/* Botão de responder dentro da bolha */
+.reply-btn {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.reply-btn:hover {
+  opacity: 1;
+}
+
+/* Garantir que anexos (imagem, vídeo, iframe, PDF embed) não quebrem a largura */
+.message-bubble img,
+.message-bubble video,
+.message-bubble iframe {
+  max-width: 100%;
+  border-radius: 8px;
 }

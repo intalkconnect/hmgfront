@@ -33,6 +33,7 @@
 
 html, body, #root {
   height: 100%;
+  width: 100%;
   background-color: var(--color-background);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
@@ -58,18 +59,20 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   box-shadow: var(--box-shadow-light);
-  /* Espaçamento interno para que o Sidebar.jsx possa usar padding se quiser */
 }
 
 /*-------------------------------------------------------------
-  Coluna central: ChatWindow
+  Coluna central: ChatContainer (antes .chat-window)
+  OBS: Agora chamamos de chat-container, para casar com o JSX.
 -------------------------------------------------------------*/
-.chat-window {
+.chat-container {
   flex: 1;                        /* ocupa todo espaço restante */
   display: flex;
   flex-direction: column;
   background-color: var(--color-background);
-  /* Se quiser, pode colocar uma borda ou sombra leve no topo/inferior */
+
+  /* ESSENCIAL para permitir que o filho .chat-window faça overflow */
+  min-height: 0;
 }
 
 /*-------------------------------------------------------------
@@ -88,13 +91,13 @@ html, body, #root {
   Scrollbars personalizadas (opcional)
 ===================================================================*/
 .sidebar::-webkit-scrollbar,
-.chat-window::-webkit-scrollbar,
+.chat-container::-webkit-scrollbar,
 .details-panel::-webkit-scrollbar {
   width: 6px;
 }
 
 .sidebar::-webkit-scrollbar-thumb,
-.chat-window::-webkit-scrollbar-thumb,
+.chat-container::-webkit-scrollbar-thumb,
 .details-panel::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
@@ -102,7 +105,6 @@ html, body, #root {
 
 /*===================================================================
   Responsividade básica (exemplo)
-  - Em telas menores, esconder o painel de detalhes ou reorganizar
 ===================================================================*/
 @media screen and (max-width: 1024px) {
   .details-panel {
@@ -114,8 +116,9 @@ html, body, #root {
   .sidebar {
     display: none;              /* esconde sidebar em telas bem pequenas */
   }
-  .chat-window {
+  .chat-container {
     flex: 1;
-    margin: 0 auto;             /* centraliza chat-window se quiser */
+    margin: 0 auto;             /* centraliza chat-container se quiser */
   }
 }
+

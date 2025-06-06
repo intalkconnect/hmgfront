@@ -1,22 +1,103 @@
-/* ChatWindow.css */
+/* ===================================================================
+   ChatWindow.css (atualizado para suportar placeholder e lista normal)
+=================================================================== */
 
-/* Container geral */
+/* -------- Container geral do ChatWindow -------- */
 .chat-window {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  position: relative;
+  flex: 1;
+  min-height: 0;
   background-color: var(--color-background);
 }
 
-/* Caso não haja conversa selecionada */
-.chat-window.no-conversa {
+/* ===== ChatWindow.css ===== */
+
+/* 1) Estilos já existentes para .chat-window, .placeholder, etc. */
+/* ... (seu CSS atual de .chat-window, .chat-window.placeholder, etc) ... */
+
+/* 2) Novo estilo para .chat-window.loading */
+.chat-window.loading {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Caso seu .chat-window tenha altura fixa ou flex:1, 
+     deixe-o ocupar todo o espaço e exiba aqui centralizado */
+  background-color: #fafafa; /* ou herde a cor de fundo que achar melhor */
 }
 
-/* Cabeçalho */
+/* 3) Container interno que agrupa spinner + texto */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 4) Estilo do spinner (circulito girando) */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #454545;  /* cor do “arco” que gira; ajuste conforme paleta */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px; /* espaço entre spinner e texto */
+}
+
+/* 5) Animação de rotação */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 6) Se quiser estilizar o texto “Carregando mensagens...” */
+.chat-window.loading p {
+  margin: 0;
+  font-size: 1rem;
+  color: #666666; /* cor neutra para o texto de loading */
+}
+
+
+/* ===================================================================
+   1) PLACEHOLDER: quando não há conversa selecionada
+=================================================================== */
+.chat-window.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background);
+}
+
+.chat-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.chat-icon {
+  width: 80px;
+  height: 80px;
+}
+
+.placeholder-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+}
+
+.placeholder-subtitle {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  max-width: 260px;
+}
+
+/* ===================================================================
+   2) Cabeçalho do chat (exibido quando há conversa)
+=================================================================== */
 .chat-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
@@ -30,17 +111,31 @@
   margin: 0;
 }
 
-/* Lista de mensagens */
+/* ===================================================================
+   3) Lista de mensagens (usa overflow-y: auto para rolar internamente)
+=================================================================== */
 .messages-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 12px 0 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1px;
 }
 
-/* Campo de envio */
+.messages-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-list::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+/* ===================================================================
+   4) Campo de envio “grudado” na base da janela
+=================================================================== */
 .chat-input {
   position: sticky;
   bottom: 0;
@@ -50,11 +145,149 @@
   z-index: 10;
 }
 
-/* Scrollbars personalizadas */
-.messages-list::-webkit-scrollbar {
-  width: 6px;
+/* ===================================================================
+   6) Áudio, imagem, documento e lista
+=================================================================== */
+.image-container {
+  max-width: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  background-color: #eeeeee;
 }
-.messages-list::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 3px;
+
+.image-container img {
+  display: block;
+  max-width: 220px;
+  max-height: 200px;
+  border-radius: 6px;
+}
+
+.document-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #454545;
+  border-radius: var(--border-radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  max-width: 300px;
+}
+
+.document-container img {
+  width: 36px;
+  height: 36px;
+}
+
+.document-details {
+  flex: 1;
+}
+
+.document-details strong {
+  font-size: 0.95rem;
+  display: block;
+  color: var(--color-text-default);
+}
+
+.document-details span {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.list-container {
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: var(--border-radius);
+}
+
+.list-container h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  color: var(--color-text-default);
+}
+
+.list-body-text {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.list-section {
+  margin-bottom: 12px;
+}
+
+.list-section-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--color-text-default);
+  margin-bottom: 4px;
+}
+
+.list-row {
+  padding: 6px;
+  margin-top: 4px;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 5px;
+}
+
+.list-row-title {
+  font-size: 0.95rem;
+  color: var(--color-text-default);
+}
+
+.list-row-description {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.list-footer {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ===================================================================
+   7) Modals de imagem e PDF
+=================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: zoom-out;
+}
+
+.modal-image {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 10px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+}
+
+.pdf-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.pdf-modal-content {
+  width: 80%;
+  height: 90%;
+  border: none;
+  border-radius: var(--border-radius);
+  background-color: var(--color-surface);
 }

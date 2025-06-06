@@ -1,39 +1,198 @@
-
-/* src/components/SendMessageForm/SendMessageForm.css */
-
+/* =================================================
+   1) Container geral do formulário: sem padding vertical,
+      só padding lateral
+================================================= */
 .send-message-form {
+  width: 100%;
+  background-color: #ffffff;
+  padding: 0 16px;      /* só padding horizontal */
+  box-sizing: border-box;
+  
+}
+
+/* =================================================
+   2) Textarea: altura fixa maior e linha inferior
+================================================= */
+.send-message-textarea {
+  width: 100%;
+  height: 80px;                     /* altura fixa de 80px */
+  border: none;
+  border-bottom: 1px solid #e0e0e0; /* linha cinza clara embaixo */
+  background-color: #f9f9f9;        /* cinza suave de fundo */
+  font-size: 1rem;
+  line-height: 1.4;
+  padding: 12px 0;                  /* centraliza verticalmente o texto */
+  resize: none;                     /* impede redimensionar pelo usuário */
+  outline: none;                    /* remove outline azul no foco */
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.send-message-textarea:focus {
+  border-bottom-color: var(--primary, #4a90e2); /* muda só a cor do bottom quando em foco */
+  background-color: #ffffff;                    /* opcional: textarea branco ao focar */
+}
+
+/* =================================================
+   3) Grupo de botões e preview (emoji / anexo / imagem / preview / enviar)
+      • Exibe tudo em linha, centralizado verticalmente.
+      • Insere um gap de 8px entre cada item.
+================================================= */
+.send-button-group {
   display: flex;
-  padding: 12px 16px;
-  border-top: 1px solid #e0e0e0;
-  background-color: var(--surface);
+  align-items: center;
+  margin-top: 8px;  /* espaço entre textarea e botões */
+  gap: 8px;         /* distância uniforme entre cada item */
 }
 
-.input-message {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color var(--transition-fast);
+/* Ícones (emoji / clipe / imagem) */
+.btn-attachment {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
 }
 
-.input-message:focus {
-  border-color: var(--primary);
+.btn-attachment:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
+.btn-attachment:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* =================================================
+   4) Preview de arquivo/áudio:
+      • Fica entre os ícones e o botão enviar, sem margin-top.
+      • Leve fundo e borda arredondada são opcionais.
+================================================= */
+.send-form-preview {
+  display: flex;
+  align-items: center;
+  gap: 4px;               /* espaço entre o texto e o “×” */
+  padding: 4px 8px;       /* buffer interno para destacar */
+  background-color: rgba(0, 0, 0, 0.03); /* leve fundo, opcional */
+  border-radius: 8px;     /* cantos arredondados, opcional */
+  font-size: 0.9rem;
+  color: #444;
+}
+
+/* Botão “×” dentro do preview */
+.send-form-preview button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e3342f;
+  font-size: 1rem;
+  padding: 0;
+}
+
+.send-form-preview button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* =================================================
+   5) Botão de enviar / gravar áudio:
+      • Com margin-left: auto, empurra-se para a direita.
+================================================= */
+/* ---------------------------------------------------
+   Botão de enviar / gravar áudio (agora redondo)
+--------------------------------------------------- */
 .btn-send {
-  margin-left: 8px;
-  padding: 10px 16px;
-  background-color: var(--primary);
+  width: 48px;           /* faz o botão ser quadrado */
+  height: 48px;          /* igual à largura para virar círculo */
+  padding: 0;            /* remove padding interno */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;     /* empurra para a borda direita */
+  background-color: var(--primary, #4a90e2);
   color: #fff;
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: 50%;    /* 50% transforma em círculo */
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: background var(--transition-fast);
+  transition: background-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .btn-send:hover {
-  background-color: #3b5d88; /* tom um pouco mais escuro */
+  /* Tom ligeiramente mais escuro no hover */
+  background-color: #3b5d88;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
+.btn-send:disabled {
+  /* Estado desabilitado */
+  background-color: #a0a0a0;
+  cursor: default;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+/* Caso queira reduzir o tamanho do SVG, pode usar: */
+.btn-send svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* SendMessageForm.css */
+
+/* =========================================
+   1) Posicionamento e estilo do container 
+      que envolve o <emoji-picker>
+========================================= */
+/* ────────────────────────────────────────────────────────────
+   Este bloco DEVE vir depois de `import 'emoji-mart/css/emoji-mart.css'`
+──────────────────────────────────────────────────────────── */
+
+/* Container do picker para posicionar */
+.emoji-picker-container {
+  position: absolute;
+  bottom: 60px;
+  left: 16px;
+  z-index: 1000;
+  background-color: transparent;
+}
+
+/* Força a largura fixa e fundo branco geral */
+.emoji-picker-container .emoji-mart {
+  width: 350px !important;
+  max-width: 350px !important;
+  background-color: #ffffff !important;
+  border: none !important;
+}
+
+/* Sobrepõe a barra de tabs (Categorias) */
+.emoji-picker-container .emoji-mart-bar {
+  background-color: #ffffff !important;
+}
+
+/* Sobrepõe o campo de busca */
+.emoji-picker-container .emoji-mart-search input {
+  background-color: #f9f9f9 !important;
+}
+
+/* Sobrepõe o header (cabeçalho) */
+.emoji-picker-container .emoji-mart-header {
+  background-color: #ffffff !important;
+}
+
+/* Sobrepõe o preview (barra inferior com emoji + nome) */
+.emoji-picker-container .emoji-mart-preview {
+  background-color: #ffffff !important;
+}
+
+/* Força cor clara nos ícones inativos */
+.emoji-picker-container .emoji-mart-anchor {
+  color: #444 !important;
+}
+
+/* (Opcional) Remover sombras exageradas */
+.emoji-picker-container .emoji-mart-scroll {
+  box-shadow: none !important;
+}
+

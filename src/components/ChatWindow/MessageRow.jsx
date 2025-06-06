@@ -1,107 +1,107 @@
+  // src/components/ChatWindow/MessageRow.jsx
 
-// src/components/ChatWindow/MessageRow.jsx
-import React from 'react';
-import TextMessage from './messageTypes/TextMessage';
-import AudioMessage from './messageTypes/AudioMessage';
-import ImageMessage from './messageTypes/ImageMessage';
-import DocumentMessage from './messageTypes/DocumentMessage';
-import ListMessage from './messageTypes/ListMessage';
-import UnknownMessage from './messageTypes/UnknownMessage';
-import './MessageRow.css';
+  import React from 'react';
+  import TextMessage from './messageTypes/TextMessage';
+  import ImageMessage from './messageTypes/ImageMessage';
+  import DocumentMessage from './messageTypes/DocumentMessage';
+  import ListMessage from './messageTypes/ListMessage';
+  import AudioMessage from './messageTypes/AudioMessage';
+  import UnknownMessage from './messageTypes/UnknownMessage';
+  import './MessageRow.css';
+  import { CheckCheck, Check } from 'lucide-react';
 
-export default function MessageRow({ msg, onImageClick, onPdfClick }) {
-  const isOutgoing = msg.direction === 'outgoing';
-
-  let content = msg.content;
-  if (typeof content === 'string') {
-    try {
-      content = JSON.parse(content);
-    } catch {
-      // se não for JSON, continua como string
-    }
-  }
-
-  const renderInner = () => {
-    // 1) Áudio
-    if (
-      msg.type === 'audio' ||
-      content?.voice ||
-      content?.url?.toLowerCase().endsWith('.ogg')
-    ) {
-      return <AudioMessage url={content.url} />;
+  export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
+    let content = msg.content;
+    
+    // Parse do conteúdo JSON se necessário
+    if (typeof content === 'string') {
+      try {
+        content = JSON.parse(content);
+      } catch {
+        // se não for JSON válido, mantém como string
+      }
     }
 
-    // 2) Imagem
-    if (
-      msg.type === 'image' ||
-      (content?.url && /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(content.url))
-    ) {
-      return (
+    const isOutgoing = msg.direction === 'outgoing';
+    const rowClass = `message-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
+    const bubbleClass = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
+
+    const renderTimeAndStatus = () => (
+      <div className="message-time">
+        {new Date(msg.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+        {isOutgoing && (
+          <span className="message-status">
+            {msg.status === 'delivered' ? (
+              <CheckCheck size={14} className="check delivered" />
+            ) : msg.status === 'sent' ? (
+              <CheckCheck size={14} className="check sent" />
+            ) : (
+              <Check size={14} className="check pending" />
+            )}
+          </span>
+        )}
+      </div>
+    );
+
+    // Determina o tipo de conteúdo
+    const urlLower = String(content?.url || '').toLowerCase();
+    const isAudio = msg.type === 'audio' || content?.voice || /\.(ogg|mp3|wav)$/i.test(urlLower);
+    const isImage = msg.type === 'image' || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(content?.url || '');
+    const isPdf = (msg.type === 'document' || content?.filename) && content?.filename?.toLowerCase().endsWith('.pdf');
+    const isList = (content?.type === 'list' || content?.body?.type === 'list') && (content?.action || content?.body?.action);
+
+    let messageContent = null;
+
+    if (isAudio) {
+      messageContent = <AudioMessage url={content.url || msg.url || ''} />;
+    } else if (isImage) {
+      messageContent = (
         <ImageMessage
           url={content.url}
           caption={content.caption}
-          onClick={() => onImageClick(content.url)}
+          onClick={() => onImageClick?.(content.url)}
         />
       );
-    }
-
-    // 3) Documento PDF
-    if (
-      (msg.type === 'document' || content?.filename) &&
-      content.filename?.toLowerCase().endsWith('.pdf')
-    ) {
-      return (
+    } else if (isPdf) {
+      messageContent = (
         <DocumentMessage
           filename={content.filename}
           url={content.url}
           caption={content.caption}
-          onClick={() => onPdfClick(content.url)}
+          onClick={() => onPdfClick?.(content.url)}
         />
       );
+    } else if (isList) {
+      const listData = content?.type === 'list' ? content : content.body;
+      messageContent = <ListMessage listData={listData} />;
+    } else if (typeof content === 'string') {
+      messageContent = <TextMessage content={content} />;
+    } else {
+      messageContent = <UnknownMessage />;
     }
 
-    // 4) Lista WhatsApp-like
-    const listData =
-      content?.type === 'list'
-        ? content
-        : content?.body?.type === 'list'
-        ? content.body
-        : null;
-    if (listData?.type === 'list' && listData?.action?.sections?.length) {
-      return <ListMessage listData={listData} />;
-    }
-
-    // 5) Texto simples
-    if (typeof content === 'string') {
-      return <TextMessage content={content} />;
-    }
-
-    // 6) Fallback
-    return <UnknownMessage />;
-  };
-
-  return (
-    <div className={`message-row ${isOutgoing ? 'outgoing' : 'incoming'}`}>
-      <div className={`message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`}>
-        {renderInner()}
-        <span className="message-time">
-          {new Date(msg.timestamp).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-          {isOutgoing ? (
-            msg.status === 'delivered' ? (
-              <span className="check delivered">✔✔</span>
-            ) : msg.status === 'sent' ? (
-              <span className="check sent">✔✔</span>
-            ) : (
-              <span className="check pending">✔</span>
-            )
-          ) : (
-            <span className="check delivered">✔✔</span>
+    return (
+      <div className={rowClass}>
+        <div className={bubbleClass}>
+          <div className="message-content">
+            {messageContent}
+          </div>
+          {renderTimeAndStatus()}
+          
+          {/* Botão de resposta opcional */}
+          {onReply && (
+            <button
+              className="reply-btn"
+              onClick={() => onReply(msg)}
+              title="Responder mensagem"
+            >
+              ↵
+            </button>
           )}
-        </span>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

@@ -1,126 +1,162 @@
-// src/components/DetailsPanel.jsx
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../../services/supabaseClient'
-import './DetailsPanel.css'  // importe o CSS aqui
+// src/components
+import React, { useState, useEffect } from 'react';
+import './DetailsPanel.css';
 
-export default function DetailsPanel({ userIdSelecionado }) {
-  const [userInfo, setUserInfo] = useState(null)
-  const [loadingUser, setLoadingUser] = useState(false)
-  const [userError, setUserError] = useState(null)
+export default function DetailsPanel({ userIdSelecionado, conversaSelecionada }) {
+  const [activeTab, setActiveTab] = useState('informacoes');
+  const [comentario, setComentario] = useState('');
 
   useEffect(() => {
-    // Se não há userId selecionado, reseta tudo
-    if (!userIdSelecionado) {
-      setUserInfo(null)
-      setUserError(null)
-      setLoadingUser(false)
-      return
-    }
-
-    let isMounted = true
-    setLoadingUser(true)
-    setUserError(null)
-
-    supabase
-      .from('users')
-      .select('*')
-      .eq('id', userIdSelecionado)
-      .single()
-      .then(({ data, error, status }) => {
-        if (!isMounted) return
-        if (status === 406 || (status >= 400 && !data)) {
-          setUserInfo(null)
-          setUserError('Usuário não encontrado')
-        } else if (error) {
-          console.error('Erro ao buscar usuário:', error)
-          setUserInfo(null)
-          setUserError(error.message)
-        } else {
-          setUserInfo(data)
-          setUserError(null)
-        }
-        setLoadingUser(false)
-      })
-      .catch((err) => {
-        if (!isMounted) return
-        console.error('Falha inesperada ao buscar usuário:', err)
-        setUserInfo(null)
-        setUserError('Erro inesperado')
-        setLoadingUser(false)
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [userIdSelecionado])
+    setActiveTab('informacoes');
+    setComentario('');
+  }, [userIdSelecionado]);
 
   if (!userIdSelecionado) {
     return (
       <div className="details-panel-container">
         <p className="loading">Selecione um usuário</p>
       </div>
-    )
+    );
   }
+
+  if (!conversaSelecionada) {
+    return (
+      <div className="details-panel-container">
+        <p className="loading">Sem dados de conversa</p>
+      </div>
+    );
+  }
+
+  // ─── Aba “Informações” ───
+  const renderInformacoes = () => {
+    return (
+      <div className="informacoes-content">
+        {/* Card de Informações do Contato */}
+        <div className="card info-card">
+          <h4 className="card-title">Informações do Contato</h4>
+
+          {conversaSelecionada.name && (
+            <div className="info-row">
+              <div className="info-label">Nome</div>
+              <div className="info-value">{conversaSelecionada.name}</div>
+            </div>
+          )}
+
+          {conversaSelecionada.phone && (
+            <div className="info-row">
+              <div className="info-label">Telefone</div>
+              <div className="info-value">{conversaSelecionada.phone}</div>
+            </div>
+          )}
+
+          {conversaSelecionada.email && (
+            <div className="info-row">
+              <div className="info-label">E-mail</div>
+              <div className="info-value">{conversaSelecionada.email}</div>
+            </div>
+          )}
+
+          {conversaSelecionada.documento && (
+            <div className="info-row">
+              <div className="info-label">Documento</div>
+              <div className="info-value">{conversaSelecionada.documento}</div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Card de Comentários */}
+        <div className="card comentario-card">
+          <h4 className="card-title">Comentários</h4>
+          <textarea
+            className="comentario-textarea"
+            placeholder="Escreva um comentário sobre este contato..."
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+          />
+          <button
+            className="btn-enviar-comentario"
+            onClick={() => {
+              if (!comentario.trim()) return;
+              // Aqui, você pode gravar esse comentário onde quiser
+              alert('Comentário enviado: ' + comentario.trim());
+              setComentario('');
+            }}
+          >
+            Enviar comentário
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Aba “Histórico” ───
+  const renderHistorico = () => {
+    const history = conversaSelecionada.ticket_history || [];
+
+    if (history.length === 0) {
+      return (
+        <div className="historico-content">
+          <p className="loading">Nenhum histórico de tickets encontrado.</p>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="historico-list">
+        {history.map((ticket, idx) => {
+          const key = ticket.id ?? idx;
+          return (
+            <li key={key} className="historico-item">
+              <div className="card ticket-card">
+                <h5 className="ticket-title">{ticket.titulo}</h5>
+                <div className="ticket-field">
+                  <strong>Status:</strong> {ticket.status}
+                </div>
+                <div className="ticket-field">
+                  <strong>Data:</strong>{' '}
+                  {new Date(ticket.data).toLocaleDateString()}
+                </div>
+                {ticket.descricao && (
+                  <div className="ticket-field">
+                    <strong>Descrição:</strong> {ticket.descricao}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
 
   return (
     <div className="details-panel-container">
-      {/* === Status Tags (fixo/estático) === */}
-      <div className="details-tags">
-        <span className="tag">Qualificado</span>
-        <span className="tag">Site Cliente</span>
-        <span className="tag">Evento Conf</span>
+      <h3 className="panel-title">Dados do Contato</h3>
+
+      {/* Botões de Abas */}
+      <div className="tabs-container">
+        <button
+          className={`tab-button ${
+            activeTab === 'informacoes' ? 'active' : ''
+          }`}
+          onClick={() => setActiveTab('informacoes')}
+        >
+          Informações
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'historico' ? 'active' : ''}`}
+          onClick={() => setActiveTab('historico')}
+        >
+          Histórico
+        </button>
       </div>
 
-      {/* === Negócio Selecionado (exemplo estático) === */}
-      <div className="negocio-section">
-        <h3>Negócio Selecionado</h3>
-        <div className="negocio-card">
-          <p><strong>Comercial → Eventos</strong></p>
-          <p>R$ 0,00</p>
-          <div className="negocio-buttons">
-            <button className="btn">Ganho</button>
-            <button className="btn">Perdido</button>
-            <button className="btn">Aberto</button>
-          </div>
-        </div>
+      {/* Conteúdo da aba selecionada */}
+      <div className="tab-content">
+        {activeTab === 'informacoes' && renderInformacoes()}
+        {activeTab === 'historico' && renderHistorico()}
       </div>
-
-      {/* === Seção “Negócio” (colapsável, mas vazia) === */}
-      <div className="section">
-        <h4>Negócio</h4>
-        {/* Conteúdo, caso implemente depois */}
-      </div>
-
-      {/* === Seção “Notas” === */}
-      <div className="section">
-        <h4>Notas</h4>
-        <textarea
-          className="notes-textarea"
-          placeholder="Adicione notas sobre este cliente..."
-        />
-      </div>
-
-      {/* === Seção “Histórico” (vazia) === */}
-      <div className="section">
-        <h4>Histórico</h4>
-        {/* Caso queira exibir itens de histórico, coloque aqui */}
-      </div>
-
-      {/* === Seção de informações do usuário: loading / erro / dados === */}
-      {loadingUser && <p className="loading">Carregando dados do usuário...</p>}
-
-      {!loadingUser && userError && (
-        <p className="error">{userError}</p>
-      )}
-
-      {!loadingUser && !userError && userInfo && (
-        <div className="user-info">
-          <h4>Dados do Usuário</h4>
-          <pre className="user-info-pre">
-            {JSON.stringify(userInfo, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
-  )
+  );
 }

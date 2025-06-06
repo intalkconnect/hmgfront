@@ -8,9 +8,9 @@
   padding: 8px 12px;
 }
 
-.audio-container audio {
-  flex: 1;
-  outline: none;
-  border: none;
-  width: 100%;
+audio {
+  width: 100% !important;
+  min-width: 300px;
+  display: block;
 }
+
