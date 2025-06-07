@@ -1,17 +1,16 @@
-// src/components/Sidebar.jsx
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../../services/supabaseClient';
-import './Sidebar.css';
-import { File, Mic } from 'lucide-react';
-import useConversationsStore from '../../store/useConversationsStore';
+import React, { useEffect, useState } from 'react'
+import { supabase } from '../../services/supabaseClient'
+import './Sidebar.css'
+import { File, Mic } from 'lucide-react'
+import useConversationsStore from '../../store/useConversationsStore'
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const conversationsMap = useConversationsStore((state) => state.conversations);
-  const unreadCountMap = useConversationsStore((state) => state.unreadCount);
+  const conversationsMap = useConversationsStore((state) => state.conversations)
+  const lastReadMap = useConversationsStore((state) => state.lastRead)
+  const conversations = Object.values(conversationsMap)
 
-  const conversations = Object.values(conversationsMap);
-  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
-  const [filaCount, setFilaCount] = useState(0);
+  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
+  const [filaCount, setFilaCount] = useState(0)
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
@@ -19,40 +18,46 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
         .from('settings')
         .select('value')
         .eq('key', 'distribuicao_tickets')
-        .single();
+        .single()
 
       if (data?.value) {
-        setDistribuicaoTickets(data.value);
+        setDistribuicaoTickets(data.value)
       }
 
-      const filaAtivos = conversations.filter((conv) => !conv.atendido);
-      setFilaCount(filaAtivos.length);
-    };
+      const filaAtivos = conversations.filter((conv) => !conv.atendido)
+      setFilaCount(filaAtivos.length)
+    }
 
-    fetchSettingsAndFila();
-  }, [conversations, unreadCountMap]); // <- importante
+    fetchSettingsAndFila()
+  }, [conversations])
 
   const getSnippet = (rawContent) => {
     try {
-      const parsed = JSON.parse(rawContent);
-      const url = parsed.url?.toLowerCase();
+      const parsed = JSON.parse(rawContent)
 
-      if (url) {
-        if (url.match(/\.(ogg|mp3|wav)$/)) return <><Mic size={18} /> Áudio</>;
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/)) return <><File size={18} /> Imagem</>;
-        if (url.endsWith('.pdf')) return <><File size={18} /> PDF</>;
-        return <><File size={18} /> Arquivo</>;
+      if (parsed.url) {
+        const url = parsed.url.toLowerCase()
+        if (url.match(/\.(ogg|mp3|wav)$/)) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>
+        }
+        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/)) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>
+        }
+        if (url.endsWith('.pdf')) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />PDF</span>
+        }
+        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>
       }
 
-      if (parsed.type === 'list' || parsed.body?.type === 'list') return '🔘 Lista';
-      if (parsed.text) return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text;
-      if (parsed.caption) return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption;
+      if (parsed.type === 'list' || parsed.body?.type === 'list') return '🔘 Lista'
+      if (parsed.text) return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text
+      if (parsed.caption) return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption
 
-      return '[mensagem]';
-    } catch {
-      return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent;
+      return '[mensagem]'
+    } catch (e) {
+      return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent
     }
-  };
+  }
 
   return (
     <div className="sidebar-container">
@@ -77,14 +82,17 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
 
       <ul className="chat-list">
         {conversations.map((conv) => {
-          const fullId = conv.user_id;
-          const nomeCliente = conv.name || fullId;
-          const isWhatsapp = conv.channel === 'whatsapp';
-          const queueName = conv.fila || 'Orçamento';
-          const ticket = conv.ticket_number || '000000';
-          const snippet = getSnippet(conv.content);
-          const isSelected = fullId === userIdSelecionado;
-          const unread = unreadCountMap[fullId] || 0;
+          const fullId = conv.user_id
+          const nomeCliente = conv.name || fullId
+          const isWhatsapp = conv.channel === 'whatsapp'
+          const queueName = conv.fila || 'Orçamento'
+          const ticket = conv.ticket_number || '000000'
+          const snippet = getSnippet(conv.content)
+          const isSelected = fullId === userIdSelecionado
+
+          const lastMsg = new Date(conv.timestamp || 0).getTime()
+          const lastRead = new Date(lastReadMap[fullId] || 0).getTime()
+          const hasUnread = lastMsg > lastRead && !isSelected
 
           return (
             <li
@@ -105,11 +113,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
               <div className="chat-details">
                 <div className="chat-title">
                   {nomeCliente}
-                  {unread > 0 && !isSelected && (
-                    <span className="unread-count">
-                      {unread > 9 ? '9+' : unread}
-                    </span>
-                  )}
+                  {hasUnread && <span className="unread-count">●</span>}
                 </div>
                 <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
@@ -128,9 +132,9 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
                   : '--:--'}
               </div>
             </li>
-          );
+          )
         })}
       </ul>
     </div>
-  );
+  )
 }
