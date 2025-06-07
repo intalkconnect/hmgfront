@@ -182,7 +182,7 @@ if (isLoading) {
   // 8) Janela de chat com lista de mensagens
   return (
     <div className="chat-window">
-      <ChatHeader cliente={conversaSelecionada} />
+      <ChatHeader userIdSelecionado={userIdSelecionado} />
 
       <div className="messages-list">
         <MessageList
