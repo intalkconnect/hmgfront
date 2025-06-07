@@ -1,46 +1,33 @@
+// src/components/Sidebar.jsx
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient'
 import './Sidebar.css'
-import { File, Mic, Image } from 'lucide-react';
+import { File, Mic } from 'lucide-react'
+import useConversationsStore from '../../store/useConversationsStore'
 
-export default function Sidebar({ conversations, onSelectUser, userIdSelecionado  }) {
-  const [clientesMap, setClientesMap] = useState({})
-  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
-  const [filaCount, setFilaCount] = useState(0);
-
-  useEffect(() => {
-    const map = {}
-    conversations.forEach((conv) => {
-      const fullId = conv.user_id.includes('@')
-        ? conv.user_id
-        : `${conv.user_id}@w.msgcli.net`
-      map[fullId] = {
-        name: conv.name || fullId,
-        channel: conv.channel,
-        ticket: conv.ticket_number,
-        queueName: conv.fila
-      }
-    })
-    setClientesMap(map)
-  }, [conversations])
+export default function Sidebar({ onSelectUser, userIdSelecionado }) {
+  const conversationsMap = useConversationsStore((state) => state.conversations)
+  const conversations = Object.values(conversationsMap)
+  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
+  const [filaCount, setFilaCount] = useState(0)
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
       const { data: settings } = await supabase
         .from('settings')
         .select('distribuicao_tickets')
-        .single();
+        .single()
 
       if (settings?.distribuicao_tickets) {
-        setDistribuicaoTickets(settings.distribuicao_tickets);
+        setDistribuicaoTickets(settings.distribuicao_tickets)
       }
 
-      const filaAtivos = conversations.filter(conv => !conv.atendido);
-      setFilaCount(filaAtivos.length);
-    };
+      const filaAtivos = conversations.filter((conv) => !conv.atendido)
+      setFilaCount(filaAtivos.length)
+    }
 
-    fetchSettingsAndFila();
-  }, [conversations]);
+    fetchSettingsAndFila()
+  }, [conversations])
 
   const getSnippet = (rawContent) => {
     try {
@@ -49,7 +36,7 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
       if (parsed.url) {
         const url = parsed.url.toLowerCase()
         if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic  size={18} />Áudio</span>
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>
         }
         if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
           return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>
@@ -78,7 +65,6 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
       return plain.length > 40 ? plain.slice(0, 37) + '...' : plain
     }
   }
-  console.log(distribuicaoTickets)
 
   return (
     <div className="sidebar-container">
@@ -91,46 +77,38 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
       </div>
 
       <div className="fila-info">
-  {distribuicaoTickets !== 'manual' ? (
-    <>
-      <span className="fila-count">
-        {filaCount > 0
-          ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
-          : 'Não há clientes aguardando'}
-      </span>
-      <button
-        className="botao-proximo"
-        onClick={() => console.log('Puxar próximo cliente')}
-        disabled={filaCount === 0}
-      >
-        Próximo
-      </button>
-    </>
-  ) : null}
-</div>
-
+        {distribuicaoTickets !== 'manual' ? (
+          <>
+            <span className="fila-count">
+              {filaCount > 0
+                ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
+                : 'Não há clientes aguardando'}
+            </span>
+            <button
+              className="botao-proximo"
+              onClick={() => console.log('Puxar próximo cliente')}
+              disabled={filaCount === 0}
+            >
+              Próximo
+            </button>
+          </>
+        ) : null}
+      </div>
 
       <ul className="chat-list">
         {conversations.map((conv) => {
-          const fullId = conv.user_id.includes('@')
-            ? conv.user_id
-            : `${conv.user_id}@w.msgcli.net`
-
-          const cliente = clientesMap[fullId] || {}
-          const nomeCliente = cliente.name || conv.user_id
-          const isWhatsapp = (cliente.channel) === 'whatsapp'
-          const queueName = cliente.queueName
-          const ticket = cliente.ticket
-
+          const fullId = conv.user_id
+          const nomeCliente = conv.name || fullId
+          const isWhatsapp = conv.channel === 'whatsapp'
+          const queueName = conv.fila || 'Orçamento'
+          const ticket = conv.ticket_number || '000000'
           const snippet = getSnippet(conv.content)
-          const normalizedSelected = userIdSelecionado && userIdSelecionado.includes('@')
-            ? userIdSelecionado
-            : `${userIdSelecionado}@w.msgcli.net`
+          const isSelected = fullId === userIdSelecionado
 
           return (
             <li
-              key={conv.user_id}
-              className={`chat-list-item ${normalizedSelected === fullId ? 'active' : ''}`}
+              key={fullId}
+              className={`chat-list-item ${isSelected ? 'active' : ''}`}
               onClick={() => onSelectUser(fullId)}
             >
               <div className="chat-avatar">
@@ -149,10 +127,10 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
                 <div className="chat-meta">
                   <br />
                   <span className="chat-ticket">
-                    #{ticket || '000000'}
+                    #{ticket}
                   </span>
                   <span className="chat-queue">
-                    Fila:{queueName || 'Orçamento'}
+                    Fila:{queueName}
                   </span>
                 </div>
               </div>
