@@ -6,10 +6,10 @@ import { io } from 'socket.io-client'
 // import { useChatStore } from '@/stores/chatStore'
 // const store = useChatStore()
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
 
 export const socket = io(SOCKET_URL, {
-  autoConnect: false,
+  autoConnect: true,
   reconnectionAttempts: 3
 })
 
