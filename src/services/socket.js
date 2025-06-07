@@ -29,10 +29,19 @@ export function connectSocket(userId) {
       }
     })
 
-    socket.on('new_message', (data) => {
-      console.log('[socket] Nova mensagem recebida:', data)
-      // Exemplo: store.addMessage(data)
-    })
+socket.on('new_message', (msg) => {
+  const { user_id, content, timestamp, channel, name, ticket_number, fila } = msg
+
+  useConversationsStore.getState().setConversation(user_id, {
+    user_id,
+    name,
+    channel,
+    fila,
+    ticket_number,
+    last_message: content,
+    timestamp,
+  })
+})
 
     socket.on('bot_response', (data) => {
       console.log('[socket] Resposta do bot:', data)
