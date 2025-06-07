@@ -13,14 +13,16 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('distribuicao_tickets')
-        .single()
+const { data, error } = await supabase
+  .from('settings')
+  .select('value')
+  .eq('key', 'distribuicao_tickets')
+  .single();
 
-      if (settings?.distribuicao_tickets) {
-        setDistribuicaoTickets(settings.distribuicao_tickets)
-      }
+
+if (data?.value) {
+  setDistribuicaoTickets(data.value);
+}
 
       const filaAtivos = conversations.filter((conv) => !conv.atendido)
       setFilaCount(filaAtivos.length)
