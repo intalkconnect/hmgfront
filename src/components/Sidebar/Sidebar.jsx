@@ -79,7 +79,7 @@ if (data?.value) {
       </div>
 
       <div className="fila-info">
-        {distribuicaoTickets !== 'manual' ? (
+        {distribuicaoTickets == 'manual' ? (
           <>
             <span className="fila-count">
               {filaCount > 0
@@ -94,7 +94,7 @@ if (data?.value) {
               Próximo
             </button>
           </>
-        ) : null}
+        ) : 'Auto'}
       </div>
 
       <ul className="chat-list">
