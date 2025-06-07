@@ -30,9 +30,10 @@ export function connectSocket(userId) {
     })
 
 socket.on('new_message', (msg) => {
-  const { user_id, content, timestamp, channel, name, ticket_number, fila } = msg
+  const { user_id, content, timestamp, channel, name, ticket_number, fila } = msg;
+  const store = useConversationsStore.getState();
 
-  useConversationsStore.getState().setConversation(user_id, {
+  store.setConversation(user_id, {
     user_id,
     name,
     channel,
@@ -40,8 +41,13 @@ socket.on('new_message', (msg) => {
     ticket_number,
     last_message: content,
     timestamp,
-  })
-})
+  });
+
+  if (userIdSelecionadoRef.current !== user_id) {
+    store.incrementUnread(user_id);
+  }
+});
+
 
     socket.on('bot_response', (data) => {
       console.log('[socket] Resposta do bot:', data)
