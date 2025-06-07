@@ -42,6 +42,8 @@ export default function App() {
     };
   }, [setConversation]);
 
+const setLastRead = useConversationsStore((state) => state.setLastRead)
+  
   async function fetchConversations() {
     const { data, error } = await supabase.rpc('listar_conversas');
     if (error) {
@@ -69,6 +71,8 @@ export default function App() {
           onSelectUser={async (uid) => {
             const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`;
             setUserIdSelecionado(fullId);
+
+            setLastRead(fullId, new Date().toISOString())
 
             const { data, error } = await supabase
               .from('messages')
