@@ -8,6 +8,7 @@ import useConversationsStore from '../../store/useConversationsStore'
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const conversationsMap = useConversationsStore((state) => state.conversations)
   const lastReadMap = useConversationsStore((state) => state.lastRead)
+  const unreadCountMap = useConversationsStore((state) => state.unreadCount)
   const conversations = Object.values(conversationsMap)
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
   const [filaCount, setFilaCount] = useState(0)
@@ -29,7 +30,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     }
 
     fetchSettingsAndFila()
-  }, [conversations, lastReadMap])
+  }, [conversations, lastReadMap, unreadCountMap])
 
   const getSnippet = (rawContent) => {
     try {
@@ -107,8 +108,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
           const snippet = getSnippet(conv.content)
           const isSelected = fullId === userIdSelecionado
 
-          const lastReadTime = lastReadMap[fullId]
-          const hasUnread = !isSelected && (!lastReadTime || new Date(conv.timestamp) > new Date(lastReadTime))
+          const unread = unreadCountMap[fullId] || 0
 
           return (
             <li
@@ -129,7 +129,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
               <div className="chat-details">
                 <div className="chat-title">
                   {nomeCliente}
-                  {hasUnread && <span className="unread-dot" />}
+                  {unread > 0 && <span className="unread-count">{unread > 9 ? '9+' : unread}</span>}
                 </div>
                 <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
