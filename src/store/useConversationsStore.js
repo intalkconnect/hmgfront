@@ -3,6 +3,7 @@ import { create } from 'zustand'
 
 const useConversationsStore = create((set) => ({
   conversations: {},
+  lastRead: {},
 
   setConversation: (userId, data) =>
     set((state) => ({
@@ -15,7 +16,15 @@ const useConversationsStore = create((set) => ({
       },
     })),
 
-  getConversation: (userId) => get().conversations[userId],
+  setLastRead: (userId, timestamp) =>
+    set((state) => ({
+      lastRead: {
+        ...state.lastRead,
+        [userId]: timestamp,
+      },
+    })),
+
+  clearConversations: () => set({ conversations: {}, lastRead: {} }),
 }))
 
 export default useConversationsStore
