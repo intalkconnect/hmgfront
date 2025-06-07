@@ -29,7 +29,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     }
 
     fetchSettingsAndFila()
-  }, [conversations])
+  }, [conversations, lastReadMap])
 
   const getSnippet = (rawContent) => {
     try {
