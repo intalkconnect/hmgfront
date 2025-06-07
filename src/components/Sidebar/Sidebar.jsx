@@ -7,22 +7,22 @@ import useConversationsStore from '../../store/useConversationsStore'
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const conversationsMap = useConversationsStore((state) => state.conversations)
+  const lastReadMap = useConversationsStore((state) => state.lastRead)
   const conversations = Object.values(conversationsMap)
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
   const [filaCount, setFilaCount] = useState(0)
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-const { data, error } = await supabase
-  .from('settings')
-  .select('value')
-  .eq('key', 'distribuicao_tickets')
-  .single();
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'distribuicao_tickets')
+        .single()
 
-
-if (data?.value) {
-  setDistribuicaoTickets(data.value);
-}
+      if (data?.value) {
+        setDistribuicaoTickets(data.value)
+      }
 
       const filaAtivos = conversations.filter((conv) => !conv.atendido)
       setFilaCount(filaAtivos.length)
@@ -107,6 +107,9 @@ if (data?.value) {
           const snippet = getSnippet(conv.content)
           const isSelected = fullId === userIdSelecionado
 
+          const lastReadTime = lastReadMap[fullId]
+          const hasUnread = !isSelected && (!lastReadTime || new Date(conv.timestamp) > new Date(lastReadTime))
+
           return (
             <li
               key={fullId}
@@ -124,7 +127,10 @@ if (data?.value) {
               </div>
 
               <div className="chat-details">
-                <div className="chat-title">{nomeCliente}</div>
+                <div className="chat-title">
+                  {nomeCliente}
+                  {hasUnread && <span className="unread-dot" />}
+                </div>
                 <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
                   <br />
