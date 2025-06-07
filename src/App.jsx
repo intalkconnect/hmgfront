@@ -11,6 +11,7 @@ import './App.css';
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const setConversation = useConversationsStore((state) => state.setConversation);
+  const { setConversation, incrementUnread } = useConversationsStore.getState()
   const conversations = useConversationsStore((state) => state.conversations);
 
   useEffect(() => {
@@ -22,16 +23,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleNewMessage = (nova) => {
-      console.log('[App] Recebeu new_message:', nova);
+const handleNewMessage = (nova) => {
+  setConversation(nova.user_id, {
+    ...nova,
+    ticket_number: nova.ticket_number || nova.ticket,
+  })
 
-      setConversation(nova.user_id, {
-        ...nova,
-        ticket_number: nova.ticket_number || nova.ticket,
-      });
+  // Sinaliza como não lida se não for a conversa atual
+  if (nova.user_id !== userIdSelecionado) {
+    incrementUnread(nova.user_id)
+  }
 
-      socket.emit('new_message', nova);
-    };
+  socket.emit('new_message', nova)
+}
 
     console.log('[App] Inscrevendo em socket.on("new_message")');
     socket.on('new_message', handleNewMessage);
