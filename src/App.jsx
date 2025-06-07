@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './services/supabaseClient';
 import { socket, connectSocket } from './services/socket';
@@ -9,12 +10,18 @@ import './App.css';
 
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
-  const setConversation = useConversationsStore((state) => state.setConversation);
-  const setLastRead = useConversationsStore((state) => state.setLastRead);
-  const incrementUnread = useConversationsStore((state) => state.incrementUnread);
-  const conversations = useConversationsStore((state) => state.conversations);
+
+  const setConversation = useConversationsStore((s) => s.setConversation);
+  const setLastRead = useConversationsStore((s) => s.setLastRead);
+  const setUserIdSelecionadoRef = useConversationsStore((s) => s.setUserIdSelecionadoRef);
+  const conversations = useConversationsStore((s) => s.conversations);
 
   const userIdSelecionadoRef = useRef(null);
+
+  // Vincula a ref ao Zustand para uso global (ex: socket.js)
+  useEffect(() => {
+    setUserIdSelecionadoRef(userIdSelecionadoRef);
+  }, []);
 
   useEffect(() => {
     connectSocket();
@@ -23,27 +30,6 @@ export default function App() {
   useEffect(() => {
     fetchConversations();
   }, []);
-
-  useEffect(() => {
-    const handleNewMessage = (nova) => {
-      console.log('[App] Recebeu new_message:', nova);
-
-      setConversation(nova.user_id, {
-        ...nova,
-        ticket_number: nova.ticket_number || nova.ticket,
-        timestamp: nova.timestamp,
-        content: nova.content
-      });
-
-      // Se a conversa recebida não está aberta → conta como não lida
-      if (userIdSelecionadoRef.current !== nova.user_id) {
-        incrementUnread(nova.user_id);
-      }
-
-      socket.emit('new_message', nova);
-    };
-
-  }, [setConversation, incrementUnread]);
 
   async function fetchConversations() {
     const { data, error } = await supabase.rpc('listar_conversas');
@@ -75,7 +61,7 @@ export default function App() {
 
             setLastRead(fullId, new Date().toISOString());
 
-            const { data, error } = await supabase
+            const { error } = await supabase
               .from('messages')
               .select('*')
               .eq('user_id', fullId)
