@@ -7,7 +7,6 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
   const [clientesMap, setClientesMap] = useState({})
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
-  const [unreadMap, setUnreadMap] = useState({});
 
   useEffect(() => {
     const map = {}
@@ -42,31 +41,6 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
 
     fetchSettingsAndFila();
   }, [conversations]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('mensagens')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        const msg = payload.new;
-
-        if (msg.direction === 'incoming' && msg.user_id !== userIdSelecionado) {
-          setUnreadMap((prev) => ({
-            ...prev,
-            [msg.user_id]: (prev[msg.user_id] || 0) + 1,
-          }));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userIdSelecionado]);
-
-  const handleSelectUser = (id) => {
-    onSelectUser(id);
-    setUnreadMap(prev => ({ ...prev, [id]: 0 }));
-  };
 
   const getSnippet = (rawContent) => {
     try {
@@ -104,6 +78,7 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
       return plain.length > 40 ? plain.slice(0, 37) + '...' : plain
     }
   }
+  console.log(distribuicaoTickets)
 
   return (
     <div className="sidebar-container">
@@ -116,23 +91,24 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
       </div>
 
       <div className="fila-info">
-        {distribuicaoTickets !== 'manual' ? (
-          <>
-            <span className="fila-count">
-              {filaCount > 0
-                ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
-                : 'Não há clientes aguardando'}
-            </span>
-            <button
-              className="botao-proximo"
-              onClick={() => console.log('Puxar próximo cliente')}
-              disabled={filaCount === 0}
-            >
-              Próximo
-            </button>
-          </>
-        ) : null}
-      </div>
+  {distribuicaoTickets !== 'manual' ? (
+    <>
+      <span className="fila-count">
+        {filaCount > 0
+          ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
+          : 'Não há clientes aguardando'}
+      </span>
+      <button
+        className="botao-proximo"
+        onClick={() => console.log('Puxar próximo cliente')}
+        disabled={filaCount === 0}
+      >
+        Próximo
+      </button>
+    </>
+  ) : null}
+</div>
+
 
       <ul className="chat-list">
         {conversations.map((conv) => {
@@ -155,7 +131,7 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
             <li
               key={conv.user_id}
               className={`chat-list-item ${normalizedSelected === fullId ? 'active' : ''}`}
-              onClick={() => handleSelectUser(fullId)}
+              onClick={() => onSelectUser(fullId)}
             >
               <div className="chat-avatar">
                 {isWhatsapp && (
@@ -180,10 +156,6 @@ export default function Sidebar({ conversations, onSelectUser, userIdSelecionado
                   </span>
                 </div>
               </div>
-
-              {unreadMap[fullId] > 0 && fullId !== normalizedSelected && (
-                <div className="unread-dot" title={`${unreadMap[fullId]} nova(s)`}></div>
-              )}
 
               <div className="chat-time">
                 {conv.timestamp
