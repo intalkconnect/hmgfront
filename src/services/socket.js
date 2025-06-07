@@ -1,16 +1,12 @@
 // src/socket.js
 import { io } from 'socket.io-client'
 import useConversationsStore from '../store/useConversationsStore'
-// Altere conforme sua lógica de estado ou store
-// Exemplo fictício:
-// import { useChatStore } from '@/stores/chatStore'
-// const store = useChatStore()
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
 
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
-  reconnectionAttempts: 3
+  reconnectionAttempts: 3,
 })
 
 // Conecta e registra listeners
@@ -22,41 +18,55 @@ export function connectSocket(userId) {
     socket.on('connect', () => {
       console.log('[socket] Conectado, id =', socket.id)
 
-      // Entra na sala do usuário após conectar
       if (userId) {
         socket.emit('join_room', userId)
         console.log(`[socket] Entrando na sala chat-${userId}`)
       }
     })
 
-socket.on('new_message', (msg) => {
-  const { user_id, content, timestamp, channel, name, ticket_number, fila } = msg;
-  const store = useConversationsStore.getState();
+    // Listener de nova mensagem
+    socket.on('new_message', (msg) => {
+      const {
+        user_id,
+        content,
+        timestamp,
+        channel,
+        name,
+        ticket_number,
+        fila,
+      } = msg
 
-  store.setConversation(user_id, {
-    user_id,
-    name,
-    channel,
-    fila,
-    ticket_number,
-    last_message: content,
-    timestamp,
-  });
+      const {
+        setConversation,
+        incrementUnread,
+        lastRead,
+      } = useConversationsStore.getState()
 
-  if (userIdSelecionadoRef.current !== user_id) {
-    store.incrementUnread(user_id);
-  }
-});
+      // Atualiza dados da conversa
+      setConversation(user_id, {
+        user_id,
+        name,
+        channel,
+        fila,
+        ticket_number,
+        content,
+        timestamp,
+      })
 
+      // Verifica se é uma nova não lida
+      const lastSeen = lastRead[user_id]
+      const msgTime = new Date(timestamp).getTime()
+      const lastSeenTime = lastSeen ? new Date(lastSeen).getTime() : 0
 
+      if (msgTime > lastSeenTime) {
+        incrementUnread(user_id)
+      }
+    })
+
+    // Listener opcional de resposta de bot
     socket.on('bot_response', (data) => {
       console.log('[socket] Resposta do bot:', data)
-      // Exemplo: store.addMessage({
-      //   direction: 'outgoing',
-      //   user_id: data.user_id,
-      //   content: data.response?.content || '[resposta]',
-      //   timestamp: new Date().toISOString()
-      // })
+      // Use conforme necessário
     })
   }
 }
@@ -76,6 +86,7 @@ export function disconnectSocket(userId) {
 socket.on('connect_error', (err) => {
   console.error('[socket] Erro ao conectar:', err.message)
 })
+
 socket.on('disconnect', (reason) => {
   console.log('[socket] Desconectado:', reason)
 })
