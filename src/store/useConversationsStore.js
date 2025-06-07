@@ -37,3 +37,5 @@ const useConversationsStore = create((set) => ({
       },
     })),
 }))
+
+export default useConversationsStore
