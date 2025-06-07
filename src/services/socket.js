@@ -1,81 +1,66 @@
-// src/services/socket.js
+// src/socket.js
 import { io } from 'socket.io-client'
-import useConversationsStore from '../store/useConversationsStore'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
+// Altere conforme sua lógica de estado ou store
+// Exemplo fictício:
+// import { useChatStore } from '@/stores/chatStore'
+// const store = useChatStore()
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
 
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
-  reconnectionAttempts: 3,
-});
+  reconnectionAttempts: 3
+})
 
-export function connectSocket() {
+// Conecta e registra listeners
+export function connectSocket(userId) {
   if (!socket.connected) {
-    console.log('[socket] Conectando em', SOCKET_URL);
-    socket.connect();
+    console.log('[socket] Conectando ao servidor em', SOCKET_URL)
+    socket.connect()
 
     socket.on('connect', () => {
-      console.log('[socket] Conectado:', socket.id);
-    });
+      console.log('[socket] Conectado, id =', socket.id)
 
-    socket.on('new_message', (msg) => {
-      const {
-        user_id,
-        content,
-        timestamp,
-        channel,
-        name,
-        ticket_number,
-        fila,
-      } = msg;
-
-      const {
-        setConversation,
-        incrementUnread,
-        lastRead,
-        userIdSelecionadoRef,
-      } = useConversationsStore.getState();
-
-      setConversation(user_id, {
-        user_id,
-        name,
-        channel,
-        fila,
-        ticket_number,
-        content,
-        timestamp,
-      });
-
-      const isOpened = userIdSelecionadoRef?.current === user_id;
-      const lastSeen = lastRead[user_id];
-      const msgTime = new Date(timestamp).getTime();
-      const seenTime = lastSeen ? new Date(lastSeen).getTime() : 0;
-
-      if (!isOpened && msgTime > seenTime) {
-        incrementUnread(user_id);
+      // Entra na sala do usuário após conectar
+      if (userId) {
+        socket.emit('join_room', userId)
+        console.log(`[socket] Entrando na sala chat-${userId}`)
       }
-    });
+    })
+
+    socket.on('new_message', (data) => {
+      console.log('[socket] Nova mensagem recebida:', data)
+      // Exemplo: store.addMessage(data)
+    })
 
     socket.on('bot_response', (data) => {
-      console.log('[socket] Resposta do bot:', data);
-    });
+      console.log('[socket] Resposta do bot:', data)
+      // Exemplo: store.addMessage({
+      //   direction: 'outgoing',
+      //   user_id: data.user_id,
+      //   content: data.response?.content || '[resposta]',
+      //   timestamp: new Date().toISOString()
+      // })
+    })
   }
 }
 
+// Desconecta e limpa
 export function disconnectSocket(userId) {
   if (socket.connected) {
     if (userId) {
-      socket.emit('leave_room', userId);
-      console.log(`[socket] Saindo da sala ${userId}`);
+      socket.emit('leave_room', userId)
+      console.log(`[socket] Saindo da sala chat-${userId}`)
     }
-    socket.disconnect();
+    socket.disconnect()
   }
 }
 
+// Logs de debug padrão
 socket.on('connect_error', (err) => {
-  console.error('[socket] Erro ao conectar:', err.message);
-});
-
+  console.error('[socket] Erro ao conectar:', err.message)
+})
 socket.on('disconnect', (reason) => {
-  console.log('[socket] Desconectado:', reason);
-});
+  console.log('[socket] Desconectado:', reason)
+})
