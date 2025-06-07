@@ -58,33 +58,46 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
 
   let messageContent = null;
 
-  if (isAudio) {
-    messageContent = <AudioMessage url={content.url || msg.url || ''} />;
-  } else if (isImage) {
-    messageContent = (
-      <ImageMessage
-        url={content.url}
-        caption={content.caption}
-        onClick={() => onImageClick?.(content.url)}
-      />
-    );
-  } else if (isPdf) {
-    messageContent = (
-      <DocumentMessage
-        filename={content.filename}
-        url={content.url}
-        caption={content.caption}
-        onClick={() => onPdfClick?.(content.url)}
-      />
-    );
-  } else if (isList) {
-    const listData = content?.type === 'list' ? content : content.body;
-    messageContent = <ListMessage listData={listData} />;
-  } else if (typeof content === 'string') {
-    messageContent = <TextMessage content={content} />;
-  } else {
-    messageContent = <UnknownMessage />;
-  }
+  // Se o conteúdo for um número ou booleano (por ex: "123456" ou true), trata como texto
+if (typeof content === 'number' || typeof content === 'boolean') {
+  messageContent = <TextMessage content={String(content)} />;
+
+} else if (isAudio) {
+  messageContent = <AudioMessage url={content.url || msg.url || ''} />;
+
+} else if (isImage) {
+  messageContent = (
+    <ImageMessage
+      url={content.url}
+      caption={content.caption}
+      onClick={() => onImageClick?.(content.url)}
+    />
+  );
+
+} else if (isPdf) {
+  messageContent = (
+    <DocumentMessage
+      filename={content.filename}
+      url={content.url}
+      caption={content.caption}
+      onClick={() => onPdfClick?.(content.url)}
+    />
+  );
+
+} else if (isList) {
+  const listData = content?.type === 'list' ? content : content.body;
+  messageContent = <ListMessage listData={listData} />;
+
+} else if (typeof content === 'string') {
+  messageContent = <TextMessage content={content} />;
+
+} else if (typeof content === 'object' && (content?.text || content?.caption)) {
+  messageContent = <TextMessage content={content.text || content.caption} />;
+
+} else {
+  messageContent = <UnknownMessage />;
+}
+
 
   const handleCopy = () => {
     if (typeof content === 'string') {
