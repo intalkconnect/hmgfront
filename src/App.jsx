@@ -1,5 +1,4 @@
-// src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './services/supabaseClient';
 import { socket, connectSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -11,7 +10,11 @@ import './App.css';
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const setConversation = useConversationsStore((state) => state.setConversation);
+  const setLastRead = useConversationsStore((state) => state.setLastRead);
+  const incrementUnread = useConversationsStore((state) => state.incrementUnread);
   const conversations = useConversationsStore((state) => state.conversations);
+
+  const userIdSelecionadoRef = useRef(null);
 
   useEffect(() => {
     connectSocket();
@@ -28,28 +31,30 @@ export default function App() {
       setConversation(nova.user_id, {
         ...nova,
         ticket_number: nova.ticket_number || nova.ticket,
+        timestamp: nova.timestamp,
+        content: nova.content
       });
+
+      // Se a conversa recebida não está aberta → conta como não lida
+      if (userIdSelecionadoRef.current !== nova.user_id) {
+        incrementUnread(nova.user_id);
+      }
 
       socket.emit('new_message', nova);
     };
 
-    console.log('[App] Inscrevendo em socket.on("new_message")');
     socket.on('new_message', handleNewMessage);
 
     return () => {
-      console.log('[App] Removendo listener de new_message');
       socket.off('new_message', handleNewMessage);
     };
-  }, [setConversation]);
+  }, [setConversation, incrementUnread]);
 
-const setLastRead = useConversationsStore((state) => state.setLastRead)
-  
   async function fetchConversations() {
     const { data, error } = await supabase.rpc('listar_conversas');
     if (error) {
       console.error('Erro ao buscar conversas:', error);
     } else {
-      console.log('[DEBUG] Conversas retornadas:', data);
       data.forEach((conv) => {
         setConversation(conv.user_id, conv);
       });
@@ -71,8 +76,9 @@ const setLastRead = useConversationsStore((state) => state.setLastRead)
           onSelectUser={async (uid) => {
             const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`;
             setUserIdSelecionado(fullId);
+            userIdSelecionadoRef.current = fullId;
 
-            setLastRead(fullId, new Date().toISOString())
+            setLastRead(fullId, new Date().toISOString());
 
             const { data, error } = await supabase
               .from('messages')
