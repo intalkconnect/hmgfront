@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../services/supabaseClient'
 import './Sidebar.css'
@@ -8,13 +9,12 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const conversationsMap = useConversationsStore((state) => state.conversations)
   const lastReadMap = useConversationsStore((state) => state.lastRead)
   const conversations = Object.values(conversationsMap)
-
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
   const [filaCount, setFilaCount] = useState(0)
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('settings')
         .select('value')
         .eq('key', 'distribuicao_tickets')
@@ -29,7 +29,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     }
 
     fetchSettingsAndFila()
-  }, [conversations])
+  }, [conversations, lastReadMap])
 
   const getSnippet = (rawContent) => {
     try {
@@ -37,47 +37,64 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
 
       if (parsed.url) {
         const url = parsed.url.toLowerCase()
-        if (url.match(/\.(ogg|mp3|wav)$/)) {
+        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
           return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>
         }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/)) {
+        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
           return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>
         }
         if (url.endsWith('.pdf')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />PDF</span>
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>
         }
         return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>
       }
 
-      if (parsed.type === 'list' || parsed.body?.type === 'list') return '🔘 Lista'
-      if (parsed.text) return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text
-      if (parsed.caption) return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption
+      if (parsed.type === 'list' || parsed.body?.type === 'list') {
+        return '🔘 Lista'
+      }
+
+      if (parsed.text) {
+        return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text
+      }
+
+      if (parsed.caption) {
+        return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption
+      }
 
       return '[mensagem]'
     } catch (e) {
-      return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent
+      const plain = rawContent || ''
+      return plain.length > 40 ? plain.slice(0, 37) + '...' : plain
     }
   }
 
   return (
     <div className="sidebar-container">
       <div className="sidebar-search">
-        <input type="text" placeholder="Pesquisar..." className="sidebar-input" />
+        <input
+          type="text"
+          placeholder="Pesquisar..."
+          className="sidebar-input"
+        />
       </div>
 
       <div className="fila-info">
-        {distribuicaoTickets === 'manual' ? (
+        {distribuicaoTickets == 'manual' ? (
           <>
             <span className="fila-count">
               {filaCount > 0
                 ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
                 : 'Não há clientes aguardando'}
             </span>
-            <button className="botao-proximo" disabled={filaCount === 0}>
+            <button
+              className="botao-proximo"
+              onClick={() => console.log('Puxar próximo cliente')}
+              disabled={filaCount === 0}
+            >
               Próximo
             </button>
           </>
-        ) : 'Distribuição: Auto'}
+        ) : 'Auto'}
       </div>
 
       <ul className="chat-list">
@@ -90,9 +107,8 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
           const snippet = getSnippet(conv.content)
           const isSelected = fullId === userIdSelecionado
 
-          const lastMsg = new Date(conv.timestamp || 0).getTime()
-          const lastRead = new Date(lastReadMap[fullId] || 0).getTime()
-          const hasUnread = lastMsg > lastRead && !isSelected
+          const lastReadTime = lastReadMap[fullId]
+          const hasUnread = !isSelected && (!lastReadTime || new Date(conv.timestamp) > new Date(lastReadTime))
 
           return (
             <li
@@ -113,13 +129,17 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
               <div className="chat-details">
                 <div className="chat-title">
                   {nomeCliente}
-                  {hasUnread && <span className="unread-count">●</span>}
+                  {hasUnread && <span className="unread-dot" />}
                 </div>
                 <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
                   <br />
-                  <span className="chat-ticket">#{ticket}</span>
-                  <span className="chat-queue">Fila: {queueName}</span>
+                  <span className="chat-ticket">
+                    #{ticket}
+                  </span>
+                  <span className="chat-queue">
+                    Fila:{queueName}
+                  </span>
                 </div>
               </div>
 
