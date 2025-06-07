@@ -1,6 +1,6 @@
 // src/socket.js
 import { io } from 'socket.io-client'
-
+import useConversationsStore from '../store/useConversationsStore'
 // Altere conforme sua lógica de estado ou store
 // Exemplo fictício:
 // import { useChatStore } from '@/stores/chatStore'
