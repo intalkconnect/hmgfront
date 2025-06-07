@@ -30,7 +30,6 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
   const replyDirection = msg.reply_direction || '';
   const rowClass = `message-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
   const bubbleClass = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
-console.log(msg)
   const renderTimeAndStatus = () => (
     <div className="message-time">
       {new Date(msg.timestamp).toLocaleTimeString([], {
