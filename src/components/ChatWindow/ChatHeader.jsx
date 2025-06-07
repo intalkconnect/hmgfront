@@ -1,31 +1,30 @@
-import React from 'react';
-import { Clipboard, Folder, Navigation, Phone, Share2, CheckCircle } from 'lucide-react';
-import './ChatHeader.css';
+// src/components/ChatHeader.jsx
+import React from 'react'
+import { Clipboard, Folder, Navigation, Phone, Share2, CheckCircle } from 'lucide-react'
+import './ChatHeader.css'
+import useConversationsStore from '../../store/useConversationsStore'
 
-/**
- * Props esperadas em `cliente`:
- * {
- *   name: string,
- *   ticket: string | number,
- *   fila: string,
- *   phone: string,
- *   channel: string       // este campo será exibido como “Origem”
- * }
- */
-export default function ChatHeader({ cliente }) {
-  // Se não houver dados do cliente, não renderiza
-  if (!cliente) return null;
+export default function ChatHeader({ userIdSelecionado }) {
+  const conversation = useConversationsStore(
+    (state) => state.conversations[userIdSelecionado]
+  )
 
-  const { name, ticket_number, fila, phone, channel } = cliente;
+  if (!conversation) return null
+
+  const {
+    name,
+    ticket_number = '000000',
+    fila = 'Indefinida',
+    user_id,
+    channel = 'desconhecido'
+  } = conversation
 
   return (
     <div className="chat-header">
       {/* Lado esquerdo: nome e detalhes */}
       <div className="chat-header-left">
-        {/* Nome do cliente */}
         <div className="cliente-nome">{name}</div>
 
-        {/* Bloco de detalhes: ticket, fila, origem e telefone */}
         <div className="cliente-detalhes">
           <div className="detalhe-item">
             <Clipboard size={16} className="detalhe-icon" />
@@ -41,12 +40,12 @@ export default function ChatHeader({ cliente }) {
           </div>
           <div className="detalhe-item">
             <Phone size={16} className="detalhe-icon" />
-            <span className="detalhe-texto">{phone}</span>
+            <span className="detalhe-texto">{user_id}</span>
           </div>
         </div>
       </div>
 
-      {/* Lado direito: botões de ação (Transferir / Finalizar) */}
+      {/* Lado direito: botões de ação */}
       <div className="chat-header-right">
         <button className="btn-transferir">
           <Share2 size={14} />
@@ -58,5 +57,5 @@ export default function ChatHeader({ cliente }) {
         </button>
       </div>
     </div>
-  );
+  )
 }
