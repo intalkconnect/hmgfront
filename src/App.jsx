@@ -31,16 +31,25 @@ export default function App() {
     fetchConversations();
   }, []);
 
-  async function fetchConversations() {
-    const { data, error } = await supabase.rpc('listar_conversas');
-    if (error) {
-      console.error('Erro ao buscar conversas:', error);
-    } else {
-      data.forEach((conv) => {
-        setConversation(conv.user_id, conv);
-      });
-    }
+async function fetchConversations() {
+  const { data, error } = await supabase.rpc('listar_conversas');
+  if (error) {
+    console.error('Erro ao buscar conversas:', error);
+  } else {
+    data.forEach((conv) => {
+      const { user_id, timestamp } = conv;
+
+      setConversation(user_id, conv);
+
+      // ⚠️ Garante que lastRead não fique vazio (e cause falsas bolinhas)
+      const alreadyHas = useConversationsStore.getState().lastRead[user_id];
+      if (!alreadyHas && timestamp) {
+        setLastRead(user_id, timestamp);
+      }
+    });
   }
+}
+
 
   const conversaSelecionada =
     Object.values(conversations).find((c) => {
