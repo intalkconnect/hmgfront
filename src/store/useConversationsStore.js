@@ -1,10 +1,15 @@
-// store/useConversationsStore.js
+// src/store/useConversationsStore.js
 import { create } from 'zustand'
 
 const useConversationsStore = create((set) => ({
   conversations: {},
   lastRead: {},
   unreadCount: {},
+  userIdSelecionadoRef: null,
+
+  setUserIdSelecionadoRef: (ref) => {
+    set({ userIdSelecionadoRef: ref });
+  },
 
   setConversation: (userId, data) =>
     set((state) => ({
@@ -36,6 +41,6 @@ const useConversationsStore = create((set) => ({
         [userId]: (state.unreadCount[userId] || 0) + 1,
       },
     })),
-}))
+}));
 
-export default useConversationsStore
+export default useConversationsStore;
