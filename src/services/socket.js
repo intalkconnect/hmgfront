@@ -25,43 +25,47 @@ export function connectSocket(userId) {
     })
 
     // Listener de nova mensagem
-    socket.on('new_message', (msg) => {
-      const {
-        user_id,
-        content,
-        timestamp,
-        channel,
-        name,
-        ticket_number,
-        fila,
-      } = msg
+socket.on('new_message', (msg) => {
+  const {
+    user_id,
+    content,
+    timestamp,
+    channel,
+    name,
+    ticket_number,
+    fila,
+  } = msg;
 
-      const {
-        setConversation,
-        incrementUnread,
-        lastRead,
-      } = useConversationsStore.getState()
+  const {
+    setConversation,
+    incrementUnread,
+    lastRead,
+    userIdSelecionadoRef, // <- adicione isso no Zustand
+  } = useConversationsStore.getState();
 
-      // Atualiza dados da conversa
-      setConversation(user_id, {
-        user_id,
-        name,
-        channel,
-        fila,
-        ticket_number,
-        content,
-        timestamp,
-      })
+  // Atualiza conversa
+  setConversation(user_id, {
+    user_id,
+    name,
+    channel,
+    fila,
+    ticket_number,
+    content,
+    timestamp,
+  });
 
-      // Verifica se é uma nova não lida
-      const lastSeen = lastRead[user_id]
-      const msgTime = new Date(timestamp).getTime()
-      const lastSeenTime = lastSeen ? new Date(lastSeen).getTime() : 0
+  // Se a conversa não está aberta, incrementa
+  if (userIdSelecionadoRef?.current !== user_id) {
+    const lastSeen = lastRead[user_id];
+    const msgTime = new Date(timestamp).getTime();
+    const lastSeenTime = lastSeen ? new Date(lastSeen).getTime() : 0;
 
-      if (msgTime > lastSeenTime) {
-        incrementUnread(user_id)
-      }
-    })
+    if (msgTime > lastSeenTime) {
+      incrementUnread(user_id);
+    }
+  }
+});
+
 
     // Listener opcional de resposta de bot
     socket.on('bot_response', (data) => {
