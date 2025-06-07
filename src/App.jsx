@@ -43,11 +43,6 @@ export default function App() {
       socket.emit('new_message', nova);
     };
 
-    socket.on('new_message', handleNewMessage);
-
-    return () => {
-      socket.off('new_message', handleNewMessage);
-    };
   }, [setConversation, incrementUnread]);
 
   async function fetchConversations() {
