@@ -1,6 +1,6 @@
 // src/components/Sidebar.jsx
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../../services/supabaseClient'
+import { supabase } from './services/supabaseClient'
 import './Sidebar.css'
 import { File, Mic } from 'lucide-react'
 import useConversationsStore from '../../store/useConversationsStore'
