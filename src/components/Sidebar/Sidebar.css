@@ -143,3 +143,12 @@ border-bottom: 1px solid var(--color-border);
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+.unread-dot {
+  display: inline-block;
+  margin-left: 8px;
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
+}
