@@ -1,9 +1,10 @@
-// src/store/useConversationsStore.js
+// store/useConversationsStore.js
 import { create } from 'zustand'
 
 const useConversationsStore = create((set) => ({
   conversations: {},
   lastRead: {},
+  unreadCount: {},
 
   setConversation: (userId, data) =>
     set((state) => ({
@@ -22,9 +23,17 @@ const useConversationsStore = create((set) => ({
         ...state.lastRead,
         [userId]: timestamp,
       },
+      unreadCount: {
+        ...state.unreadCount,
+        [userId]: 0,
+      },
     })),
 
-  clearConversations: () => set({ conversations: {}, lastRead: {} }),
+  incrementUnread: (userId) =>
+    set((state) => ({
+      unreadCount: {
+        ...state.unreadCount,
+        [userId]: (state.unreadCount[userId] || 0) + 1,
+      },
+    })),
 }))
-
-export default useConversationsStore
