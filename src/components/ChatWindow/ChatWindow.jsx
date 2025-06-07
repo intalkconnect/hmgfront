@@ -14,9 +14,10 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const [messages, setMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
   const [pdfModal, setPdfModal] = useState(null);
-  const [replyTo, setReplyTo] = useState(null);
   const [clienteInfo, setClienteInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+
 
   const messageListRef = useRef(null);
   const currentUserIdRef = useRef(null);
@@ -192,7 +193,12 @@ if (isLoading) {
           messages={messages}
           onImageClick={(url) => setModalImage(url)}
           onPdfClick={(url) => setPdfModal(url)}
-          onReply={setReplyTo}
+          onReply={(msg) => {
+  console.log('📨 Respondendo à mensagem:', msg); // Verifica o ID aqui
+  setReplyTo(msg);
+}}
+
+
         />
       </div>
 
@@ -200,7 +206,8 @@ if (isLoading) {
         <SendMessageForm
           userIdSelecionado={userIdSelecionado}
           replyTo={replyTo}
-          clearReply={() => setReplyTo(null)}
+          setReplyTo={setReplyTo}
+          
         />
       </div>
 

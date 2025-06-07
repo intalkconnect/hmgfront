@@ -2,13 +2,12 @@
 import React from 'react';
 import './AudioMessage.css'; // importa as regras que acabamos de definir
 
-export default function AudioMessage({ url }) {
+export default function AudioMessage({ url, small }) {
+  const containerClass = small ? 'audio-container audio-small' : 'audio-container';
   return (
-    <div className="audio-container" controlsList="nodownload">
-       <audio controls src={url}>
-        
-        Seu navegador não suporta áudio.
-      </audio>
+    <div className={containerClass}>
+      <audio controls src={url} preload="metadata" />
     </div>
   );
 }
+

@@ -14,3 +14,12 @@ audio {
   display: block;
 }
 
+.audio-small audio {
+  min-width: 120px !important;
+  width: 120px !important;
+}
+
+.audio-small audio {
+  height: 28px;
+  width: 140px;
+}

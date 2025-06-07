@@ -16,7 +16,10 @@ import { uploadFileAndGetURL, validateFile } from '../utils/fileUtils';
 export function useSendMessage() {
   const [isSending, setIsSending] = useState(false);
 
-  const sendMessage = async ({ text, file, userId }, onMessageAdded) => {
+
+  const sendMessage = async ({ text, file, userId, replyTo }, onMessageAdded) => {
+    console.log('📨 useSendMessage recebeu:', { text, file, userId, replyTo , onMessageAdded });
+
     if (!text.trim() && !file) {
       toast.warn('Digite algo ou grave áudio antes de enviar.', {
         position: 'bottom-right',
@@ -107,10 +110,19 @@ export function useSendMessage() {
             caption,
           };
         }
-      } else {
-        payload.type = 'text';
-        payload.content = { body: text.trim() };
-      }
+} else {
+  payload.type = 'text';
+
+  if (replyTo) {
+    payload.context = {
+      message_id: replyTo
+    };
+  }
+
+  payload.content = { body: text.trim() };
+}
+
+console.log('🚀 Payload FINAL enviado para o servidor:', payload);
 
       const resp = await fetch(
         'https://ia-srv-meta.9j9goo.easypanel.host/messages/send',

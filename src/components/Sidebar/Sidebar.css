@@ -108,3 +108,38 @@
   margin-left: 12px;
   white-space: nowrap;
 }
+
+
+.fila-info {
+
+  padding: 16px 12px;
+border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.fila-info .fila-count {
+  font-size: 20px;
+  color: #444;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.fila-info .botao-proximo {
+  padding: 8px 16px;
+  background-color: #2979ff;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.fila-info .botao-proximo:hover {
+  background-color: #1565c0;
+}
+
+.fila-info .botao-proximo:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

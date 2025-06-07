@@ -13,3 +13,10 @@
   max-height: 200px;
   border-radius: 6px;
 }
+
+.image-small img {
+  max-height: 60px;
+  max-width: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+}

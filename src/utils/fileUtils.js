@@ -3,16 +3,35 @@
 // 1) Tipos permitidos e tamanho máximo
 export const ALLOWED_MIME_TYPES = [
   'text/plain',
-  'image/png',
+  'application/pdf',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/pdf',
+
+  // Áudios
   'audio/ogg',
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/mp3',
+  'audio/amr',
+  'audio/opus',
+  'audio/aac',
+  'audio/webm;codecs=opus', // 👈 adicione este
+'audio/webm;codecs=opus',
+
+  // Imagens
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+
+  // Vídeos (opcional)
+  'video/mp4',
+  'video/3gpp',
 ];
+
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 

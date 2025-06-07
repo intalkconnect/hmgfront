@@ -47,15 +47,20 @@ const MessageList = forwardRef(
           padding: '0 8px',          // opcional: gap lateral igual ao que tinha antes
         }}
       >
-        {messages.map((msg, index) => (
-          <MessageRow
-            key={msg.id || index}
-            msg={msg}
-            onImageClick={onImageClick}
-            onPdfClick={onPdfClick}
-            onReply={onReply}
-          />
-        ))}
+{messages.map((msg, index) => {
+  const replyToMessage = messages.find(m => m.whatsapp_message_id === msg.reply_to);
+
+  return (
+    <MessageRow
+      key={msg.id || index}
+      msg={{ ...msg, replyTo: replyToMessage }} // injeta o conteúdo da mensagem original
+      onImageClick={onImageClick}
+      onPdfClick={onPdfClick}
+      onReply={onReply}
+    />
+  );
+})}
+
       </div>
     );
   }

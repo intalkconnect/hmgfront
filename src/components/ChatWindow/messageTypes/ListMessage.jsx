@@ -3,7 +3,16 @@
 import React from 'react';
 import './ListMessage.css';
 
-export default function ListMessage({ listData }) {
+export default function ListMessage({ listData, small }) {
+  if (small) {
+    // Mostra apenas um resumo textual (modo reply)
+    return (
+      <div className="list-preview">
+        📋 {listData?.header?.text || listData?.body?.text || '[Lista]'}
+      </div>
+    );
+  }
+
   return (
     <div className="list-container">
       {listData.header?.text && <h4>{listData.header.text}</h4>}

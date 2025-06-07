@@ -4,6 +4,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import { Smile, Paperclip, Image } from 'lucide-react';
 import './SendMessageForm.css';
 
+import TextMessage from '../ChatWindow/messageTypes/TextMessage';
+import ImageMessage from '../ChatWindow/messageTypes/ImageMessage';
+import DocumentMessage from '../ChatWindow/messageTypes/DocumentMessage';
+import AudioMessage from '../ChatWindow/messageTypes/AudioMessage';
+import ListMessage from '../ChatWindow/messageTypes/ListMessage';
+import UnknownMessage from '../ChatWindow/messageTypes/UnknownMessage';
+
+
 import { useSendMessage } from '../../hooks/useSendMessage';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useClickOutside } from '../../hooks/useClickOutside';
@@ -11,7 +19,8 @@ import FilePreview from './FilePreview';
 import AutoResizingTextarea from './AutoResizingTextarea';
 import EmojiPicker from './EmojiPicker';
 
-export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
+export default function SendMessageForm({ userIdSelecionado, onMessageAdded, replyTo, setReplyTo }) {
+
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -32,22 +41,48 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
 
   // 🛠️ Correto: useClickOutside espera array de refs
   useClickOutside([emojiPickerRef], () => setShowEmoji(false));
+  useEffect(() => {
+  setText('');
+  setFile(null);
+  setReplyTo(null);
+}, [userIdSelecionado]);
+
+useEffect(() => {
+  if (replyTo) {
+    console.log('🔁 Mensagem sendo respondida (ID):', replyTo.whatsapp_message_id);
+  }
+}, [replyTo]);
+
 
   useEffect(() => {
     if (recordedFile) setFile(recordedFile);
   }, [recordedFile]);
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (isRecording) return stopRecording();
-    if (text.trim() || file) {
-      sendMessage({ text, file, userId: userIdSelecionado }, onMessageAdded);
-      setText('');
-      setFile(null);
-    } else {
-      startRecording();
-    }
-  };
+const handleSend = (e) => {
+  e.preventDefault();
+
+  if (isRecording) return stopRecording();
+
+  if (text.trim() || file) {
+    const payload = {
+      text,
+      file,
+      userId: userIdSelecionado,
+      replyTo: replyTo?.whatsapp_message_id || null,
+    };
+
+    console.log('📦 Payload sendo enviado:', payload);
+
+    sendMessage(payload, onMessageAdded);
+
+    setText('');
+    setFile(null);
+    setReplyTo(null);
+  } else {
+    startRecording();
+  }
+};
+
 
   const handleRemoveFile = () => {
     setFile(null);
@@ -70,9 +105,85 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     }
   };
 
+  const renderReplyContent = (msg) => {
+  if (!msg || !msg.content) return '[mensagem]';
+
+  // Caso seja uma string simples (texto puro)
+  if (typeof msg.content === 'string' && !msg.content.trim().startsWith('{')) {
+    return <TextMessage content={msg.content} />;
+  }
+
+  try {
+    const parsed = typeof msg.content === 'string'
+      ? JSON.parse(msg.content)
+      : msg.content;
+
+    console.log('🔍 Conteúdo parseado:', parsed);
+
+    const url = parsed.url?.toLowerCase?.() || '';
+    const filename = parsed.filename?.toLowerCase?.() || '';
+    const extension = filename.split('.').pop();
+
+    // Lista
+    if ((parsed.type === 'list' || parsed.type === 'buttons') && parsed.action?.sections) {
+      return <ListMessage listData={parsed} small />;
+    }
+
+    // Áudio
+    if (parsed.voice || /\.(ogg|mp3|wav|webm)$/i.test(url)) {
+      return <AudioMessage url={parsed.url} small />;
+    }
+
+    // Imagem
+    if (/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(url)) {
+      return <ImageMessage url={parsed.url} caption={parsed.caption} small />;
+    }
+
+    // Documento
+    const docExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+    if (filename && docExts.includes(extension)) {
+      return (
+        <DocumentMessage
+          filename={filename}
+          url={parsed.url}
+          caption={parsed.caption}
+          small
+        />
+      );
+    }
+
+    // Texto (caption ou text)
+    if (parsed.text || parsed.caption) {
+      return <TextMessage content={parsed.text || parsed.caption} />;
+    }
+
+    return <TextMessage content="[mensagem]" />;
+  } catch (err) {
+    console.error('❌ Erro ao parsear msg.content:', err);
+    return <TextMessage content={msg.content} />;
+  }
+};
+
+
+
+
   return (
     <>
       <form className="send-message-form" onSubmit={(e) => e.preventDefault()} style={{ position: 'relative' }}>
+{replyTo && (
+  <div className="reply-preview">
+    <div className="reply-content">
+      <strong>{replyTo.sender || 'Você'}</strong>
+      <div className="reply-text">
+        {renderReplyContent(replyTo)}
+      </div>
+    </div>
+    <button className="reply-close-btn" onClick={() => setReplyTo(null)}>×</button>
+  </div>
+)}
+
+
+
         <AutoResizingTextarea
           ref={textareaRef}
           className="send-message-textarea"
@@ -116,7 +227,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
-            accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,audio/ogg"
+             accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf"
             onChange={handleFileSelect}
           />
 

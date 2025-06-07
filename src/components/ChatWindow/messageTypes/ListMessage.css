@@ -42,3 +42,11 @@
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+
+.list-preview {
+  font-size: 0.85rem;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

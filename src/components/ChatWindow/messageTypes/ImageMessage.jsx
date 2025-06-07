@@ -3,10 +3,11 @@
 import React from 'react';
 import './ImageMessage.css';
 
-export default function ImageMessage({ url, caption, onClick }) {
+export default function ImageMessage({ url, caption, onClick, small }) {
   return (
-    <div className="image-container" onClick={onClick}>
+    <div className={`image-container ${small ? 'image-small' : ''}`} onClick={onClick}>
       <img src={url} alt={caption || 'Imagem'} />
     </div>
   );
 }
+
