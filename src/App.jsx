@@ -1,60 +1,35 @@
 // src/App.jsx
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import { socket, connectSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
+import useConversationsStore from './store/useConversationsStore';
 import './App.css';
 
 export default function App() {
-  const [conversations, setConversations] = useState([]);
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
+  const setConversation = useConversationsStore((state) => state.setConversation);
+  const conversations = useConversationsStore((state) => state.conversations);
 
-  // 1) Conecta Socket.IO ao montar
   useEffect(() => {
     connectSocket();
   }, []);
 
-  // 2) Carrega conversas iniciais
   useEffect(() => {
     fetchConversations();
   }, []);
 
-  // 3) Inscreve em “new_message” para atualizar a lista
   useEffect(() => {
     const handleNewMessage = (nova) => {
       console.log('[App] Recebeu new_message:', nova);
 
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.user_id === nova.user_id);
-        if (idx !== -1) {
-          const updated = {
-            user_id: nova.user_id,
-            content: nova.content,
-            timestamp: nova.timestamp,
-            whatsapp_message_id: nova.whatsapp_message_id,
-            channel: nova.channel,
-            fila: nova.fila,
-            ticket: nova.ticket,
-          };
-          const semAntigo = prev.filter((c) => c.user_id !== nova.user_id);
-          return [updated, ...semAntigo];
-        } else {
-          const created = {
-            user_id: nova.user_id,
-            content: nova.content,
-            timestamp: nova.timestamp,
-            whatsapp_message_id: nova.whatsapp_message_id,
-            channel: nova.channel,
-            ticket: nova.ticket_number,
-          };
-          return [created, ...prev];
-        }
+      setConversation(nova.user_id, {
+        ...nova,
+        ticket_number: nova.ticket_number || nova.ticket,
       });
 
-      // Reemite localmente para ChatWindow
       socket.emit('new_message', nova);
     };
 
@@ -65,7 +40,7 @@ export default function App() {
       console.log('[App] Removendo listener de new_message');
       socket.off('new_message', handleNewMessage);
     };
-  }, []);
+  }, [setConversation]);
 
   async function fetchConversations() {
     const { data, error } = await supabase.rpc('listar_conversas');
@@ -73,13 +48,14 @@ export default function App() {
       console.error('Erro ao buscar conversas:', error);
     } else {
       console.log('[DEBUG] Conversas retornadas:', data);
-      setConversations(data);
+      data.forEach((conv) => {
+        setConversation(conv.user_id, conv);
+      });
     }
   }
 
-  // Normaliza o ID para comparação (garante @w.msgcli.net)
   const conversaSelecionada =
-    conversations.find((c) => {
+    Object.values(conversations).find((c) => {
       const idNormalizado = c.user_id.includes('@')
         ? c.user_id
         : `${c.user_id}@w.msgcli.net`;
@@ -90,12 +66,10 @@ export default function App() {
     <div className="app-container">
       <aside className="sidebar">
         <Sidebar
-          conversations={conversations}
           onSelectUser={async (uid) => {
             const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`;
             setUserIdSelecionado(fullId);
 
-            // Recarrega mensagens no supabase
             const { data, error } = await supabase
               .from('messages')
               .select('*')
