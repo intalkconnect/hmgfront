@@ -1,160 +1,107 @@
-// src/components/Sidebar.jsx
-import React, { useEffect, useState } from 'react'
-import { supabase } from './services/supabaseClient'
-import './Sidebar.css'
-import { File, Mic } from 'lucide-react'
-import useConversationsStore from '../../store/useConversationsStore'
+// src/App.jsx
+import React, { useState, useEffect } from 'react';
+import { supabase } from './services/supabaseClient';
+import { socket, connectSocket } from './services/socket';
+import Sidebar from './components/Sidebar/Sidebar';
+import ChatWindow from './components/ChatWindow/ChatWindow';
+import DetailsPanel from './components/DetailsPanel/DetailsPanel';
+import useConversationsStore from './store/useConversationsStore';
+import './App.css';
 
-export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const conversationsMap = useConversationsStore((state) => state.conversations)
-  const lastReadMap = useConversationsStore((state) => state.lastRead)
-  const unreadCountMap = useConversationsStore((state) => state.unreadCount)
-  const conversations = Object.values(conversationsMap)
-  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual')
-  const [filaCount, setFilaCount] = useState(0)
+export default function App() {
+  const [userIdSelecionado, setUserIdSelecionado] = useState(null);
+  const setConversation = useConversationsStore((state) => state.setConversation);
+  const conversations = useConversationsStore((state) => state.conversations);
 
   useEffect(() => {
-    const fetchSettingsAndFila = async () => {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'distribuicao_tickets')
-        .single()
+    connectSocket();
+  }, []);
 
-      if (data?.value) {
-        setDistribuicaoTickets(data.value)
-      }
+  useEffect(() => {
+    fetchConversations();
+  }, []);
 
-      const filaAtivos = conversations.filter((conv) => !conv.atendido)
-      setFilaCount(filaAtivos.length)
-    }
+  useEffect(() => {
+    const handleNewMessage = (nova) => {
+      console.log('[App] Recebeu new_message:', nova);
 
-    fetchSettingsAndFila()
-  }, [conversations, lastReadMap, unreadCountMap])
+      setConversation(nova.user_id, {
+        ...nova,
+        ticket_number: nova.ticket_number || nova.ticket,
+      });
 
-  const getSnippet = (rawContent) => {
-    try {
-      const parsed = JSON.parse(rawContent)
+      socket.emit('new_message', nova);
+    };
 
-      if (parsed.url) {
-        const url = parsed.url.toLowerCase()
-        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>
-        }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>
-        }
-        if (url.endsWith('.pdf')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>
-        }
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>
-      }
+    console.log('[App] Inscrevendo em socket.on("new_message")');
+    socket.on('new_message', handleNewMessage);
 
-      if (parsed.type === 'list' || parsed.body?.type === 'list') {
-        return '🔘 Lista'
-      }
+    return () => {
+      console.log('[App] Removendo listener de new_message');
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [setConversation]);
 
-      if (parsed.text) {
-        return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text
-      }
-
-      if (parsed.caption) {
-        return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption
-      }
-
-      return '[mensagem]'
-    } catch (e) {
-      const plain = rawContent || ''
-      return plain.length > 40 ? plain.slice(0, 37) + '...' : plain
+const setLastRead = useConversationsStore((state) => state.setLastRead)
+  
+  async function fetchConversations() {
+    const { data, error } = await supabase.rpc('listar_conversas');
+    if (error) {
+      console.error('Erro ao buscar conversas:', error);
+    } else {
+      console.log('[DEBUG] Conversas retornadas:', data);
+      data.forEach((conv) => {
+        setConversation(conv.user_id, conv);
+      });
     }
   }
 
+  const conversaSelecionada =
+    Object.values(conversations).find((c) => {
+      const idNormalizado = c.user_id.includes('@')
+        ? c.user_id
+        : `${c.user_id}@w.msgcli.net`;
+      return idNormalizado === userIdSelecionado;
+    }) || null;
+
   return (
-    <div className="sidebar-container">
-      <div className="sidebar-search">
-        <input
-          type="text"
-          placeholder="Pesquisar..."
-          className="sidebar-input"
+    <div className="app-container">
+      <aside className="sidebar">
+        <Sidebar
+          onSelectUser={async (uid) => {
+            const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`;
+            setUserIdSelecionado(fullId);
+
+            setLastRead(fullId, new Date().toISOString())
+
+            const { data, error } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('user_id', fullId)
+              .order('timestamp', { ascending: true });
+
+            if (!error) {
+              socket.emit('join_room', fullId);
+              socket.emit('force_refresh', fullId);
+            }
+          }}
+          userIdSelecionado={userIdSelecionado}
         />
-      </div>
+      </aside>
 
-      <div className="fila-info">
-        {distribuicaoTickets == 'manual' ? (
-          <>
-            <span className="fila-count">
-              {filaCount > 0
-                ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
-                : 'Não há clientes aguardando'}
-            </span>
-            <button
-              className="botao-proximo"
-              onClick={() => console.log('Puxar próximo cliente')}
-              disabled={filaCount === 0}
-            >
-              Próximo
-            </button>
-          </>
-        ) : 'Auto'}
-      </div>
+      <main className="chat-container">
+        <ChatWindow
+          userIdSelecionado={userIdSelecionado}
+          conversaSelecionada={conversaSelecionada}
+        />
+      </main>
 
-      <ul className="chat-list">
-        {conversations.map((conv) => {
-          const fullId = conv.user_id
-          const nomeCliente = conv.name || fullId
-          const isWhatsapp = conv.channel === 'whatsapp'
-          const queueName = conv.fila || 'Orçamento'
-          const ticket = conv.ticket_number || '000000'
-          const snippet = getSnippet(conv.content)
-          const isSelected = fullId === userIdSelecionado
-
-          const unread = unreadCountMap[fullId] || 0
-
-          return (
-            <li
-              key={fullId}
-              className={`chat-list-item ${isSelected ? 'active' : ''}`}
-              onClick={() => onSelectUser(fullId)}
-            >
-              <div className="chat-avatar">
-                {isWhatsapp && (
-                  <img
-                    src="/icons/whatsapp.png"
-                    alt="whatsapp"
-                    className="avatar-img"
-                  />
-                )}
-              </div>
-
-              <div className="chat-details">
-                <div className="chat-title">
-                  {nomeCliente}
-                  {unread > 0 && <span className="unread-count">{unread > 9 ? '9+' : unread}</span>}
-                </div>
-                <div className="chat-snippet">{snippet}</div>
-                <div className="chat-meta">
-                  <br />
-                  <span className="chat-ticket">
-                    #{ticket}
-                  </span>
-                  <span className="chat-queue">
-                    Fila:{queueName}
-                  </span>
-                </div>
-              </div>
-
-              <div className="chat-time">
-                {conv.timestamp
-                  ? new Date(conv.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : '--:--'}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+      <aside className="details-panel">
+        <DetailsPanel
+          userIdSelecionado={userIdSelecionado}
+          conversaSelecionada={conversaSelecionada}
+        />
+      </aside>
     </div>
-  )
+  );
 }
