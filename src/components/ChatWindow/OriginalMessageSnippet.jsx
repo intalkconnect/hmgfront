@@ -13,22 +13,32 @@ export default function OriginalMessageSnippet({ messageId, allMessages }) {
   }
 
   let content = original.content;
-  if (typeof content === 'string') {
-    try {
-      content = JSON.parse(content);
-    } catch (err) {
-      content = { text: content };
-    }
-  }
-
   const type = original.type;
   const direction = original.direction === 'incoming' ? 'Contato' : 'Você';
+
+  // Se for string, verifica se é JSON válido ou trata como texto puro
+  if (typeof content === 'string') {
+    // Se for uma string numérica (apenas dígitos), usa como texto puro
+    if (/^\d+$/.test(content)) {
+      content = { text: content };
+    } 
+    // Só tenta parsear se parece JSON (evita erros desnecessários)
+    else if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+      try {
+        content = JSON.parse(content);
+      } catch (err) {
+        content = { text: content }; // Fallback para texto puro
+      }
+    } else {
+      content = { text: content }; // Strings normais viram texto
+    }
+  }
 
   return (
     <div className="reply-snippet">
       <strong>{direction}</strong>
       <div className="reply-preview-content">
-        {type === 'text' && <TextMessage content={content.body || content.text} />}
+        {type === 'text' && <TextMessage content={content.body || content.text || content} />}
         {type === 'image' && <ImageMessage url={content.url} caption={content.caption} small />}
         {type === 'audio' && <AudioMessage url={content.url} small />}
         {type === 'document' && (
@@ -40,7 +50,7 @@ export default function OriginalMessageSnippet({ messageId, allMessages }) {
           />
         )}
         {!['text', 'image', 'audio', 'document'].includes(type) && (
-          <TextMessage content="[tipo não suportado]" />
+          <TextMessage content={content.text || content.body || content || "[tipo não suportado]"} />
         )}
       </div>
     </div>
