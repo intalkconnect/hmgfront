@@ -5,87 +5,67 @@ import useConversationsStore from "../../store/useConversationsStore";
 import "./Sidebar.css";
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const conversations = useConversationsStore((state) => state.conversations);
-  const lastRead = useConversationsStore((state) => state.lastRead);
-  const unreadCounts = useConversationsStore((state) => state.unreadCounts);
-  const fetchInitialUnread = useConversationsStore((state) => state.fetchInitialUnread);
-  const markAsRead = useConversationsStore((state) => state.markAsRead);
+  const {
+    conversations = {},
+    lastRead = {},
+    unreadCounts = {},
+    fetchInitialUnread = () => {},
+    markAsRead = () => {}
+  } = useConversationsStore();
 
   const [distribuicaoTickets, setDistribuicaoTickets] = useState("manual");
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Memoize the function to prevent unnecessary recreations
-  const getSnippet = useCallback((rawContent) => {
+  // Formata conteúdo da mensagem
+  const getSnippet = useCallback((content) => {
     try {
-      const parsed = JSON.parse(rawContent);
+      const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+      if (!parsed) return '[mensagem]';
       
       if (parsed.url) {
-        const url = parsed.url.toLowerCase();
-        const iconStyle = { display: "flex", alignItems: "center", gap: "6px" };
-        
-        if (url.match(/\.(ogg|mp3|wav)$/)) {
-          return <span style={iconStyle}><Mic size={18} />Áudio</span>;
-        }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg|pdf)$/)) {
-          return <span style={iconStyle}><File size={18} />{url.endsWith('.pdf') ? 'PDF' : 'Imagem'}</span>;
-        }
-        return <span style={iconStyle}><File size={18} />Arquivo</span>;
+        const type = parsed.url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i) ? 'Imagem' :
+                    parsed.url.match(/\.(ogg|mp3|wav)$/i) ? 'Áudio' :
+                    parsed.url.match(/\.pdf$/i) ? 'PDF' : 'Arquivo';
+        return (
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <File size={18} /> {type}
+          </span>
+        );
       }
-
-      const text = parsed.text || parsed.caption || '[mensagem]';
-      return text.length > 40 ? `${text.slice(0, 37)}...` : text;
+      return parsed.text || parsed.caption || '[mensagem]';
     } catch {
-      const plain = rawContent || '';
-      return plain.length > 40 ? `${plain.slice(0, 37)}...` : plain;
+      return typeof content === 'string' ? content : '[mensagem]';
     }
   }, []);
 
-  // Fetch settings and count
+  // Busca configurações
   useEffect(() => {
-    const fetchSettingsAndFila = async () => {
+    const fetchSettings = async () => {
       const { data } = await supabase
         .from("settings")
         .select("value")
         .eq("key", "distribuicao_tickets")
         .single();
-
       if (data?.value) setDistribuicaoTickets(data.value);
-
-      const filaAtivos = Object.values(conversations).filter(conv => !conv.atendido);
-      setFilaCount(filaAtivos.length);
     };
+    fetchSettings();
+  }, []);
 
-    fetchSettingsAndFila();
+  // Atualiza fila de atendimento
+  useEffect(() => {
+    const fila = Object.values(conversations).filter(c => !c?.atendido);
+    setFilaCount(fila.length);
   }, [conversations]);
 
-  // Load initial unread counts
-  useEffect(() => {
-    const loadUnreadCounts = async () => {
-      await Promise.all(
-        Object.keys(conversations).map(userId => fetchInitialUnread(userId))
-      );
-    };
-
-    loadUnreadCounts();
-  }, [conversations, fetchInitialUnread]);
-
-  const handleSelectUser = async (userId) => {
-    try {
-      await markAsRead(userId);
-      onSelectUser(userId);
-    } catch (error) {
-      console.error("Error selecting user:", error);
-    }
-  };
-
+  // Filtra conversas
   const filteredConversations = Object.values(conversations).filter(conv => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
+    if (!searchTerm || !conv) return true;
+    const term = searchTerm.toLowerCase();
     return (
-      (conv.name || '').toLowerCase().includes(searchLower) ||
-      (conv.ticket_number || '').toLowerCase().includes(searchLower) ||
-      (conv.content || '').toLowerCase().includes(searchLower)
+      (conv.name || '').toLowerCase().includes(term) ||
+      (conv.ticket_number || '').includes(term) ||
+      (conv.content || '').toLowerCase().includes(term)
     );
   });
 
@@ -95,7 +75,6 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
         <input
           type="text"
           placeholder="Pesquisar..."
-          className="sidebar-input"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -104,70 +83,47 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
       <div className="fila-info">
         {distribuicaoTickets === "manual" ? (
           <>
-            <span className="fila-count">
-              {filaCount > 0
-                ? `${filaCount} cliente${filaCount > 1 ? "s" : ""} aguardando`
-                : "Não há clientes aguardando"}
-            </span>
-            <button
-              className="botao-proximo"
-              onClick={() => console.log("Puxar próximo cliente")}
-              disabled={filaCount === 0}
-            >
-              Próximo
-            </button>
+            <span>{filaCount > 0 ? `${filaCount} cliente(s) aguardando` : "Sem clientes aguardando"}</span>
+            <button disabled={filaCount === 0}>Próximo</button>
           </>
-        ) : (
-          <span>Distribuição automática</span>
-        )}
+        ) : <span>Distribuição automática</span>}
       </div>
 
       <ul className="chat-list">
-        {filteredConversations.map((conv) => {
-          const fullId = conv.user_id;
-          const isSelected = fullId === userIdSelecionado;
-          const unreadCount = unreadCounts[fullId] || 0;
-          const hasUnread = !isSelected && unreadCount > 0;
-
-          return (
-            <li
-              key={fullId}
-              className={`chat-list-item ${isSelected ? "active" : ""} ${hasUnread ? "unread" : ""}`}
-              onClick={() => handleSelectUser(fullId)}
-            >
-              <div className="chat-avatar">
-                {conv.channel === "whatsapp" && (
-                  <img src="/icons/whatsapp.png" alt="WhatsApp" className="avatar-img" />
-                )}
-              </div>
-
-              <div className="chat-details">
-                <div className="chat-title">
-                  {conv.name || fullId.split('@')[0]}
-                  {hasUnread && (
-                    <span className="unread-badge">
-                      {unreadCount}
-                    </span>
-                  )}
+        {filteredConversations?.length > 0 ? (
+          filteredConversations.map(conv => {
+            const unread = unreadCounts[conv.user_id] || 0;
+            const isUnread = conv.user_id !== userIdSelecionado && unread > 0;
+            
+            return (
+              <li
+                key={conv.user_id}
+                className={`${conv.user_id === userIdSelecionado ? 'active' : ''} ${isUnread ? 'unread' : ''}`}
+                onClick={() => onSelectUser(conv.user_id)}
+              >
+                <div className="chat-avatar">
+                  {conv.channel === 'whatsapp' && <img src="/icons/whatsapp.png" alt="WhatsApp" />}
                 </div>
-                <div className="chat-snippet">{getSnippet(conv.content)}</div>
-                <div className="chat-meta">
-                  <span className="chat-ticket">#{conv.ticket_number || '000000'}</span>
-                  <span className="chat-queue">Fila: {conv.fila || 'Orçamento'}</span>
+                <div className="chat-details">
+                  <div className="chat-title">
+                    {conv.name || conv.user_id.split('@')[0]}
+                    {isUnread && <span className="unread-badge">{unread}</span>}
+                  </div>
+                  <div className="chat-snippet">{getSnippet(conv.content)}</div>
+                  <div className="chat-meta">
+                    <span>#{conv.ticket_number || '000000'}</span>
+                    <span>Fila: {conv.fila || 'Orçamento'}</span>
+                  </div>
                 </div>
-              </div>
-
-              <div className="chat-time">
-                {conv.timestamp
-                  ? new Date(conv.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  : '--:--'}
-              </div>
-            </li>
-          );
-        })}
+                <div className="chat-time">
+                  {conv.timestamp ? new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                </div>
+              </li>
+            );
+          })
+        ) : (
+          <li className="no-conversations">Nenhuma conversa encontrada</li>
+        )}
       </ul>
     </div>
   );
