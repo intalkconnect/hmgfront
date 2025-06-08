@@ -1,32 +1,31 @@
-// src/components/Sidebar/Sidebar.jsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../services/supabaseClient';
-import './Sidebar.css';
 import { File, Mic } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
+import './Sidebar.css';
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const conversationsMap = useConversationsStore((state) => state.conversations);
-  const lastReadMap = useConversationsStore((state) => state.lastRead);
-  const unreadCountMap = useConversationsStore((state) => state.unreadCount);
-  const conversations = Object.values(conversationsMap);
+  const {
+    conversations,
+    lastRead,
+    unreadCounts,
+  } = useConversationsStore();
+  
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('settings')
         .select('value')
         .eq('key', 'distribuicao_tickets')
         .single();
 
-      if (data?.value) {
-        setDistribuicaoTickets(data.value);
-      }
+      if (data?.value) setDistribuicaoTickets(data.value);
 
-      const filaAtivos = conversations.filter((conv) => !conv.atendido);
+      const filaAtivos = Object.values(conversations).filter((conv) => !conv.atendido);
       setFilaCount(filaAtivos.length);
     };
 
@@ -36,7 +35,6 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const getSnippet = (rawContent) => {
     try {
       const parsed = JSON.parse(rawContent);
-
       if (parsed.url) {
         const url = parsed.url.toLowerCase();
         if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
@@ -45,37 +43,22 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
         if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
           return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
         }
-        if (url.endsWith('.pdf')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
-        }
         return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
       }
-
-      if (parsed.type === 'list' || parsed.body?.type === 'list') {
-        return '🔘 Lista';
-      }
-
-      if (parsed.text) {
-        return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text;
-      }
-
-      if (parsed.caption) {
-        return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption;
-      }
-
-      return '[mensagem]';
-    } catch (e) {
-      const plain = rawContent || '';
-      return plain.length > 40 ? plain.slice(0, 37) + '...' : plain;
+      return parsed.text || parsed.caption || '[mensagem]';
+    } catch {
+      return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent || '';
     }
   };
 
-  const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = 
-      conv.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.user_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.content?.toLowerCase().includes(searchTerm.toLowerCase());
-    return searchTerm ? matchesSearch : true;
+  const filteredConversations = Object.values(conversations).filter(conv => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      conv.name?.toLowerCase().includes(searchLower) ||
+      conv.user_id?.toLowerCase().includes(searchLower) ||
+      conv.content?.toLowerCase().includes(searchLower)
+    );
   });
 
   return (
@@ -112,17 +95,9 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
       <ul className="chat-list">
         {filteredConversations.map((conv) => {
           const fullId = conv.user_id;
-          const nomeCliente = conv.name || fullId;
-          const isWhatsapp = conv.channel === 'whatsapp';
-          const queueName = conv.fila || 'Orçamento';
-          const ticket = conv.ticket_number || '000000';
-          const snippet = getSnippet(conv.content);
           const isSelected = fullId === userIdSelecionado;
-
-          const unreadCount = unreadCountMap[fullId] || 0;
-          const lastReadTime = lastReadMap[fullId];
-          const hasUnread = unreadCount > 0 || 
-                          (!isSelected && (!lastReadTime || new Date(conv.timestamp) > new Date(lastReadTime)));
+          const unreadCount = unreadCounts[fullId] || 0;
+          const hasUnread = unreadCount > 0;
 
           return (
             <li
@@ -131,42 +106,36 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
               onClick={() => onSelectUser(fullId)}
             >
               <div className="chat-avatar">
-                {isWhatsapp && (
-                  <img
-                    src="/icons/whatsapp.png"
-                    alt="whatsapp"
-                    className="avatar-img"
-                  />
+                {conv.channel === 'whatsapp' && (
+                  <img src="/icons/whatsapp.png" alt="whatsapp" className="avatar-img" />
                 )}
               </div>
 
               <div className="chat-details">
-<div className="chat-title">
-  {nomeCliente}
-  {hasUnread && (
-    <span className={`unread-indicator ${unreadCount > 0 ? 'with-count' : ''}`}>
-      {unreadCount > 0 ? unreadCount : ''}
-    </span>
-  )}
-</div>
-                <div className="chat-snippet">{snippet}</div>
+                <div className="chat-title">
+                  {conv.name || fullId}
+                  {hasUnread && (
+                    <span className="unread-badge">
+                      {unreadCount > 0 ? unreadCount : ''}
+                    </span>
+                  )}
+                </div>
+                <div className="chat-snippet">{getSnippet(conv.content)}</div>
                 <div className="chat-meta">
-                  <span className="chat-ticket">#{ticket}</span>
-                  <span className="chat-queue">Fila: {queueName}</span>
+                  <span className="chat-ticket">#{conv.ticket_number || '000000'}</span>
+                  <span className="chat-queue">Fila: {conv.fila || 'Orçamento'}</span>
                 </div>
               </div>
 
-<div className="chat-time">
-  {conv.timestamp
-    ? new Date(conv.timestamp).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '--:--'}
-  {hasUnread && !unreadCount && (
-    <span className="unread-dot-time" />
-  )}
-</div>
+              <div className="chat-time">
+                {conv.timestamp
+                  ? new Date(conv.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '--:--'}
+                {hasUnread && <span className="unread-dot" />}
+              </div>
             </li>
           );
         })}
