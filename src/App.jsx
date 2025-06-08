@@ -80,21 +80,17 @@ export default function App() {
           onSelectUser={async (uid) => {
             const fullId = uid.includes("@") ? uid : `${uid}@w.msgcli.net`;
             setUserIdSelecionado(fullId);
-            userIdSelecionadoRef.current = fullId;
 
-            setLastRead(fullId, new Date().toISOString());
-            resetUnread(fullId); // ← Nova função do store
+            // Usando markAsRead do store corretamente
+            useConversationsStore.getState().markAsRead(fullId);
 
-            const { data, error } = await supabase
+            const { data } = await supabase
               .from("messages")
               .select("*")
               .eq("user_id", fullId)
               .order("timestamp", { ascending: true });
 
-            if (!error) {
-              socket.emit("join_room", fullId);
-              socket.emit("force_refresh", fullId);
-            }
+            socket.emit("join_room", fullId);
           }}
           userIdSelecionado={userIdSelecionado}
         />
