@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../services/supabaseClient';
 import { File, Mic } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
@@ -10,12 +9,12 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     lastRead,
     unreadCounts,
   } = useConversationsStore();
-  
+
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
+  useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission().then(permission => {
         console.log('Permissão para notificações:', permission);
@@ -25,13 +24,13 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-      const { data } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'distribuicao_tickets')
-        .single();
-
-      if (data?.value) setDistribuicaoTickets(data.value);
+      try {
+        const res = await fetch('/settings/distribuicao_tickets');
+        const data = await res.json();
+        if (data?.value) setDistribuicaoTickets(data.value);
+      } catch (err) {
+        console.error('Erro ao buscar configuração:', err);
+      }
 
       const filaAtivos = Object.values(conversations).filter((conv) => !conv.atendido);
       setFilaCount(filaAtivos.length);
@@ -40,38 +39,38 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     fetchSettingsAndFila();
   }, [conversations]);
 
-const getSnippet = (rawContent) => {
-  if (rawContent === undefined || rawContent === null) return '';
+  const getSnippet = (rawContent) => {
+    if (rawContent === undefined || rawContent === null) return '';
 
-  // Se for uma string numérica (apenas dígitos), retorna ela mesma, mesmo se longa
-  if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) {
-    return rawContent;
-  }
-
-  // Só tenta parsear se parece um JSON (evita erros desnecessários)
-  if (typeof rawContent === 'string' && (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))) {
-    try {
-      const parsed = JSON.parse(rawContent);
-      if (parsed.url) {
-        const url = parsed.url.toLowerCase();
-        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
-        }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
-        }
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
-      }
-      return parsed.text || parsed.caption || '';
-    } catch {
-      // Se falhar o parse, trata como string normal
+    if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) {
+      return rawContent;
     }
-  }
 
-  // Se não for JSON ou se falhar, trata como string (trunca se > 40 chars)
-  const contentStr = String(rawContent);
-  return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
-};
+    if (
+      typeof rawContent === 'string' &&
+      (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))
+    ) {
+      try {
+        const parsed = JSON.parse(rawContent);
+        if (parsed.url) {
+          const url = parsed.url.toLowerCase();
+          if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
+            return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
+          }
+          if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
+            return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
+          }
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
+        }
+        return parsed.text || parsed.caption || '';
+      } catch {
+        // Fallthrough
+      }
+    }
+
+    const contentStr = String(rawContent);
+    return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
+  };
 
   const filteredConversations = Object.values(conversations).filter(conv => {
     if (!searchTerm) return true;
@@ -156,7 +155,6 @@ const getSnippet = (rawContent) => {
                       minute: '2-digit',
                     })
                   : '--:--'}
-{/*                 {hasUnread && <span className="unread-dot" />} */}
               </div>
             </li>
           );

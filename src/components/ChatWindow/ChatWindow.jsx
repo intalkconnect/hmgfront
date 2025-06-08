@@ -1,17 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { socket, connectSocket } from '../../services/socket';
-import { supabase } from '../../services/supabaseClient';
 import SendMessageForm from '../SendMessageForm/SendMessageForm';
 import MessageList from './MessageList';
 import ImageModal from './modals/ImageModal';
 import PdfModal from './modals/PdfModal';
 import ChatHeader from './ChatHeader';
 import './ChatWindow.css';
-import './ChatWindowPagination.css'; // Novo CSS para paginação
+import './ChatWindowPagination.css';
 
 export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
-  const [allMessages, setAllMessages] = useState([]); // Todas as mensagens
-  const [displayedMessages, setDisplayedMessages] = useState([]); // Mensagens exibidas
+  const [allMessages, setAllMessages] = useState([]);
+  const [displayedMessages, setDisplayedMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
   const [pdfModal, setPdfModal] = useState(null);
   const [clienteInfo, setClienteInfo] = useState(null);
@@ -26,18 +25,15 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const [page, setPage] = useState(1);
   const messagesPerPage = 100;
 
-  // 1) Conecta socket uma vez
   useEffect(() => {
     connectSocket();
   }, []);
 
-  // 2) Atualiza referência do usuário ativo
   useEffect(() => {
     currentUserIdRef.current = userIdSelecionado;
-    setPage(1); // Reseta a paginação ao mudar de usuário
+    setPage(1);
   }, [userIdSelecionado]);
 
-  // 3) Busca histórico de mensagens + dados do cliente
   useEffect(() => {
     if (!userIdSelecionado) {
       setAllMessages([]);
@@ -49,7 +45,6 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // Se já tivermos cache, joga direto
       if (messageCacheRef.current.has(userIdSelecionado)) {
         const cachedMessages = messageCacheRef.current.get(userIdSelecionado);
         setAllMessages(cachedMessages);
@@ -60,27 +55,19 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
 
       try {
         const [msgRes, clienteRes] = await Promise.all([
-          supabase
-            .from('messages')
-            .select('*')
-            .eq('user_id', userIdSelecionado)
-            .order('timestamp', { ascending: true }),
-          supabase
-            .from('clientes')
-            .select('name, phone')
-            .eq('user_id', userIdSelecionado)
-            .single(),
+          fetch(`/messages/${userIdSelecionado}`).then(res => res.json()),
+          fetch(`/clientes/${userIdSelecionado}`).then(res => res.json())
         ]);
 
-        const msgData = msgRes.data || [];
+        const msgData = msgRes || [];
         messageCacheRef.current.set(userIdSelecionado, msgData);
         setAllMessages(msgData);
         updateDisplayedMessages(msgData, 1);
 
-        if (clienteRes.data) {
+        if (clienteRes && clienteRes.name) {
           setClienteInfo({
-            name: clienteRes.data.name,
-            phone: clienteRes.data.phone,
+            name: clienteRes.name,
+            phone: clienteRes.phone,
           });
         } else {
           const fallback = msgData[0] || {};
@@ -104,23 +91,20 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     fetchData();
   }, [userIdSelecionado]);
 
-  // Atualiza as mensagens exibidas baseadas na página atual
   const updateDisplayedMessages = (messages, currentPage) => {
-    const startIndex = Math.max(0, messages.length - (currentPage * messagesPerPage));
+    const startIndex = Math.max(0, messages.length - currentPage * messagesPerPage);
     const endIndex = messages.length;
     const newMessages = messages.slice(startIndex, endIndex);
     setDisplayedMessages(newMessages);
     setHasMoreMessages(startIndex > 0);
   };
 
-  // Carrega mais mensagens quando necessário
   const loadMoreMessages = () => {
     const newPage = page + 1;
     setPage(newPage);
     updateDisplayedMessages(allMessages, newPage);
   };
 
-  // Configura o Intersection Observer para carregar mais mensagens automaticamente
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -142,20 +126,15 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     };
   }, [hasMoreMessages, page]);
 
-  // 4) Entra/sai da sala de socket
   useEffect(() => {
     if (!userIdSelecionado) return;
     socket.emit('join_room', userIdSelecionado);
-    return () => {
-      socket.emit('leave_room', userIdSelecionado);
-    };
+    return () => socket.emit('leave_room', userIdSelecionado);
   }, [userIdSelecionado]);
 
-  // 5) Listeners de novas mensagens por socket
   useEffect(() => {
     const handleNewMessage = (novaMsg) => {
-      const activeUser = currentUserIdRef.current;
-      if (novaMsg.user_id !== activeUser) return;
+      if (novaMsg.user_id !== currentUserIdRef.current) return;
 
       setAllMessages((prev) => {
         if (prev.find((m) => m.id === novaMsg.id)) return prev;
@@ -169,8 +148,7 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     };
 
     const handleUpdateMessage = (updatedMsg) => {
-      const activeUser = currentUserIdRef.current;
-      if (updatedMsg.user_id !== activeUser) return;
+      if (updatedMsg.user_id !== currentUserIdRef.current) return;
 
       setAllMessages((prev) => {
         const updated = prev.map((m) =>
@@ -191,19 +169,11 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     };
   }, [page]);
 
-  // 6) Se nenhum contato estiver selecionado → placeholder
   if (!userIdSelecionado) {
     return (
       <div className="chat-window placeholder">
         <div className="chat-placeholder">
-          <svg
-            className="chat-icon"
-            width="80"
-            height="80"
-            viewBox="0 0 24 24"
-            fill="var(--color-border)"
-            xmlns="http://www.w3.org/2000/svg"
-          >
+          <svg className="chat-icon" width="80" height="80" viewBox="0 0 24 24" fill="var(--color-border)">
             <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
           </svg>
           <h2 className="placeholder-title">Tudo pronto para atender</h2>
@@ -215,7 +185,6 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     );
   }
 
-  // 7) Se estiver carregando, exibe loading
   if (isLoading) {
     return (
       <div className="chat-window loading">
@@ -226,11 +195,9 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     );
   }
 
-  // 8) Janela de chat com lista de mensagens
   return (
     <div className="chat-window">
       <ChatHeader userIdSelecionado={userIdSelecionado} />
-
       <div className="messages-list">
         {hasMoreMessages && (
           <div ref={loaderRef} className="pagination-loader">
@@ -243,10 +210,7 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
           messages={displayedMessages}
           onImageClick={(url) => setModalImage(url)}
           onPdfClick={(url) => setPdfModal(url)}
-          onReply={(msg) => {
-            console.log('📨 Respondendo à mensagem:', msg);
-            setReplyTo(msg);
-          }}
+          onReply={(msg) => setReplyTo(msg)}
         />
       </div>
 
@@ -258,12 +222,8 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
         />
       </div>
 
-      {modalImage && (
-        <ImageModal url={modalImage} onClose={() => setModalImage(null)} />
-      )}
-      {pdfModal && (
-        <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />
-      )}
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+      {pdfModal && <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />}
     </div>
   );
 }
