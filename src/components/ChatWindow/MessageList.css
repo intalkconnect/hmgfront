@@ -1,49 +1,34 @@
-/* MessageList.css */
+/* Novas classes apenas para a funcionalidade de paginação */
 
-.load-more-trigger {
-  height: 40px;
+.message-list-loader {
   display: flex;
-  align-items: center;
   justify-content: center;
-  margin: 10px 0;
+  padding: 16px;
+  margin: 8px 0;
+  background-color: rgba(245, 245, 245, 0.7);
+  border-radius: 8px;
 }
 
-.loading-spinner {
-  width: 20px;
-  height: 20px;
+.message-list-spinner {
+  width: 24px;
+  height: 24px;
   border: 3px solid rgba(0, 0, 0, 0.1);
   border-radius: 50%;
-  border-top-color: #555;
-  animation: spin 1s ease-in-out infinite;
+  border-top-color: #646cff;
+  animation: message-list-spin 1s ease-in-out infinite;
 }
 
-@keyframes spin {
+@keyframes message-list-spin {
   to { transform: rotate(360deg); }
 }
 
-.load-more-button {
-  position: sticky;
-  top: 10px;
-  z-index: 10;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  padding: 8px 16px;
-  margin: 0 auto;
-  display: block;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+/* Dark mode para as novas classes */
+@media (prefers-color-scheme: dark) {
+  .message-list-loader {
+    background-color: rgba(45, 45, 45, 0.7);
+  }
+  
+  .message-list-spinner {
+    border-top-color: #535bf2;
+  }
 }
-
-.load-more-button:hover {
-  background-color: #f5f5f5;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Estilos para a lista virtualizada */
-.ReactWindow__List {
-  overflow-x: hidden !important;
-}
-
