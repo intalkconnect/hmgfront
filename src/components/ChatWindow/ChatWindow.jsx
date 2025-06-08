@@ -7,7 +7,7 @@ import ImageModal from './modals/ImageModal';
 import PdfModal from './modals/PdfModal';
 import ChatHeader from './ChatHeader';
 import './ChatWindow.css';
-import './ChatWindow.pagination.css'; // Novo CSS para paginação
+import './ChatWindowPagination.css'; // Novo CSS para paginação
 
 export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const [allMessages, setAllMessages] = useState([]); // Todas as mensagens
