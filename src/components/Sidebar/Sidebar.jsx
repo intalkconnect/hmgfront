@@ -41,6 +41,8 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   }, [conversations]);
 
 const getSnippet = (rawContent) => {
+  if (rawContent === undefined || rawContent === null) return '';
+
   try {
     const parsed = JSON.parse(rawContent);
     if (parsed.url) {
@@ -53,14 +55,12 @@ const getSnippet = (rawContent) => {
       }
       return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
     }
-    return parsed.text || parsed.caption || '[mensagem]';
+    // Se for JSON válido, retorna text/caption ou string vazia (nunca [mensagem])
+    return parsed.text || parsed.caption || '';
   } catch {
-    // Verifica se é uma string longa de números repetidos
-    if (typeof rawContent === 'string' && /^(\d)\1*$/.test(rawContent)) {
-      return rawContent;
-    }
-    
-    return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent || '';
+    // Se não for JSON, trata como string (trunca se > 40 chars, mas nunca mostra [mensagem])
+    const contentStr = String(rawContent);
+    return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
   }
 };
 
