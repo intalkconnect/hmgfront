@@ -1,164 +1,161 @@
-/* ===================================================================
-   MESSAGE ROW - CORE STYLES
-=================================================================== */
+/* src/components/ChatWindow/MessageRow.css */
+
+:root {
+  /* Variáveis opcionais para facilitar manutenção */
+  --color-incoming-bg: #9b7f97;
+  --color-outgoing-bg: #454545;
+  --color-text-light: #ffffff;
+  --message-font-size: 0.95rem;
+  --message-line-height: 1.4;
+  --message-gap: 4px;   /* espaçamento interno entre cada linha */
+  --border-radius: 16px;
+  --box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
 .message-row {
   display: flex;
-  padding-bottom: 8px;
-  position: relative;
+  /* O “gap” entre mensagens agora vem do padding-bottom,
+     que será medido pelo Virtuoso como parte da altura total da linha */
+  padding-bottom: var(--message-gap);
 }
 
 .message-row.incoming {
   justify-content: flex-start;
-  padding-right: 15%;
 }
 
 .message-row.outgoing {
   justify-content: flex-end;
-  padding-left: 15%;
 }
 
-/* ===================================================================
-   MESSAGE BUBBLE
-=================================================================== */
-
+/* Bolha de mensagem: sem margens externas! (gap já vem do padding do .message-row) */
 .message-bubble {
   position: relative;
-  max-width: 85%;
-  min-width: 120px;
-  padding: 12px 16px;
-  border-radius: 18px;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  word-break: break-word;
-  overflow: visible;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  max-width: 60%;
+  padding: 10px 14px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  font-size: var(--message-font-size);
+  word-wrap: break-word;
+  overflow: visible; /* para não cortar sombras, modais e imagens */
 }
 
-.message-bubble:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
+/* Cores diferentes para incoming / outgoing */
 .message-bubble.incoming {
-  background-color: var(--color-incoming-bg, #9b7f97);
-  color: var(--color-text-light, #ffffff);
-  border-bottom-left-radius: 4px;
+  background-color: var(--color-incoming-bg);
+  color: var(--color-text-light);
 }
 
 .message-bubble.outgoing {
-  background-color: var(--color-outgoing-bg, #454545);
-  color: var(--color-text-light, #ffffff);
-  border-bottom-right-radius: 4px;
+  background-color: var(--color-outgoing-bg);
+  color: var(--color-text-light);
 }
 
-/* ===================================================================
-   MESSAGE CONTENT AREA
-=================================================================== */
-
-.message-bubble-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* Conteúdo textual */
 .message-content {
-  line-height: 1.5;
+  line-height: var(--message-line-height);
 }
 
-/* ===================================================================
-   MESSAGE TIME & STATUS
-=================================================================== */
-
+/* Horário + status (ícones) abaixo do conteúdo */
 .message-time {
+  font-size: 0.7rem;
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 4px;
-  font-size: 0.7rem;
-  margin-top: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  justify-content: flex-end;
+  color: var(--color-text-light);
 }
 
-.message-status {
-  display: inline-flex;
+/* Esconder “check” em incoming */
+.message-bubble.incoming .check {
+  display: none;
 }
 
-.check {
-  opacity: 0.8;
-}
-
+/* Cores do check em outgoing */
 .check.sent {
-  color: rgba(255, 255, 255, 0.6);
+  color: #999999;
+  font-size: 0.6rem;
+  line-height: 1;
 }
-
 .check.delivered {
-  color: var(--color-status-delivered, #34b7f1);
+  color: #34b7f1;
+  font-size: 0.6rem;
+  line-height: 1;
 }
-
 .check.pending {
-  color: rgba(255, 255, 255, 0.4);
+  color: #999999;
+  font-size: 0.6rem;
+  line-height: 1;
 }
 
-/* ===================================================================
-   CONTEXT MENU
-=================================================================== */
-
-.menu-arrow {
+/* Botão de responder dentro da bolha */
+.reply-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  opacity: 0;
+  top: 4px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.5;
   transition: opacity 0.2s ease;
-  z-index: 2;
 }
 
-.message-bubble:hover .menu-arrow {
-  opacity: 0.6;
-}
-
-.message-bubble:hover .menu-arrow:hover {
+.reply-btn:hover {
   opacity: 1;
 }
 
+/* Garantir que anexos (imagem, vídeo, iframe, PDF embed) não quebrem a largura */
+.message-bubble img,
+.message-bubble video,
+.message-bubble iframe {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+
+/* Botão com seta no canto superior direito */
+.menu-arrow {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  z-index: 2;
+}
+
+/* Aparecer só ao passar o mouse na bolha */
+.message-bubble:hover .menu-arrow {
+  display: block;
+}
+
+/* Estilo do botão da seta */
 .menu-button {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
-  color: inherit;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 2px;
+  opacity: 0.6;
+  color: var(--color-text-light);
+  font-size: 14px;
 }
 
 .menu-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
 }
 
+/* Estilo do dropdown */
 .menu-dropdown {
   position: absolute;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  min-width: 160px;
-  overflow: hidden;
-}
-
-.menu-dropdown.right {
+  top: 20px;
   right: 0;
-  top: 100%;
-}
-
-.menu-dropdown.left {
-  left: 0;
-  top: 100%;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 999;
+  min-width: 140px;
 }
 
 .menu-dropdown button {
@@ -167,95 +164,91 @@
   width: 100%;
   background: none;
   border: none;
-  padding: 8px 12px;
+  padding: 6px 12px;
   cursor: pointer;
-  font-size: 0.85rem;
-  gap: 8px;
-  color: var(--color-text-dark, #333);
-  text-align: left;
-  transition: background-color 0.1s ease;
+  font-size: 14px;
+  gap: 6px;
+  color: #333;
 }
 
 .menu-dropdown button:hover {
-  background-color: var(--color-surface-hover, #f5f5f5);
+  background-color: #f0f0f0;
 }
 
-/* ===================================================================
-   REPLY MESSAGE STYLES
-=================================================================== */
+.menu-dropdown {
+  position: absolute;
+  top: 20px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 999;
+  min-width: 140px;
+}
+
+/* Posição correta para cada lado */
+.menu-dropdown.right {
+  right: 0;
+}
+
+.menu-dropdown.left {
+  left: 0;
+}
+
+
+
 
 .replied-message {
-  border-left: 3px solid rgba(255, 255, 255, 0.5);
+  border-left: 3px solid rgba(255, 255, 255, 0.4);
   padding-left: 8px;
   margin-bottom: 6px;
+  opacity: 0.85;
   font-size: 0.85rem;
-  opacity: 0.9;
-  max-width: 100%;
-  overflow: hidden;
 }
 
-.replied-content {
+.reply-preview {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  background: #f0f0f0;
+  border-left: 3px solid #ccc;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #333;
+  border-radius: 6px;
+  position: relative;
 }
 
-.replied-content strong {
-  font-weight: 600;
+.reply-content {
+  flex: 1;
 }
 
-.replied-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.reply-cancel {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #999;
+  cursor: pointer;
+  margin-left: 8px;
 }
 
-/* ===================================================================
-   MEDIA ATTACHMENTS
-=================================================================== */
-
-.message-bubble img,
-.message-bubble video,
-.message-bubble iframe,
-.message-bubble audio {
-  max-width: 100%;
+.reply-snippet {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #ccc;
+  padding: 6px 10px;
   border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.reply-snippet strong {
+  font-weight: bold;
   display: block;
+  margin-bottom: 4px;
 }
 
-/* ===================================================================
-   RESPONSIVE ADJUSTMENTS
-=================================================================== */
-
-@media (max-width: 768px) {
-  .message-row.incoming {
-    padding-right: 10%;
-  }
-  
-  .message-row.outgoing {
-    padding-left: 10%;
-  }
-  
-  .message-bubble {
-    max-width: 90%;
-    padding: 10px 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  .message-row.incoming,
-  .message-row.outgoing {
-    padding-left: 5%;
-    padding-right: 5%;
-  }
-  
-  .message-bubble {
-    max-width: 95%;
-    padding: 8px 12px;
-    font-size: 0.9rem;
-  }
-  
-  .menu-dropdown {
-    min-width: 140px;
-  }
+.reply-preview-content {
+  display: block;
+  font-size: 0.85rem;
 }
