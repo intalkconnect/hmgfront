@@ -15,6 +15,14 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
+    useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission().then(permission => {
+        console.log('Permissão para notificações:', permission);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
       const { data } = await supabase
