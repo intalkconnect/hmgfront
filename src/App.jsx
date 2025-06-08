@@ -5,14 +5,14 @@ import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
 import useConversationsStore from './store/useConversationsStore';
-import notificationSound from './assets/notification.mp3'; // Adicione este arquivo
+import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
-  const audioPlayer = useRef(null);
+  const audioRef = useRef(null);
   
   const {
     setConversation,
@@ -24,6 +24,18 @@ export default function App() {
   } = useConversationsStore();
   
   const userIdSelecionadoRef = useRef(null);
+
+  // Inicializa o áudio
+  useEffect(() => {
+    audioRef.current = new Audio(notificationSound);
+    audioRef.current.volume = 0.3;
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Verifica se a janela está ativa
   useEffect(() => {
@@ -39,54 +51,12 @@ export default function App() {
     };
   }, []);
 
-  // Solicita permissão para notificações
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Inicializa socket e carrega dados
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        connectSocket();
-        const socket = getSocket();
-
-        socket.on('connect_error', (err) => {
-          console.error('Socket connection error:', err);
-          setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-        });
-
-        socket.on('connect', () => {
-          console.log('Socket connected successfully');
-          setSocketError(null);
-        });
-
-        await Promise.all([
-          fetchConversations(),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
-        ]);
-
-        return () => {
-          socket.off('connect_error');
-          socket.off('connect');
-        };
-      } catch (error) {
-        console.error('Initialization error:', error);
-        setSocketError('Erro ao inicializar a aplicação');
-      }
-    };
-
-    initializeApp();
-  }, []);
-
   // Configura listener de novas mensagens
   useEffect(() => {
     const socket = getSocket();
     
-    const handleNewMessage = (message) => {
+    const handleNewMessage = async (message) => {
+      // Atualiza a conversa no estado
       setConversation(message.user_id, {
         ...message,
         ticket_number: message.ticket_number || message.ticket,
@@ -98,17 +68,55 @@ export default function App() {
         incrementUnread(message.user_id);
         
         // Toca o som de notificação
-        if (audioPlayer.current) {
-          audioPlayer.current.currentTime = 0;
-          audioPlayer.current.play().catch(e => console.log("Autoplay prevented:", e));
+        try {
+          audioRef.current.currentTime = 0;
+          await audioRef.current.play();
+        } catch (err) {
+          console.log("Falha ao tocar som:", err);
         }
 
         // Mostra notificação se a janela não está ativa
-        if (!isWindowActive && Notification.permission === 'granted') {
-          showNotification(message);
+        if (!isWindowActive) {
+          const conversation = conversations[message.user_id] || {};
+          showNotification({
+            ...message,
+            name: conversation.name // Pega o name do Zustand store
+          });
         }
       }
     };
+
+    socket.on('new_message', handleNewMessage);
+    return () => socket.off('new_message', handleNewMessage);
+  }, [isWindowActive, setConversation, incrementUnread, conversations]);
+
+  // Função para mostrar notificação
+  const showNotification = (message) => {
+    if (!('Notification' in window)) return;
+
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(
+        `Nova mensagem de ${message.name || message.user_id}`, 
+        {
+          body: getMessagePreview(message.content),
+          icon: '/icons/whatsapp.png',
+          vibrate: [200, 100, 200],
+        }
+      );
+
+      notification.onclick = () => {
+        window.focus();
+        handleSelectUser(message.user_id);
+      };
+    }
+    else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          showNotification(message);
+        }
+      });
+    }
+  };
 
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
