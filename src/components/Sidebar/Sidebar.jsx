@@ -40,24 +40,50 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
     fetchSettingsAndFila();
   }, [conversations]);
 
-  const getSnippet = (rawContent) => {
-    try {
-      const parsed = JSON.parse(rawContent);
-      if (parsed.url) {
-        const url = parsed.url.toLowerCase();
-        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
-        }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
-        }
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
+const getSnippet = (rawContent) => {
+  try {
+    const parsed = JSON.parse(rawContent);
+    
+    // Verifica se é um arquivo (áudio, imagem ou genérico)
+    if (parsed.url) {
+      const url = parsed.url.toLowerCase();
+      if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
+        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
       }
-      return parsed.text || parsed.caption || '[mensagem]';
-    } catch {
-      return rawContent?.length > 40 ? rawContent.slice(0, 37) + '...' : rawContent || '';
+      if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
+        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
+      }
+      return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
     }
-  };
+
+    // Verifica se é uma lista
+    if (parsed.type === 'list' || parsed.body?.type === 'list') {
+      return '🔘 Lista';
+    }
+
+    // Retorna texto ou legenda se existirem
+    const text = parsed.text || parsed.caption;
+    if (text) {
+      // Verifica se é uma sequência longa de números repetidos
+      if (/^(\d)\1{8,}$/.test(text)) { // 9+ dígitos iguais
+        return text.substring(0, 3) + '...' + text.slice(-3); // Ex: "333...333"
+      }
+      return text.length > 40 ? text.substring(0, 37) + '...' : text;
+    }
+
+    return '[mensagem]';
+  } catch {
+    // Para conteúdo não-JSON
+    if (typeof rawContent === 'string') {
+      // Verifica sequências longas de números no conteúdo bruto
+      if (/^(\d)\1{8,}$/.test(rawContent)) {
+        return rawContent.substring(0, 3) + '...' + rawContent.slice(-3);
+      }
+      return rawContent.length > 40 ? rawContent.substring(0, 37) + '...' : rawContent;
+    }
+    return '';
+  }
+};
 
   const filteredConversations = Object.values(conversations).filter(conv => {
     if (!searchTerm) return true;
