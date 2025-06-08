@@ -1,44 +1,45 @@
 // src/store/useConversationsStore.js
 import { create } from 'zustand'
-import { supabase } from '../services/supabaseClient'
 
-const useConversationsStore = create((set, get) => ({
+const useConversationsStore = create((set) => ({
   conversations: {},
-  userIdSelecionado: null,
-  unreadCounts: {},
+  lastRead: {},
+  unreadCount: {},
 
-  // Define o usuário selecionado
-  setUserIdSelecionado: (userId) => set({ userIdSelecionado: userId }),
+  setConversation: (userId, data) =>
+    set((state) => ({
+      conversations: {
+        ...state.conversations,
+        [userId]: {
+          ...(state.conversations[userId] || {}),
+          ...data,
+        },
+      },
+    })),
 
-  // Atualiza uma conversa
-  setConversation: (userId, data) => set(state => ({
-    conversations: {
-      ...state.conversations,
-      [userId]: { ...(state.conversations[userId] || {}), ...data }
-    }
-  })),
+  setLastRead: (userId, timestamp) =>
+    set((state) => ({
+      lastRead: {
+        ...state.lastRead,
+        [userId]: timestamp,
+      },
+      unreadCount: {
+        ...state.unreadCount,
+        [userId]: 0, // Zera a contagem quando marca como lido
+      },
+    })),
 
-  // Busca contagem de não lidas
-  fetchInitialUnread: async (userId) => {
-    const { data } = await supabase.rpc('get_unread_count', { user_id: userId })
-    set(state => ({
-      unreadCounts: { ...state.unreadCounts, [userId]: data || 0 }
-    }))
+  incrementUnread: (userId) =>
+    set((state) => ({
+      unreadCount: {
+        ...state.unreadCount,
+        [userId]: (state.unreadCount[userId] || 0) + 1,
+      },
+    })),
+
+  getUnreadCount: (userId) => {
+    return (state) => state.unreadCount[userId] || 0;
   },
+}));
 
-  // Incrementa não lidas
-  incrementUnread: (userId) => set(state => ({
-    unreadCounts: { ...state.unreadCounts, [userId]: (state.unreadCounts[userId] || 0) + 1 }
-  })),
-
-  // Marca como lido
-  markAsRead: async (userId) => {
-    await supabase.from('user_unread_messages')
-      .upsert({ user_id: userId, unread_count: 0 })
-    set(state => ({
-      unreadCounts: { ...state.unreadCounts, [userId]: 0 }
-    }))
-  }
-}))
-
-export default useConversationsStore
+export default useConversationsStore;
