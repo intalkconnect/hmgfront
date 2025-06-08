@@ -1,15 +1,4 @@
 /* MessageList.css */
-.message-list-container {
-  height: 100%;
-  overflow-y: auto;
-  position: relative;
-}
-
-.message-list {
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-}
 
 .load-more-trigger {
   height: 40px;
@@ -58,9 +47,3 @@
   overflow-x: hidden !important;
 }
 
-.message-item {
-  padding: 10px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
