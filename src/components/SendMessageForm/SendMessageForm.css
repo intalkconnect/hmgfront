@@ -17,7 +17,7 @@
   width: 100%;
   height: 80px;                     /* altura fixa de 80px */
   border: none;
-  border-bottom: 1px solid #e0e0e0; /* linha cinza clara embaixo */
+  border-bottom: 1px solid #25d366; /* linha verde clara embaixo */
   background-color: #f9f9f9;        /* cinza suave de fundo */
   font-size: 1rem;
   line-height: 1.4;
@@ -110,7 +110,7 @@
   align-items: center;
   justify-content: center;
   margin-left: auto;     /* empurra para a borda direita */
-  background-color: var(--primary, #4a90e2);
+  background-color: var(--primary, #25d366);
   color: #fff;
   border: none;
   border-radius: 50%;    /* 50% transforma em círculo */
