@@ -12,6 +12,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const userIdSelecionadoRef = useRef(null);
   const socketRef = useRef(null);
+  const [socketInstance, setSocketInstance] = useState(null);
 
   const {
     conversations,
@@ -21,6 +22,16 @@ export default function App() {
     markAsRead,
     fetchInitialUnread
   } = useConversationsStore();
+
+    useEffect(() => {
+    const socket = connectSocket();
+    setSocketInstance(socket);
+    window.socket = socket; // Disponibiliza globalmente se necessário
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // Atualiza referência do usuário selecionado
   useEffect(() => {
