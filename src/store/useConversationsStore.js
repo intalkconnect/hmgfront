@@ -23,18 +23,20 @@ const useConversationsStore = create((set, get) => ({
   // Busca contagem inicial de não lidas do banco
   fetchInitialUnread: async (userId) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_unread_messages')
         .select('unread_count')
         .eq('user_id', userId)
-        .single();
-      
-      set(state => ({
-        unreadCounts: {
-          ...state.unreadCounts,
-          [userId]: data?.unread_count || 0
-        }
-      }));
+        .maybeSingle(); // Usando maybeSingle para evitar erros
+
+      if (!error && data) {
+        set(state => ({
+          unreadCounts: {
+            ...state.unreadCounts,
+            [userId]: data.unread_count || 0
+          }
+        }));
+      }
     } catch (error) {
       console.error("Erro ao buscar não lidas:", error);
     }
