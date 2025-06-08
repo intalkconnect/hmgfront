@@ -141,14 +141,14 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
               </div>
 
               <div className="chat-details">
-                <div className="chat-title">
-                  {nomeCliente}
-                  {hasUnread && (
-                    <span className={`unread-indicator ${unreadCount > 0 ? 'with-count' : ''}`}>
-                      {unreadCount > 0 ? unreadCount : ''}
-                    </span>
-                  )}
-                </div>
+<div className="chat-title">
+  {nomeCliente}
+  {hasUnread && (
+    <span className={`unread-indicator ${unreadCount > 0 ? 'with-count' : ''}`}>
+      {unreadCount > 0 ? unreadCount : ''}
+    </span>
+  )}
+</div>
                 <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
                   <span className="chat-ticket">#{ticket}</span>
@@ -156,17 +156,17 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
                 </div>
               </div>
 
-              <div className="chat-time">
-                {conv.timestamp
-                  ? new Date(conv.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : '--:--'}
-                {hasUnread && !unreadCount && (
-                  <span className="unread-dot-time" />
-                )}
-              </div>
+<div className="chat-time">
+  {conv.timestamp
+    ? new Date(conv.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '--:--'}
+  {hasUnread && !unreadCount && (
+    <span className="unread-dot-time" />
+  )}
+</div>
             </li>
           );
         })}
