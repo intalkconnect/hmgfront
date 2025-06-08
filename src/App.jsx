@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "./services/supabaseClient";
-import { socket, connectSocket } from "./services/socket";
+import { connectSocket } from "./services/socket";
 import Sidebar from "./components/Sidebar/Sidebar";
 import ChatWindow from "./components/ChatWindow/ChatWindow";
 import DetailsPanel from "./components/DetailsPanel/DetailsPanel";
@@ -12,7 +12,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const userIdSelecionadoRef = useRef(null);
   const socketRef = useRef(null);
-  const [socketInstance, setSocketInstance] = useState(null);
 
   const {
     conversations,
@@ -23,32 +22,13 @@ export default function App() {
     fetchInitialUnread
   } = useConversationsStore();
 
-    useEffect(() => {
-    const socket = connectSocket();
-    setSocketInstance(socket);
-    window.socket = socket; // Disponibiliza globalmente se necessário
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Atualiza referência do usuário selecionado
-  useEffect(() => {
-    userIdSelecionadoRef.current = userIdSelecionado;
-  }, [userIdSelecionado]);
-
-  // Configura socket
+  // Configuração do WebSocket
   useEffect(() => {
     socketRef.current = connectSocket();
-    return () => socketRef.current?.disconnect();
-  }, []);
 
-  // Handler de novas mensagens
-  const handleNewMessage = useCallback(async (msg) => {
-    if (!msg?.user_id) return;
-    
-    try {
+    const handleNewMessage = (msg) => {
+      if (!msg?.user_id) return;
+
       setConversation(msg.user_id, {
         ...msg,
         ticket_number: msg.ticket_number || msg.ticket,
@@ -57,22 +37,22 @@ export default function App() {
       });
 
       if (userIdSelecionadoRef.current !== msg.user_id) {
-        await supabase.rpc('increment_unread', { user_id: msg.user_id });
         incrementUnread(msg.user_id);
       }
-    } catch (error) {
-      console.error("Erro ao processar mensagem:", error);
-    }
+    };
+
+    socketRef.current.on('new_message', handleNewMessage);
+
+    return () => {
+      socketRef.current?.off('new_message', handleNewMessage);
+      socketRef.current?.disconnect();
+    };
   }, [setConversation, incrementUnread]);
 
-  // Configura listener do socket
+  // Atualiza referência do usuário
   useEffect(() => {
-    const ws = socketRef.current;
-    if (!ws) return;
-
-    ws.on('new_message', handleNewMessage);
-    return () => ws.off('new_message', handleNewMessage);
-  }, [handleNewMessage]);
+    userIdSelecionadoRef.current = userIdSelecionado;
+  }, [userIdSelecionado]);
 
   // Busca conversas iniciais
   const fetchConversations = useCallback(async () => {
@@ -94,12 +74,12 @@ export default function App() {
     }
   }, [setConversation, fetchInitialUnread]);
 
-  useEffect(() => { fetchConversations(); }, [fetchConversations]);
+  useEffect(() => { 
+    fetchConversations(); 
+  }, [fetchConversations]);
 
   // Handler de seleção de usuário
   const handleSelectUser = useCallback(async (userId) => {
-    if (!userId) return;
-    
     try {
       const fullId = userId.includes("@") ? userId : `${userId}@w.msgcli.net`;
       setUserIdSelecionado(fullId);
