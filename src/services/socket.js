@@ -9,8 +9,10 @@ import { io } from 'socket.io-client'
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
 
 export const socket = io(SOCKET_URL, {
-  autoConnect: true,
-  reconnectionAttempts: 3
+    withCredentials: true,
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
 })
 
 // Conecta e registra listeners
