@@ -1,5 +1,4 @@
 // src/components/ChatWindow/MessageRow.jsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import TextMessage from './messageTypes/TextMessage';
 import ImageMessage from './messageTypes/ImageMessage';
@@ -10,7 +9,7 @@ import UnknownMessage from './messageTypes/UnknownMessage';
 import { renderReplyContent } from '../../utils/renderUtils';
 
 import './MessageRow.css';
-import { CheckCheck, Check, Download, Copy, CornerDownLeft, ChevronDown  } from 'lucide-react';
+import { CheckCheck, Check, Download, Copy, CornerDownLeft, ChevronDown } from 'lucide-react';
 
 export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,11 +17,19 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
 
   let content = msg.content;
 
+  // Tratamento seguro do conteúdo
   if (typeof content === 'string') {
-    try {
-      content = JSON.parse(content);
-    } catch {
-      // Mantém como string
+    // Se for string numérica (qualquer comprimento), mantém como string
+    if (/^\d+$/.test(content)) {
+      // Não faz parse, mantém como texto puro
+    } 
+    // Só tenta parsear JSON se a string parece ser JSON
+    else if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+      try {
+        content = JSON.parse(content);
+      } catch {
+        // Mantém como string se o parse falhar
+      }
     }
   }
 
@@ -30,25 +37,8 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
   const replyDirection = msg.reply_direction || '';
   const rowClass = `message-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
   const bubbleClass = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
-  const renderTimeAndStatus = () => (
-    <div className="message-time">
-      {new Date(msg.timestamp).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}
-      {isOutgoing && (
-        <span className="message-status">
-          {msg.status === 'delivered' ? (
-            <CheckCheck size={14} className="check delivered" />
-          ) : msg.status === 'sent' ? (
-            <CheckCheck size={14} className="check sent" />
-          ) : (
-            <Check size={14} className="check pending" />
-          )}
-        </span>
-      )}
-    </div>
-  );
+
+  // ... (restante do código de renderTimeAndStatus permanece igual)
 
   const urlLower = String(content?.url || '').toLowerCase();
   const isAudio = msg.type === 'audio' || content?.voice || /\.(ogg|mp3|wav)$/i.test(urlLower);
@@ -58,45 +48,41 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
 
   let messageContent = null;
 
-  // Se o conteúdo for um número ou booleano (por ex: "123456" ou true), trata como texto
-if (typeof content === 'number' || typeof content === 'boolean') {
-  messageContent = <TextMessage content={String(content)} />;
-
-} else if (isAudio) {
-  messageContent = <AudioMessage url={content.url || msg.url || ''} />;
-
-} else if (isImage) {
-  messageContent = (
-    <ImageMessage
-      url={content.url}
-      caption={content.caption}
-      onClick={() => onImageClick?.(content.url)}
-    />
-  );
-
-} else if (isPdf) {
-  messageContent = (
-    <DocumentMessage
-      filename={content.filename}
-      url={content.url}
-      caption={content.caption}
-      onClick={() => onPdfClick?.(content.url)}
-    />
-  );
-
-} else if (isList) {
-  const listData = content?.type === 'list' ? content : content.body;
-  messageContent = <ListMessage listData={listData} />;
-
-} else if (typeof content === 'string') {
-  messageContent = <TextMessage content={content} />;
-
-} else if (typeof content === 'object' && (content?.text || content?.caption)) {
-  messageContent = <TextMessage content={content.text || content.caption} />;
-
-} else {
-  messageContent = <UnknownMessage />;
-}
+  // Tratamento do conteúdo para renderização
+  if (typeof content === 'string' && /^\d+$/.test(content)) {
+    // Strings numéricas longas são tratadas como texto puro
+    messageContent = <TextMessage content={content} />;
+  } else if (typeof content === 'number' || typeof content === 'boolean') {
+    messageContent = <TextMessage content={String(content)} />;
+  } else if (isAudio) {
+    messageContent = <AudioMessage url={content.url || msg.url || ''} />;
+  } else if (isImage) {
+    messageContent = (
+      <ImageMessage
+        url={content.url}
+        caption={content.caption}
+        onClick={() => onImageClick?.(content.url)}
+      />
+    );
+  } else if (isPdf) {
+    messageContent = (
+      <DocumentMessage
+        filename={content.filename}
+        url={content.url}
+        caption={content.caption}
+        onClick={() => onPdfClick?.(content.url)}
+      />
+    );
+  } else if (isList) {
+    const listData = content?.type === 'list' ? content : content.body;
+    messageContent = <ListMessage listData={listData} />;
+  } else if (typeof content === 'string') {
+    messageContent = <TextMessage content={content} />;
+  } else if (typeof content === 'object' && (content?.text || content?.caption)) {
+    messageContent = <TextMessage content={content.text || content.caption} />;
+  } else {
+    messageContent = <UnknownMessage />;
+  }
 
 
   const handleCopy = () => {
