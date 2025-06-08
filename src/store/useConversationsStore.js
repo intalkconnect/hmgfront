@@ -1,90 +1,44 @@
-import { create } from 'zustand';
-import { supabase } from '../services/supabaseClient';
+// src/store/useConversationsStore.js
+import { create } from 'zustand'
+import { supabase } from '../services/supabaseClient'
 
 const useConversationsStore = create((set, get) => ({
   conversations: {},
-  lastRead: {},
+  userIdSelecionado: null,
   unreadCounts: {},
 
-  setConversation: (userId, data) => {
-    if (!userId) return;
-    set(state => ({
-      conversations: {
-        ...state.conversations,
-        [userId]: { 
-          ...(state.conversations[userId] || {}), 
-          ...data 
-        }
-      }
-    }));
-  },
+  // Define o usuário selecionado
+  setUserIdSelecionado: (userId) => set({ userIdSelecionado: userId }),
 
+  // Atualiza uma conversa
+  setConversation: (userId, data) => set(state => ({
+    conversations: {
+      ...state.conversations,
+      [userId]: { ...(state.conversations[userId] || {}), ...data }
+    }
+  })),
+
+  // Busca contagem de não lidas
   fetchInitialUnread: async (userId) => {
-    try {
-      const { data, error } = await supabase.rpc('get_unread_count', {
-        user_id: userId
-      });
-
-      if (!error && data !== null) {
-        set(state => ({
-          unreadCounts: {
-            ...state.unreadCounts,
-            [userId]: data
-          }
-        }));
-      }
-    } catch (error) {
-      console.error("Erro ao buscar não lidas:", error);
-    }
-  },
-
-  markAsRead: async (userId) => {
-    try {
-      await supabase
-        .from('user_unread_messages')
-        .upsert({ 
-          user_id: userId, 
-          unread_count: 0,
-          last_checked: new Date().toISOString() 
-        });
-      
-      set(state => ({
-        unreadCounts: {
-          ...state.unreadCounts,
-          [userId]: 0
-        },
-        lastRead: {
-          ...state.lastRead,
-          [userId]: new Date().toISOString()
-        }
-      }));
-    } catch (error) {
-      console.error("Erro ao marcar como lido:", error);
-    }
-  },
-
-  incrementUnread: (userId) => {
-    if (!userId) return;
+    const { data } = await supabase.rpc('get_unread_count', { user_id: userId })
     set(state => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [userId]: (state.unreadCounts[userId] || 0) + 1
-      }
-    }));
+      unreadCounts: { ...state.unreadCounts, [userId]: data || 0 }
+    }))
   },
 
-  removeConversation: (userId) => {
-    set(state => {
-      const newConvs = { ...state.conversations };
-      const newCounts = { ...state.unreadCounts };
-      delete newConvs[userId];
-      delete newCounts[userId];
-      return { 
-        conversations: newConvs, 
-        unreadCounts: newCounts 
-      };
-    });
-  }
-}));
+  // Incrementa não lidas
+  incrementUnread: (userId) => set(state => ({
+    unreadCounts: { ...state.unreadCounts, [userId]: (state.unreadCounts[userId] || 0) + 1 }
+  })),
 
-export default useConversationsStore;
+  // Marca como lido
+  markAsRead: async (userId) => {
+    await supabase.from('user_unread_messages')
+      .upsert({ user_id: userId, unread_count: 0 })
+    set(state => ({
+      unreadCounts: { ...state.unreadCounts, [userId]: 0 }
+    }))
+  }
+}))
+
+export default useConversationsStore
