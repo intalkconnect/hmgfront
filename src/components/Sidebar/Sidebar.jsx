@@ -43,25 +43,34 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
 const getSnippet = (rawContent) => {
   if (rawContent === undefined || rawContent === null) return '';
 
-  try {
-    const parsed = JSON.parse(rawContent);
-    if (parsed.url) {
-      const url = parsed.url.toLowerCase();
-      if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
-      }
-      if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
-      }
-      return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
-    }
-    // Se for JSON válido, retorna text/caption ou string vazia (nunca [mensagem])
-    return parsed.text || parsed.caption || '';
-  } catch {
-    // Se não for JSON, trata como string (trunca se > 40 chars, mas nunca mostra [mensagem])
-    const contentStr = String(rawContent);
-    return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
+  // Se for uma string numérica (apenas dígitos), retorna ela mesma, mesmo se longa
+  if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) {
+    return rawContent;
   }
+
+  // Só tenta parsear se parece um JSON (evita erros desnecessários)
+  if (typeof rawContent === 'string' && (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))) {
+    try {
+      const parsed = JSON.parse(rawContent);
+      if (parsed.url) {
+        const url = parsed.url.toLowerCase();
+        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
+        }
+        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
+        }
+        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
+      }
+      return parsed.text || parsed.caption || '';
+    } catch {
+      // Se falhar o parse, trata como string normal
+    }
+  }
+
+  // Se não for JSON ou se falhar, trata como string (trunca se > 40 chars)
+  const contentStr = String(rawContent);
+  return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
 };
 
   const filteredConversations = Object.values(conversations).filter(conv => {
