@@ -1,26 +1,14 @@
-// src/components/ChatWindow/MessageList.jsx
-
-import React, { forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react';
 import MessageRow from './MessageRow';
-
-/**
- * MessageList (versão “carrega tudo”)
- *
- * - Renderiza todas as mensagens de uma só vez usando map().
- * - O scroll fica a cargo do navegador (overflow-y: auto), sem virtualização.
- * - Expondo via ref() o método scrollToBottomInstant() para rolar automaticamente.
- *
- * Props:
- *  - messages: array de objetos de mensagem ({ id, direction, content, timestamp, status, ... })
- *  - onImageClick, onPdfClick, onReply: callbacks para tratar anexos e resposta
- */
+import './MessageList.css'; // Importando o CSS adicional
 
 const MessageList = forwardRef(
   ({ messages, onImageClick, onPdfClick, onReply }, ref) => {
-    // Referência ao container que faz o scroll
     const containerRef = useRef(null);
+    const [visibleMessages, setVisibleMessages] = useState(100);
+    const loaderRef = useRef(null);
 
-    // Expondo o método scrollToBottomInstant() para o componente pai
+    // Expõe o método scrollToBottomInstant
     useImperativeHandle(ref, () => ({
       scrollToBottomInstant: () => {
         if (containerRef.current) {
@@ -29,38 +17,69 @@ const MessageList = forwardRef(
       },
     }));
 
-    // Sempre que o array “messages” mudar, rola automaticamente para o fim
+    // Configura o Intersection Observer para carregar mais mensagens
+    useEffect(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && visibleMessages < messages.length) {
+            setVisibleMessages(prev => Math.min(prev + 100, messages.length));
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (loaderRef.current) {
+        observer.observe(loaderRef.current);
+      }
+
+      return () => observer.disconnect();
+    }, [messages.length, visibleMessages]);
+
+    // Rola para baixo quando novas mensagens são adicionadas
     useEffect(() => {
       if (containerRef.current) {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        const wasAtBottom = 
+          containerRef.current.scrollHeight - containerRef.current.scrollTop === 
+          containerRef.current.clientHeight;
+        
+        if (wasAtBottom) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
       }
     }, [messages]);
+
+    const displayedMessages = messages.slice(-visibleMessages);
 
     return (
       <div
         ref={containerRef}
+        className="message-list-container" // Classe existente
         style={{
-          flex: 1,                   // ocupa todo espaço vertical disponível
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          overflowY: 'auto',         // scroll aparece aqui, não em outro lugar
-          padding: '0 8px',          // opcional: gap lateral igual ao que tinha antes
+          overflowY: 'auto',
+          padding: '0 8px',
         }}
       >
-{messages.map((msg, index) => {
-  const replyToMessage = messages.find(m => m.whatsapp_message_id === msg.reply_to);
+        {visibleMessages < messages.length && (
+          <div ref={loaderRef} className="message-list-loader">
+            <div className="message-list-spinner"></div>
+          </div>
+        )}
 
-  return (
-    <MessageRow
-      key={msg.id || index}
-      msg={{ ...msg, replyTo: replyToMessage }} // injeta o conteúdo da mensagem original
-      onImageClick={onImageClick}
-      onPdfClick={onPdfClick}
-      onReply={onReply}
-    />
-  );
-})}
-
+        {displayedMessages.map((msg, index) => {
+          const replyToMessage = messages.find(m => m.whatsapp_message_id === msg.reply_to);
+          return (
+            <MessageRow
+              key={msg.id || index}
+              msg={{ ...msg, replyTo: replyToMessage }}
+              onImageClick={onImageClick}
+              onPdfClick={onPdfClick}
+              onReply={onReply}
+            />
+          );
+        })}
       </div>
     );
   }
