@@ -8,69 +8,67 @@ import useConversationsStore from "./store/useConversationsStore";
 import "./App.css";
 
 export default function App() {
+  // Estados e referências
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const userIdSelecionadoRef = useRef(null);
+  const socketRef = useRef(null);
+
+  // Store actions
   const {
     setConversation,
     setLastRead,
     incrementUnread,
     markAsRead,
     conversations
-  } = useConversationsStore((state) => ({
-    setConversation: state.setConversation,
-    setLastRead: state.setLastRead,
-    incrementUnread: state.incrementUnread,
-    markAsRead: state.markAsRead,
-    conversations: state.conversations
-  }));
+  } = useConversationsStore();
 
   // Atualiza a referência do usuário selecionado
   useEffect(() => {
     userIdSelecionadoRef.current = userIdSelecionado;
   }, [userIdSelecionado]);
 
-  // Conexão com o WebSocket
+  // Conexão com WebSocket (executado apenas uma vez)
   useEffect(() => {
-    connectSocket();
+    socketRef.current = connectSocket();
     return () => {
-      socket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
   }, []);
 
-  // Handler para novas mensagens
+  // Handler para novas mensagens (useCallback para estabilidade)
   const handleNewMessage = useCallback(async (novaMsg) => {
-    try {
-      const currentUserId = userIdSelecionadoRef.current;
-      
-      // Atualiza a conversa no store
-      setConversation(novaMsg.user_id, {
-        ...novaMsg,
-        ticket_number: novaMsg.ticket_number || novaMsg.ticket,
-        timestamp: novaMsg.timestamp,
-        content: novaMsg.content
-      });
+    const currentUserId = userIdSelecionadoRef.current;
+    
+    // Atualiza a conversa no store
+    setConversation(novaMsg.user_id, {
+      ...novaMsg,
+      ticket_number: novaMsg.ticket_number || novaMsg.ticket,
+      timestamp: novaMsg.timestamp,
+      content: novaMsg.content
+    });
 
-      // Se não for o usuário atual, incrementa não lidas
-      if (currentUserId !== novaMsg.user_id) {
-        // Atualiza no banco de dados
-        const { error } = await supabase.rpc('increment_unread', {
-          user_id: novaMsg.user_id
-        });
-        
-        if (!error) {
-          incrementUnread(novaMsg.user_id);
-        }
+    // Incrementa não lidas se não for o usuário atual
+    if (currentUserId !== novaMsg.user_id) {
+      try {
+        await supabase.rpc('increment_unread', { user_id: novaMsg.user_id });
+        incrementUnread(novaMsg.user_id);
+      } catch (error) {
+        console.error("Erro ao incrementar não lidas:", error);
       }
-    } catch (error) {
-      console.error("Erro ao processar nova mensagem:", error);
     }
   }, [setConversation, incrementUnread]);
 
   // Configura listeners do WebSocket
   useEffect(() => {
-    socket.on('new_message', handleNewMessage);
+    const currentSocket = socketRef.current;
+    if (!currentSocket) return;
+
+    currentSocket.on('new_message', handleNewMessage);
+    
     return () => {
-      socket.off('new_message', handleNewMessage);
+      currentSocket.off('new_message', handleNewMessage);
     };
   }, [handleNewMessage]);
 
@@ -94,23 +92,18 @@ export default function App() {
 
   // Handler para seleção de usuário
   const handleSelectUser = useCallback(async (uid) => {
-    try {
-      const fullId = uid.includes("@") ? uid : `${uid}@w.msgcli.net`;
-      setUserIdSelecionado(fullId);
+    const fullId = uid.includes("@") ? uid : `${uid}@w.msgcli.net`;
+    setUserIdSelecionado(fullId);
 
-      // Marca como lido no store e no banco
+    try {
+      // Marca como lido
       await markAsRead(fullId);
       setLastRead(fullId, new Date().toISOString());
 
-      // Busca histórico de mensagens
-      const { data } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("user_id", fullId)
-        .order("timestamp", { ascending: true });
-
       // Entra na sala do socket
-      socket.emit("join_room", fullId);
+      if (socketRef.current) {
+        socketRef.current.emit("join_room", fullId);
+      }
     } catch (error) {
       console.error("Erro ao selecionar usuário:", error);
     }
