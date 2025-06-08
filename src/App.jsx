@@ -5,11 +5,15 @@ import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
 import useConversationsStore from './store/useConversationsStore';
+import notificationSound from './assets/notification.mp3'; // Adicione este arquivo
 import './App.css';
 
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const [socketError, setSocketError] = useState(null);
+  const [isWindowActive, setIsWindowActive] = useState(true);
+  const audioPlayer = useRef(null);
+  
   const {
     setConversation,
     setLastRead,
@@ -18,17 +22,37 @@ export default function App() {
     loadUnreadCounts,
     loadLastReadTimes,
   } = useConversationsStore();
+  
   const userIdSelecionadoRef = useRef(null);
+
+  // Verifica se a janela está ativa
+  useEffect(() => {
+    const handleFocus = () => setIsWindowActive(true);
+    const handleBlur = () => setIsWindowActive(false);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Solicita permissão para notificações
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Inicializa socket e carrega dados
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Conecta ao socket
         connectSocket();
         const socket = getSocket();
 
-        // Configura listeners do socket
         socket.on('connect_error', (err) => {
           console.error('Socket connection error:', err);
           setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
@@ -39,7 +63,6 @@ export default function App() {
           setSocketError(null);
         });
 
-        // Carrega dados iniciais
         await Promise.all([
           fetchConversations(),
           loadLastReadTimes(),
@@ -62,6 +85,7 @@ export default function App() {
   // Configura listener de novas mensagens
   useEffect(() => {
     const socket = getSocket();
+    
     const handleNewMessage = (message) => {
       setConversation(message.user_id, {
         ...message,
@@ -72,12 +96,45 @@ export default function App() {
 
       if (userIdSelecionadoRef.current !== message.user_id) {
         incrementUnread(message.user_id);
+        
+        // Toca o som de notificação
+        if (audioPlayer.current) {
+          audioPlayer.current.currentTime = 0;
+          audioPlayer.current.play().catch(e => console.log("Autoplay prevented:", e));
+        }
+
+        // Mostra notificação se a janela não está ativa
+        if (!isWindowActive && Notification.permission === 'granted') {
+          showNotification(message);
+        }
       }
     };
 
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
-  }, [setConversation, incrementUnread]);
+  }, [isWindowActive, setConversation, incrementUnread]);
+
+  // Função para mostrar notificação
+  const showNotification = (message) => {
+    const notification = new Notification('Nova mensagem recebida', {
+      body: `${message.name || message.user_id}: ${truncateContent(message.content)}`,
+      icon: '/icons/whatsapp.png',
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      handleSelectUser(message.user_id);
+    };
+  };
+
+  const truncateContent = (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      return parsed.text || parsed.caption || '[Conteúdo da mensagem]';
+    } catch {
+      return content.length > 50 ? content.substring(0, 47) + '...' : content;
+    }
+  };
 
   async function fetchConversations() {
     const { data, error } = await supabase.rpc('listar_conversas');
@@ -91,10 +148,8 @@ export default function App() {
     setUserIdSelecionado(fullId);
     userIdSelecionadoRef.current = fullId;
 
-    // Marca como lido
     await setLastRead(fullId, new Date().toISOString());
 
-    // Carrega mensagens do usuário
     const { data } = await supabase
       .from('messages')
       .select('*')
@@ -119,6 +174,8 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <audio ref={audioPlayer} src={notificationSound} preload="auto" />
+      
       {socketError && (
         <div className="socket-error-banner">
           {socketError}
