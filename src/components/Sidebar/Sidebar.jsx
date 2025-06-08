@@ -1,102 +1,94 @@
-// src/components/Sidebar.jsx
+// src/components/Sidebar/Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../services/supabaseClient";
-import "./Sidebar.css";
 import { File, Mic } from "lucide-react";
 import useConversationsStore from "../../store/useConversationsStore";
+import "./Sidebar.css";
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const conversationsMap = useConversationsStore(
-    (state) => state.conversations
-  );
-  const lastReadMap = useConversationsStore((state) => state.lastRead);
-  const conversations = Object.values(conversationsMap);
+  const {
+    conversations,
+    lastRead,
+    unreadCounts,
+    fetchInitialUnread,
+    markAsRead
+  } = useConversationsStore((state) => ({
+    conversations: state.conversations,
+    lastRead: state.lastRead,
+    unreadCounts: state.unreadCounts,
+    fetchInitialUnread: state.fetchInitialUnread,
+    markAsRead: state.markAsRead
+  }));
+
   const [distribuicaoTickets, setDistribuicaoTickets] = useState("manual");
   const [filaCount, setFilaCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Busca configurações e atualiza fila
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("settings")
         .select("value")
         .eq("key", "distribuicao_tickets")
         .single();
 
-      if (data?.value) {
-        setDistribuicaoTickets(data.value);
-      }
+      if (data?.value) setDistribuicaoTickets(data.value);
 
-      const filaAtivos = conversations.filter((conv) => !conv.atendido);
+      const filaAtivos = Object.values(conversations).filter(conv => !conv.atendido);
       setFilaCount(filaAtivos.length);
     };
 
     fetchSettingsAndFila();
-  }, [conversations, lastReadMap]);
+  }, [conversations]);
+
+  // Carrega contagens não lidas iniciais
+  useEffect(() => {
+    Object.keys(conversations).forEach(userId => {
+      fetchInitialUnread(userId);
+    });
+  }, [conversations, fetchInitialUnread]);
+
+  const handleSelectUser = async (userId) => {
+    await markAsRead(userId);
+    onSelectUser(userId);
+  };
 
   const getSnippet = (rawContent) => {
     try {
       const parsed = JSON.parse(rawContent);
-
+      
       if (parsed.url) {
         const url = parsed.url.toLowerCase();
-        if (
-          url.endsWith(".ogg") ||
-          url.endsWith(".mp3") ||
-          url.endsWith(".wav")
-        ) {
-          return (
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <Mic size={18} />
-              Áudio
-            </span>
-          );
+        const iconStyle = { display: "flex", alignItems: "center", gap: "6px" };
+        
+        if (url.match(/\.(ogg|mp3|wav)$/)) {
+          return <span style={iconStyle}><Mic size={18} />Áudio</span>;
         }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return (
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <File size={18} />
-              Imagem
-            </span>
-          );
+        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg|pdf)$/)) {
+          return <span style={iconStyle}><File size={18} />{url.endsWith('.pdf') ? 'PDF' : 'Imagem'}</span>;
         }
-        if (url.endsWith(".pdf")) {
-          return (
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <File size={18} />
-              Arquivo
-            </span>
-          );
-        }
-        return (
-          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <File size={18} />
-            Arquivo
-          </span>
-        );
+        return <span style={iconStyle}><File size={18} />Arquivo</span>;
       }
 
-      if (parsed.type === "list" || parsed.body?.type === "list") {
-        return "🔘 Lista";
-      }
-
-      if (parsed.text) {
-        return parsed.text.length > 40
-          ? parsed.text.slice(0, 37) + "..."
-          : parsed.text;
-      }
-
-      if (parsed.caption) {
-        return parsed.caption.length > 40
-          ? parsed.caption.slice(0, 37) + "..."
-          : parsed.caption;
-      }
-
-      return "[mensagem]";
-    } catch (e) {
-      const plain = rawContent || "";
-      return plain.length > 40 ? plain.slice(0, 37) + "..." : plain;
+      const text = parsed.text || parsed.caption || '[mensagem]';
+      return text.length > 40 ? `${text.slice(0, 37)}...` : text;
+    } catch {
+      const plain = rawContent || '';
+      return plain.length > 40 ? `${plain.slice(0, 37)}...` : plain;
     }
   };
+
+  // Filtra conversas baseado no search term
+  const filteredConversations = Object.values(conversations).filter(conv => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (conv.name || '').toLowerCase().includes(searchLower) ||
+      (conv.ticket_number || '').toLowerCase().includes(searchLower) ||
+      (conv.content || '').toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="sidebar-container">
@@ -105,11 +97,13 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
           type="text"
           placeholder="Pesquisar..."
           className="sidebar-input"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       <div className="fila-info">
-        {distribuicaoTickets == "manual" ? (
+        {distribuicaoTickets === "manual" ? (
           <>
             <span className="fila-count">
               {filaCount > 0
@@ -125,67 +119,52 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
             </button>
           </>
         ) : (
-          "Auto"
+          <span>Distribuição automática</span>
         )}
       </div>
 
       <ul className="chat-list">
-        {conversations.map((conv) => {
+        {filteredConversations.map((conv) => {
           const fullId = conv.user_id;
-          const nomeCliente = conv.name || fullId;
-          const isWhatsapp = conv.channel === "whatsapp";
-          const queueName = conv.fila || "Orçamento";
-          const ticket = conv.ticket_number || "000000";
-          const snippet = getSnippet(conv.content);
           const isSelected = fullId === userIdSelecionado;
-
-          const lastReadTime = lastReadMap[fullId];
-          const hasUnread =
-            !isSelected &&
-            (conv.unread_count > 0 ||
-              !lastReadTime ||
-              new Date(conv.timestamp) > new Date(lastReadTime));
+          const unreadCount = unreadCounts[fullId] || 0;
+          const hasUnread = !isSelected && unreadCount > 0;
 
           return (
             <li
               key={fullId}
-              className={`chat-list-item ${isSelected ? "active" : ""}`}
-              onClick={() => onSelectUser(fullId)}
+              className={`chat-list-item ${isSelected ? "active" : ""} ${hasUnread ? "unread" : ""}`}
+              onClick={() => handleSelectUser(fullId)}
             >
               <div className="chat-avatar">
-                {isWhatsapp && (
-                  <img
-                    src="/icons/whatsapp.png"
-                    alt="whatsapp"
-                    className="avatar-img"
-                  />
+                {conv.channel === "whatsapp" && (
+                  <img src="/icons/whatsapp.png" alt="WhatsApp" className="avatar-img" />
                 )}
               </div>
 
               <div className="chat-details">
                 <div className="chat-title">
-                  {nomeCliente}
+                  {conv.name || fullId.split('@')[0]}
                   {hasUnread && (
-                    <span className="unread-badge">
-                      {conv.unread_count || (lastReadTime ? 1 : 0)}
+                    <span className="unread-badge pulse">
+                      {unreadCount}
                     </span>
                   )}
                 </div>
-                <div className="chat-snippet">{snippet}</div>
+                <div className="chat-snippet">{getSnippet(conv.content)}</div>
                 <div className="chat-meta">
-                  <br />
-                  <span className="chat-ticket">#{ticket}</span>
-                  <span className="chat-queue">Fila:{queueName}</span>
+                  <span className="chat-ticket">#{conv.ticket_number || '000000'}</span>
+                  <span className="chat-queue">Fila: {conv.fila || 'Orçamento'}</span>
                 </div>
               </div>
 
               <div className="chat-time">
                 {conv.timestamp
                   ? new Date(conv.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })
-                  : "--:--"}
+                  : '--:--'}
               </div>
             </li>
           );
