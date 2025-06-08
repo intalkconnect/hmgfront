@@ -1,68 +1,69 @@
-// src/socket.js
+// src/services/socket.js
 import { io } from 'socket.io-client'
+import useConversationsStore from '../store/useConversationsStore'
 
-// Altere conforme sua lógica de estado ou store
-// Exemplo fictício:
-// import { useChatStore } from '@/stores/chatStore'
-// const store = useChatStore()
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://seu-servidor-websocket.com'
 
 export const socket = io(SOCKET_URL, {
-    withCredentials: true,
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+  withCredentials: true,
+  transports: ['websocket'],
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  autoConnect: false // Conectamos manualmente
 })
 
-// Conecta e registra listeners
+// Conecta e configura listeners
 export function connectSocket(userId) {
   if (!socket.connected) {
-    console.log('[socket] Conectando ao servidor em', SOCKET_URL)
+    console.log('[socket] Conectando ao servidor...')
     socket.connect()
 
     socket.on('connect', () => {
-      console.log('[socket] Conectado, id =', socket.id)
+      console.log('[socket] Conectado, ID:', socket.id)
+      if (userId) joinRoom(userId)
+    })
 
-      // Entra na sala do usuário após conectar
-      if (userId) {
-        socket.emit('join_room', userId)
-        console.log(`[socket] Entrando na sala chat-${userId}`)
+    socket.on('new_message', (message) => {
+      console.log('[socket] Nova mensagem:', message)
+      const store = useConversationsStore.getState()
+      store.setConversation(message.user_id, message)
+      if (message.user_id !== store.userIdSelecionado) {
+        store.incrementUnread(message.user_id)
       }
     })
 
-    socket.on('new_message', (data) => {
-      console.log('[socket] Nova mensagem recebida:', data)
-      // Exemplo: store.addMessage(data)
-    })
-
-    socket.on('bot_response', (data) => {
-      console.log('[socket] Resposta do bot:', data)
-      // Exemplo: store.addMessage({
-      //   direction: 'outgoing',
-      //   user_id: data.user_id,
-      //   content: data.response?.content || '[resposta]',
-      //   timestamp: new Date().toISOString()
-      // })
+    socket.on('update_message', (message) => {
+      console.log('[socket] Mensagem atualizada:', message)
+      useConversationsStore.getState().setConversation(message.user_id, message)
     })
   }
 }
 
-// Desconecta e limpa
+// Funções auxiliares
+export function joinRoom(userId) {
+  socket.emit('join_room', userId)
+  console.log(`[socket] Entrou na sala: ${userId}`)
+}
+
+export function leaveRoom(userId) {
+  socket.emit('leave_room', userId)
+  console.log(`[socket] Saiu da sala: ${userId}`)
+}
+
+// Desconecta
 export function disconnectSocket(userId) {
+  if (userId) leaveRoom(userId)
   if (socket.connected) {
-    if (userId) {
-      socket.emit('leave_room', userId)
-      console.log(`[socket] Saindo da sala chat-${userId}`)
-    }
     socket.disconnect()
+    console.log('[socket] Desconectado')
   }
 }
 
-// Logs de debug padrão
+// Logs de erro
 socket.on('connect_error', (err) => {
-  console.error('[socket] Erro ao conectar:', err.message)
+  console.error('[socket] Erro de conexão:', err.message)
 })
+
 socket.on('disconnect', (reason) => {
-  console.log('[socket] Desconectado:', reason)
+  console.log('[socket] Desconectado. Motivo:', reason)
 })
