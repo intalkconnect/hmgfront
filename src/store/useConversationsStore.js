@@ -1,13 +1,14 @@
-// src/store/useConversationsStore.js
 import { create } from 'zustand';
+import { supabase } from '../services/supabaseClient';
 
-const useConversationsStore = create((set) => ({
+const useConversationsStore = create((set, get) => ({
   conversations: {},
   lastRead: {},
-  unreadCounts: {}, // Renomeado para plural (melhor semântica)
+  unreadCounts: {},
 
   // Atualiza uma conversa específica
-  setConversation: (userId, data) => 
+  setConversation: (userId, data) => {
+    if (!userId) return;
     set((state) => ({
       conversations: {
         ...state.conversations,
@@ -16,39 +17,79 @@ const useConversationsStore = create((set) => ({
           ...data 
         }
       }
-    })),
+    }));
+  },
 
-  // Marca todas as mensagens como lidas para um usuário
-  markAsRead: (userId) =>
-    set((state) => ({
-      lastRead: {
-        ...state.lastRead,
-        [userId]: new Date().toISOString()
-      },
-      unreadCounts: {
-        ...state.unreadCounts,
-        [userId]: 0 // Zera o contador
-      }
-    })),
+  // Busca contagem inicial de não lidas do banco
+  fetchInitialUnread: async (userId) => {
+    try {
+      const { data } = await supabase
+        .from('user_unread_messages')
+        .select('unread_count')
+        .eq('user_id', userId)
+        .single();
+      
+      set(state => ({
+        unreadCounts: {
+          ...state.unreadCounts,
+          [userId]: data?.unread_count || 0
+        }
+      }));
+    } catch (error) {
+      console.error("Erro ao buscar não lidas:", error);
+    }
+  },
 
-  // Incrementa mensagens não lidas
-  incrementUnread: (userId) =>
-    set((state) => ({
+  // Marca como lido
+  markAsRead: async (userId) => {
+    try {
+      await supabase
+        .from('user_unread_messages')
+        .upsert({ 
+          user_id: userId, 
+          unread_count: 0,
+          last_checked: new Date().toISOString() 
+        });
+      
+      set(state => ({
+        unreadCounts: {
+          ...state.unreadCounts,
+          [userId]: 0
+        },
+        lastRead: {
+          ...state.lastRead,
+          [userId]: new Date().toISOString()
+        }
+      }));
+    } catch (error) {
+      console.error("Erro ao marcar como lido:", error);
+    }
+  },
+
+  // Incrementa não lidas
+  incrementUnread: (userId) => {
+    if (!userId) return;
+    set(state => ({
       unreadCounts: {
         ...state.unreadCounts,
         [userId]: (state.unreadCounts[userId] || 0) + 1
       }
-    })),
+    }));
+  },
 
-  // Remove completamente um contato (opcional)
-  removeConversation: (userId) =>
-    set((state) => {
-      const newConversations = { ...state.conversations };
-      const newUnreadCounts = { ...state.unreadCounts };
-      delete newConversations[userId];
-      delete newUnreadCounts[userId];
-      return { conversations: newConversations, unreadCounts: newUnreadCounts };
-    })
+  // Remove conversa
+  removeConversation: (userId) => {
+    set(state => {
+      const newConvs = { ...state.conversations };
+      const newCounts = { ...state.unreadCounts };
+      delete newConvs[userId];
+      delete newCounts[userId];
+      return { 
+        conversations: newConvs, 
+        unreadCounts: newCounts 
+      };
+    });
+  }
 }));
 
 export default useConversationsStore;
