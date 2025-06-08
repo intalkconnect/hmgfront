@@ -10,53 +10,65 @@ import "./App.css";
 export default function App() {
   // Estados e referências
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
+  const [loading, setLoading] = useState(true);
   const userIdSelecionadoRef = useRef(null);
   const socketRef = useRef(null);
 
-  // Store actions
+  // Verifique se todas estas funções existem no seu store
   const {
-    setConversation,
-    setLastRead,
-    incrementUnread,
-    markAsRead,
-    conversations
+    conversations = {},
+    setConversation = () => {},
+    setLastRead = () => {},
+    incrementUnread = () => {},
+    markAsRead = () => {},
+    fetchInitialUnread = () => {}
   } = useConversationsStore();
 
-  // Atualiza a referência do usuário selecionado
+  // Atualiza referências e conexões
   useEffect(() => {
     userIdSelecionadoRef.current = userIdSelecionado;
-  }, [userIdSelecionado]);
+    
+    // Conexão com WebSocket
+    if (!socketRef.current) {
+      socketRef.current = connectSocket();
+    }
 
-  // Conexão com WebSocket (executado apenas uma vez)
-  useEffect(() => {
-    socketRef.current = connectSocket();
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
-  }, []);
+  }, [userIdSelecionado]);
 
-  // Handler para novas mensagens (useCallback para estabilidade)
-  const handleNewMessage = useCallback(async (novaMsg) => {
-    const currentUserId = userIdSelecionadoRef.current;
-    
-    // Atualiza a conversa no store
-    setConversation(novaMsg.user_id, {
-      ...novaMsg,
-      ticket_number: novaMsg.ticket_number || novaMsg.ticket,
-      timestamp: novaMsg.timestamp,
-      content: novaMsg.content
-    });
+  // Handler seguro para novas mensagens
+  const handleNewMessage = useCallback(async (message) => {
+    if (!message?.user_id) return;
 
-    // Incrementa não lidas se não for o usuário atual
-    if (currentUserId !== novaMsg.user_id) {
-      try {
-        await supabase.rpc('increment_unread', { user_id: novaMsg.user_id });
-        incrementUnread(novaMsg.user_id);
-      } catch (error) {
-        console.error("Erro ao incrementar não lidas:", error);
+    try {
+      // Verifica se as funções existem antes de chamar
+      if (typeof setConversation === 'function') {
+        setConversation(message.user_id, {
+          ...message,
+          ticket_number: message.ticket_number || message.ticket,
+          timestamp: message.timestamp,
+          content: message.content
+        });
       }
+
+      if (userIdSelecionadoRef.current !== message.user_id) {
+        if (typeof incrementUnread === 'function') {
+          incrementUnread(message.user_id);
+        }
+        
+        // Atualização no banco de dados
+        try {
+          await supabase.rpc('increment_unread', { user_id: message.user_id });
+        } catch (dbError) {
+          console.error("Erro no banco de dados:", dbError);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao processar mensagem:", error);
     }
   }, [setConversation, incrementUnread]);
 
@@ -72,17 +84,24 @@ export default function App() {
     };
   }, [handleNewMessage]);
 
-  // Busca conversas iniciais
+  // Busca conversas iniciais com tratamento de erro
   const fetchConversations = useCallback(async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase.rpc("listar_conversas");
       if (error) throw error;
       
-      data.forEach((conv) => {
-        setConversation(conv.user_id, conv);
-      });
+      if (data && Array.isArray(data)) {
+        data.forEach((conv) => {
+          if (conv?.user_id && typeof setConversation === 'function') {
+            setConversation(conv.user_id, conv);
+          }
+        });
+      }
     } catch (error) {
-      console.error("Erro ao buscar conversas:", error);
+      console.error("Erro ao carregar conversas:", error);
+    } finally {
+      setLoading(false);
     }
   }, [setConversation]);
 
@@ -90,17 +109,22 @@ export default function App() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Handler para seleção de usuário
+  // Handler seguro para seleção de usuário
   const handleSelectUser = useCallback(async (uid) => {
-    const fullId = uid.includes("@") ? uid : `${uid}@w.msgcli.net`;
-    setUserIdSelecionado(fullId);
+    if (!uid) return;
 
     try {
-      // Marca como lido
-      await markAsRead(fullId);
-      setLastRead(fullId, new Date().toISOString());
+      const fullId = uid.includes("@") ? uid : `${uid}@w.msgcli.net`;
+      setUserIdSelecionado(fullId);
 
-      // Entra na sala do socket
+      if (typeof markAsRead === 'function') {
+        await markAsRead(fullId);
+      }
+
+      if (typeof setLastRead === 'function') {
+        setLastRead(fullId, new Date().toISOString());
+      }
+
       if (socketRef.current) {
         socketRef.current.emit("join_room", fullId);
       }
@@ -109,13 +133,24 @@ export default function App() {
     }
   }, [markAsRead, setLastRead]);
 
-  // Encontra a conversa selecionada
-  const conversaSelecionada = Object.values(conversations).find((c) => {
-    const idNormalizado = c.user_id.includes("@")
-      ? c.user_id
-      : `${c.user_id}@w.msgcli.net`;
-    return idNormalizado === userIdSelecionado;
-  }) || null;
+  // Encontra a conversa selecionada com verificação segura
+  const getConversaSelecionada = useCallback(() => {
+    if (!userIdSelecionado || !conversations) return null;
+    
+    return Object.values(conversations).find((c) => {
+      if (!c?.user_id) return false;
+      const idNormalizado = c.user_id.includes("@") 
+        ? c.user_id 
+        : `${c.user_id}@w.msgcli.net`;
+      return idNormalizado === userIdSelecionado;
+    }) || null;
+  }, [userIdSelecionado, conversations]);
+
+  const conversaSelecionada = getConversaSelecionada();
+
+  if (loading) {
+    return <div className="app-loading">Carregando...</div>;
+  }
 
   return (
     <div className="app-container">
