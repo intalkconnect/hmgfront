@@ -47,7 +47,17 @@ export default function App() {
       socket.emit("new_message", nova);
     };
 
-    socket.on("new_message", handleNewMessage);
+    socket.on('new_message', async (msg) => {
+  if (msg.user_id !== currentUserId) {
+    // Incrementa no banco primeiro
+    const { data } = await supabase.rpc('increment_unread', {
+      user_id: msg.user_id
+    });
+    
+    // Depois atualiza o estado local
+    useConversationsStore.getState().incrementUnread(msg.user_id);
+  }
+});
 
     return () => {
       socket.off("new_message", handleNewMessage);
