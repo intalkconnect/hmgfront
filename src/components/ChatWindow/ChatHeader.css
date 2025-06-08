@@ -1,110 +1,150 @@
-/* src/components/ChatWindow/ChatHeader.css */
+/* ===================================================================
+   CHAT HEADER - MAIN STRUCTURE
+=================================================================== */
 
-/* Container principal do header */
 .chat-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;              /* Alinha nome e botões ao centro verticalmente */
+  align-items: flex-start; /* Changed to flex-start for better wrapping */
   padding: 12px 16px;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--box-shadow-light);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: 16px;
 }
 
-/* ================= LADO ESQUERDO ================= */
+/* ===================================================================
+   1. LEFT SIDE - CLIENT INFO
+=================================================================== */
+
 .chat-header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0; /* Allows text truncation */
 }
 
-/* Nome do cliente, em destaque */
 .cliente-nome {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-primary-dark);
+  color: var(--color-text-default);
   line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Bloco de detalhes (Ticket, Fila, Origem, Telefone) em linha */
 .cliente-detalhes {
   display: flex;
-  flex-wrap: wrap;                  /* Permite quebra suave em telas menores */
-  gap: 12px;                        /* Espaço entre cada item */
-  margin-top: 4px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
 }
 
-/* Cada item de detalhe (ícone + texto) */
 .detalhe-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.9rem;                /* Fonte um pouco menor */
+  gap: 6px;
+  font-size: 0.85rem;
   color: var(--color-text-muted);
-  white-space: nowrap;              /* Evita que o ícone e texto quebrem separadamente */
 }
 
-/* Ícone dentro do detalhe (tamanho reduzido e cor suave) */
 .detalhe-icon {
-  color: var(--color-secondary);
+  color: var(--color-icon-muted);
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
-/* Texto ao lado do ícone */
 .detalhe-texto {
-  color: var(--color-text-default);
+  color: var(--color-text-muted);
 }
 
-/* ================= LADO DIREITO ================= */
+/* ===================================================================
+   2. RIGHT SIDE - ACTION BUTTONS
+=================================================================== */
+
 .chat-header-right {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-/* Estilo geral para botões de ação */
 .chat-header-right button {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
   padding: 6px 12px;
   border: none;
   border-radius: var(--border-radius);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition: all var(--transition-fast);
+  min-width: max-content;
 }
 
-/* Botão “Transferir” */
 .btn-transferir {
-  background-color: var(--color-secondary);
-  color: var(--color-primary-dark);
-}
-.btn-transferir:hover {
-  background-color: var(--color-primary-dark);
-  color: #ffffff;
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-default);
+  border: 1px solid var(--color-border);
 }
 
-/* Botão “Finalizar” */
+.btn-transferir:hover {
+  background-color: var(--color-surface-variant-hover);
+}
+
 .btn-finalizar {
   background-color: var(--color-success);
-  color: #ffffff;
-}
-.btn-finalizar:hover {
-  background-color: #28a17b; /* ligeiramente mais escuro para hover */
+  color: white;
 }
 
-/* ==== Responsividade (telas bem estreitas) ==== */
+.btn-finalizar:hover {
+  background-color: var(--color-success-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ===================================================================
+   3. RESPONSIVE ADJUSTMENTS
+=================================================================== */
+
+@media (max-width: 768px) {
+  .chat-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .chat-header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .chat-header-right button {
+    flex: 1;
+  }
+}
+
 @media (max-width: 480px) {
   .cliente-detalhes {
-    gap: 8px;                /* menor espaçamento em telas pequenas */
+    gap: 8px;
   }
+  
   .detalhe-item {
-    font-size: 0.85rem;
-  }
-  .chat-header-right button {
     font-size: 0.8rem;
-    padding: 4px 8px;
+  }
+  
+  .chat-header-right button {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .cliente-nome {
+    font-size: 1rem;
   }
 }
