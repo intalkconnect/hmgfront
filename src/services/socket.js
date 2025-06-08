@@ -1,69 +1,52 @@
 // src/services/socket.js
-import { io } from 'socket.io-client'
-import useConversationsStore from '../store/useConversationsStore'
+import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://seu-servidor-websocket.com'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'; // fallback URL
 
-export const socket = io(SOCKET_URL, {
-  withCredentials: true,
-  transports: ['websocket'],
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  autoConnect: false // Conectamos manualmente
-})
+// Create socket instance only if not already created
+let socket;
 
-// Conecta e configura listeners
+export function getSocket() {
+  if (!socket) {
+    if (!SOCKET_URL) {
+      throw new Error('Socket URL is not defined. Please set VITE_SOCKET_URL in your environment variables.');
+    }
+    
+    socket = io(SOCKET_URL, {
+      autoConnect: true,
+      reconnectionAttempts: 3,
+      transports: ['websocket']
+    });
+
+    // Add basic error logging
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+    });
+  }
+  return socket;
+}
+
 export function connectSocket(userId) {
+  const socket = getSocket();
+  
   if (!socket.connected) {
-    console.log('[socket] Conectando ao servidor...')
-    socket.connect()
+    console.log('[socket] Connecting to server at', SOCKET_URL);
+    socket.connect();
+  }
 
+  // Only add these listeners once
+  if (!socket.hasListeners) {
     socket.on('connect', () => {
-      console.log('[socket] Conectado, ID:', socket.id)
-      if (userId) joinRoom(userId)
-    })
-
-    socket.on('new_message', (message) => {
-      console.log('[socket] Nova mensagem:', message)
-      const store = useConversationsStore.getState()
-      store.setConversation(message.user_id, message)
-      if (message.user_id !== store.userIdSelecionado) {
-        store.incrementUnread(message.user_id)
+      console.log('[socket] Connected with ID:', socket.id);
+      if (userId) {
+        socket.emit('join_room', userId);
       }
-    })
+    });
 
-    socket.on('update_message', (message) => {
-      console.log('[socket] Mensagem atualizada:', message)
-      useConversationsStore.getState().setConversation(message.user_id, message)
-    })
+    socket.hasListeners = true; // Mark that we've added the listeners
   }
+
+  return socket;
 }
 
-// Funções auxiliares
-export function joinRoom(userId) {
-  socket.emit('join_room', userId)
-  console.log(`[socket] Entrou na sala: ${userId}`)
-}
-
-export function leaveRoom(userId) {
-  socket.emit('leave_room', userId)
-  console.log(`[socket] Saiu da sala: ${userId}`)
-}
-
-// Desconecta
-export function disconnectSocket(userId) {
-  if (userId) leaveRoom(userId)
-  if (socket.connected) {
-    socket.disconnect()
-    console.log('[socket] Desconectado')
-  }
-}
-
-// Logs de erro
-socket.on('connect_error', (err) => {
-  console.error('[socket] Erro de conexão:', err.message)
-})
-
-socket.on('disconnect', (reason) => {
-  console.log('[socket] Desconectado. Motivo:', reason)
-})
+export { socket };
