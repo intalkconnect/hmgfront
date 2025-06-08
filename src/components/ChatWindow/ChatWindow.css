@@ -1,129 +1,130 @@
 /* ===================================================================
-   ChatWindow.css (atualizado para suportar placeholder e lista normal)
+   CHAT WINDOW - MAIN STRUCTURE
 =================================================================== */
 
-/* -------- Container geral do ChatWindow -------- */
 .chat-window {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   background-color: var(--color-background);
+  position: relative;
 }
-
-/* ===== ChatWindow.css ===== */
-
-/* 1) Estilos já existentes para .chat-window, .placeholder, etc. */
-/* ... (seu CSS atual de .chat-window, .chat-window.placeholder, etc) ... */
-
-/* 2) Novo estilo para .chat-window.loading */
-.chat-window.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Caso seu .chat-window tenha altura fixa ou flex:1, 
-     deixe-o ocupar todo o espaço e exiba aqui centralizado */
-  background-color: #fafafa; /* ou herde a cor de fundo que achar melhor */
-}
-
-/* 3) Container interno que agrupa spinner + texto */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* 4) Estilo do spinner (circulito girando) */
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-top-color: #454545;  /* cor do “arco” que gira; ajuste conforme paleta */
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 12px; /* espaço entre spinner e texto */
-}
-
-/* 5) Animação de rotação */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 6) Se quiser estilizar o texto “Carregando mensagens...” */
-.chat-window.loading p {
-  margin: 0;
-  font-size: 1rem;
-  color: #666666; /* cor neutra para o texto de loading */
-}
-
 
 /* ===================================================================
-   1) PLACEHOLDER: quando não há conversa selecionada
+   1. EMPTY STATE (no conversation selected)
 =================================================================== */
+
 .chat-window.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--color-background);
+  padding: 20px;
 }
 
 .chat-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   text-align: center;
+  opacity: 0.6;
 }
 
 .chat-icon {
   width: 80px;
   height: 80px;
+  opacity: 0.5;
 }
 
 .placeholder-title {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 500;
   color: var(--color-text-muted);
 }
 
 .placeholder-subtitle {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--color-text-muted);
   max-width: 260px;
+  line-height: 1.4;
 }
 
 /* ===================================================================
-   2) Cabeçalho do chat (exibido quando há conversa)
+   2. LOADING STATE
 =================================================================== */
+
+.chat-window.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background);
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+/* ===================================================================
+   3. ACTIVE CHAT WINDOW
+=================================================================== */
+
+/* 3.1 Chat Header */
 .chat-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
-  box-shadow: var(--box-shadow-light);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .chat-header h2 {
   font-size: 1.1rem;
   color: var(--color-text-default);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* ===================================================================
-   3) Lista de mensagens (usa overflow-y: auto para rolar internamente)
-=================================================================== */
+/* 3.2 Messages List */
 .messages-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 0 12px 16px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 8px;
+  scroll-behavior: smooth;
 }
 
+/* Custom scrollbar */
 .messages-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -133,46 +134,61 @@
   border-radius: 3px;
 }
 
-/* ===================================================================
-   4) Campo de envio “grudado” na base da janela
-=================================================================== */
+.messages-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* 3.3 Input Area */
 .chat-input {
   position: sticky;
   bottom: 0;
   background-color: var(--color-surface);
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-top: 1px solid var(--color-border);
   z-index: 10;
 }
 
 /* ===================================================================
-   6) Áudio, imagem, documento e lista
+   4. MEDIA ATTACHMENTS
 =================================================================== */
+
+/* 4.1 Images */
 .image-container {
-  max-width: 220px;
-  border-radius: 10px;
+  max-width: min(100%, 300px);
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   background-color: #eeeeee;
+  transition: transform 0.2s ease;
+}
+
+.image-container:hover {
+  transform: scale(1.02);
 }
 
 .image-container img {
   display: block;
-  max-width: 220px;
-  max-height: 200px;
-  border-radius: 6px;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
+/* 4.2 Documents */
 .document-container {
   display: flex;
   align-items: center;
   gap: 12px;
-  background-color: #454545;
+  background-color: var(--color-surface-variant);
   border-radius: var(--border-radius);
   padding: 10px 12px;
   cursor: pointer;
   max-width: 300px;
+  transition: background-color 0.2s ease;
+}
+
+.document-container:hover {
+  background-color: var(--color-surface-variant-hover);
 }
 
 .document-container img {
@@ -182,12 +198,16 @@
 
 .document-details {
   flex: 1;
+  overflow: hidden;
 }
 
 .document-details strong {
   font-size: 0.95rem;
   display: block;
   color: var(--color-text-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .document-details span {
@@ -195,22 +215,25 @@
   color: var(--color-text-muted);
 }
 
+/* 4.3 Lists */
 .list-container {
-  padding: 10px;
-  background-color: #f0f0f0;
+  padding: 12px;
+  background-color: var(--color-surface-variant);
   border-radius: var(--border-radius);
+  max-width: 300px;
 }
 
 .list-container h4 {
-  margin: 0 0 4px 0;
+  margin: 0 0 6px 0;
   font-size: 1rem;
   color: var(--color-text-default);
 }
 
 .list-body-text {
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
   font-size: 0.9rem;
   color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .list-section {
@@ -221,42 +244,52 @@
   font-weight: 500;
   font-size: 0.95rem;
   color: var(--color-text-default);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .list-row {
-  padding: 6px;
-  margin-top: 4px;
-  background-color: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 5px;
+  padding: 8px;
+  margin-top: 6px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.list-row:hover {
+  background-color: var(--color-surface-hover);
 }
 
 .list-row-title {
   font-size: 0.95rem;
   color: var(--color-text-default);
+  margin-bottom: 2px;
 }
 
 .list-row-description {
   font-size: 0.85rem;
   color: var(--color-text-muted);
+  line-height: 1.3;
 }
 
 .list-footer {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  margin-top: 8px;
 }
 
 /* ===================================================================
-   7) Modals de imagem e PDF
+   5. MODALS
 =================================================================== */
+
+/* 5.1 Image Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -267,17 +300,19 @@
 .modal-image {
   max-width: 90%;
   max-height: 90%;
-  border-radius: 10px;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  object-fit: contain;
 }
 
+/* 5.2 PDF Modal */
 .pdf-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,9 +320,37 @@
 }
 
 .pdf-modal-content {
-  width: 80%;
+  width: 90%;
   height: 90%;
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   background-color: var(--color-surface);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ===================================================================
+   6. RESPONSIVE ADJUSTMENTS
+=================================================================== */
+
+@media (max-width: 768px) {
+  .chat-header {
+    padding: 10px 12px;
+  }
+  
+  .messages-list {
+    padding: 8px 12px;
+  }
+  
+  .chat-input {
+    padding: 10px 12px;
+  }
+  
+  .image-container {
+    max-width: 220px;
+  }
+  
+  .pdf-modal-content {
+    width: 95%;
+    height: 85%;
+  }
 }
