@@ -5,7 +5,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
 import useConversationsStore from './store/useConversationsStore';
-import notificationSound from './assets/notification.mp3'; // Adicione este arquivo
+import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
@@ -21,9 +21,22 @@ export default function App() {
     conversations,
     loadUnreadCounts,
     loadLastReadTimes,
+    getContactName
   } = useConversationsStore();
   
   const userIdSelecionadoRef = useRef(null);
+
+  // Inicializa o player de áudio
+  useEffect(() => {
+    audioPlayer.current = new Audio(notificationSound);
+    audioPlayer.current.volume = 0.3; // Volume ajustável
+    return () => {
+      if (audioPlayer.current) {
+        audioPlayer.current.pause();
+        audioPlayer.current = null;
+      }
+    };
+  }, []);
 
   // Verifica se a janela está ativa
   useEffect(() => {
@@ -37,13 +50,6 @@ export default function App() {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
     };
-  }, []);
-
-  // Solicita permissão para notificações
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
   }, []);
 
   // Inicializa socket e carrega dados
@@ -86,7 +92,8 @@ export default function App() {
   useEffect(() => {
     const socket = getSocket();
     
-    const handleNewMessage = (message) => {
+    const handleNewMessage = async (message) => {
+      // Atualiza a conversa no estado
       setConversation(message.user_id, {
         ...message,
         ticket_number: message.ticket_number || message.ticket,
@@ -98,39 +105,62 @@ export default function App() {
         incrementUnread(message.user_id);
         
         // Toca o som de notificação
-        if (audioPlayer.current) {
+        try {
           audioPlayer.current.currentTime = 0;
-          audioPlayer.current.play().catch(e => console.log("Autoplay prevented:", e));
+          await audioPlayer.current.play();
+        } catch (err) {
+          console.log("Falha ao tocar som:", err);
         }
 
         // Mostra notificação se a janela não está ativa
-        if (!isWindowActive && Notification.permission === 'granted') {
-          showNotification(message);
+        if (!isWindowActive) {
+          const contactName = getContactName(message.user_id);
+          showNotification(message, contactName);
         }
       }
     };
 
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
-  }, [isWindowActive, setConversation, incrementUnread]);
+  }, [isWindowActive, setConversation, incrementUnread, getContactName]);
 
   // Função para mostrar notificação
-  const showNotification = (message) => {
-    const notification = new Notification('Nova mensagem recebida', {
-      body: `${message.name || message.user_id}: ${truncateContent(message.content)}`,
-      icon: '/icons/whatsapp.png',
-    });
+  const showNotification = (message, contactName) => {
+    if (!('Notification' in window)) return;
 
-    notification.onclick = () => {
-      window.focus();
-      handleSelectUser(message.user_id);
-    };
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(
+        `Nova mensagem de ${contactName || message.user_id}`, 
+        {
+          body: getMessagePreview(message.content),
+          icon: '/icons/whatsapp.png',
+          vibrate: [200, 100, 200],
+        }
+      );
+
+      notification.onclick = () => {
+        window.focus();
+        handleSelectUser(message.user_id);
+      };
+    }
+    else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          const contactName = getContactName(message.user_id);
+          showNotification(message, contactName);
+        }
+      });
+    }
   };
 
-  const truncateContent = (content) => {
+  // Função para extrair texto prévio da mensagem
+  const getMessagePreview = (content) => {
     try {
       const parsed = JSON.parse(content);
-      return parsed.text || parsed.caption || '[Conteúdo da mensagem]';
+      if (parsed.text) return parsed.text;
+      if (parsed.caption) return parsed.caption;
+      if (parsed.url) return "[Arquivo]";
+      return "[Mensagem]";
     } catch {
       return content.length > 50 ? content.substring(0, 47) + '...' : content;
     }
@@ -173,9 +203,7 @@ export default function App() {
     : null;
 
   return (
-    <div className="app-container">
-      <audio ref={audioPlayer} src={notificationSound} preload="auto" />
-      
+    <div className="app-container">      
       {socketError && (
         <div className="socket-error-banner">
           {socketError}
