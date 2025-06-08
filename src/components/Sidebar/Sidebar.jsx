@@ -136,11 +136,11 @@ const getSnippet = (rawContent) => {
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-{/*                   {hasUnread && (
+                  {hasUnread && (
                     <span className="unread-badge">
                       {unreadCount > 0 ? unreadCount : ''}
                     </span>
-                  )} */}
+                  )}
                 </div>
                 <div className="chat-snippet">{getSnippet(conv.content)}</div>
                 <div className="chat-meta">
@@ -156,7 +156,7 @@ const getSnippet = (rawContent) => {
                       minute: '2-digit',
                     })
                   : '--:--'}
-                {hasUnread && <span className="unread-dot" />}
+{/*                 {hasUnread && <span className="unread-dot" />} */}
               </div>
             </li>
           );
