@@ -1,79 +1,82 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "../../services/supabaseClient";
-import { File, Mic } from "lucide-react";
-import useConversationsStore from "../../store/useConversationsStore";
-import "./Sidebar.css";
+// src/components/Sidebar/Sidebar.jsx
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../services/supabaseClient';
+import './Sidebar.css';
+import { File, Mic } from 'lucide-react';
+import useConversationsStore from '../../store/useConversationsStore';
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const {
-    conversations = {},
-    unreadCounts = {},
-    markAsRead,
-    fetchInitialUnread
-  } = useConversationsStore();
-
-  const [distribuicaoTickets, setDistribuicaoTickets] = useState("manual");
+  const conversationsMap = useConversationsStore((state) => state.conversations);
+  const lastReadMap = useConversationsStore((state) => state.lastRead);
+  const unreadCountMap = useConversationsStore((state) => state.unreadCount);
+  const conversations = Object.values(conversationsMap);
+  const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const getSnippet = (content) => {
+  useEffect(() => {
+    const fetchSettingsAndFila = async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'distribuicao_tickets')
+        .single();
+
+      if (data?.value) {
+        setDistribuicaoTickets(data.value);
+      }
+
+      const filaAtivos = conversations.filter((conv) => !conv.atendido);
+      setFilaCount(filaAtivos.length);
+    };
+
+    fetchSettingsAndFila();
+  }, [conversations]);
+
+  const getSnippet = (rawContent) => {
     try {
-      const parsed = typeof content === 'string' ? JSON.parse(content) : content;
-      
-      if (parsed?.url) {
+      const parsed = JSON.parse(rawContent);
+
+      if (parsed.url) {
         const url = parsed.url.toLowerCase();
-        if (url.match(/\.(ogg|mp3|wav)$/)) {
-          return <><Mic size={16} /> Áudio</>;
+        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
         }
         if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return <><File size={16} /> Imagem</>;
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
         }
         if (url.endsWith('.pdf')) {
-          return <><File size={16} /> PDF</>;
+          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
         }
-        return <><File size={16} /> Arquivo</>;
+        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
       }
-      return parsed?.text || parsed?.caption || content || '[mensagem]';
-    } catch {
-      return typeof content === 'string' ? content : '[mensagem]';
+
+      if (parsed.type === 'list' || parsed.body?.type === 'list') {
+        return '🔘 Lista';
+      }
+
+      if (parsed.text) {
+        return parsed.text.length > 40 ? parsed.text.slice(0, 37) + '...' : parsed.text;
+      }
+
+      if (parsed.caption) {
+        return parsed.caption.length > 40 ? parsed.caption.slice(0, 37) + '...' : parsed.caption;
+      }
+
+      return '[mensagem]';
+    } catch (e) {
+      const plain = rawContent || '';
+      return plain.length > 40 ? plain.slice(0, 37) + '...' : plain;
     }
   };
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      const { data } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "distribuicao_tickets")
-        .single();
-      if (data?.value) setDistribuicaoTickets(data.value);
-    };
-    fetchSettings();
-  }, []);
-
-  useEffect(() => {
-    const fila = Object.values(conversations).filter(c => !c?.atendido);
-    setFilaCount(fila.length);
-  }, [conversations]);
-
-  useEffect(() => {
-    Object.keys(conversations).forEach(userId => {
-      fetchInitialUnread(userId);
-    });
-  }, [conversations, fetchInitialUnread]);
-
-  const filteredConversations = Object.values(conversations)
-    .filter(conv => {
-      if (!conv) return false;
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        (conv.name || '').toLowerCase().includes(term) ||
-        (conv.ticket_number || '').includes(term) ||
-        (conv.content || '').toLowerCase().includes(term)
-      );
-    })
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const filteredConversations = conversations.filter(conv => {
+    const matchesSearch = 
+      conv.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.user_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.content?.toLowerCase().includes(searchTerm.toLowerCase());
+    return searchTerm ? matchesSearch : true;
+  });
 
   return (
     <div className="sidebar-container">
@@ -81,66 +84,88 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
         <input
           type="text"
           placeholder="Pesquisar..."
+          className="sidebar-input"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       <div className="fila-info">
-        {distribuicaoTickets === "manual" ? (
+        {distribuicaoTickets === 'manual' ? (
           <>
             <span className="fila-count">
-              {filaCount > 0 ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando` : 'Nenhum cliente aguardando'}
+              {filaCount > 0
+                ? `${filaCount} cliente${filaCount > 1 ? 's' : ''} aguardando`
+                : 'Não há clientes aguardando'}
             </span>
-            <button 
+            <button
               className="botao-proximo"
+              onClick={() => console.log('Puxar próximo cliente')}
               disabled={filaCount === 0}
             >
               Próximo
             </button>
           </>
-        ) : <span>Distribuição automática</span>}
+        ) : 'Auto'}
       </div>
 
       <ul className="chat-list">
-        {filteredConversations.map(conv => {
-          if (!conv) return null;
-          
-          const unread = unreadCounts[conv.user_id] || 0;
-          const isSelected = conv.user_id === userIdSelecionado;
-          const hasUnread = !isSelected && unread > 0;
+        {filteredConversations.map((conv) => {
+          const fullId = conv.user_id;
+          const nomeCliente = conv.name || fullId;
+          const isWhatsapp = conv.channel === 'whatsapp';
+          const queueName = conv.fila || 'Orçamento';
+          const ticket = conv.ticket_number || '000000';
+          const snippet = getSnippet(conv.content);
+          const isSelected = fullId === userIdSelecionado;
+
+          const unreadCount = unreadCountMap[fullId] || 0;
+          const lastReadTime = lastReadMap[fullId];
+          const hasUnread = unreadCount > 0 || 
+                          (!isSelected && (!lastReadTime || new Date(conv.timestamp) > new Date(lastReadTime)));
 
           return (
             <li
-              key={conv.user_id}
-              className={`chat-list-item ${isSelected ? 'active' : ''} ${hasUnread ? 'unread' : ''}`}
-              onClick={() => {
-                markAsRead(conv.user_id);
-                onSelectUser(conv.user_id);
-              }}
+              key={fullId}
+              className={`chat-list-item ${isSelected ? 'active' : ''}`}
+              onClick={() => onSelectUser(fullId)}
             >
               <div className="chat-avatar">
-                {conv.channel === 'whatsapp' && (
-                  <img src="/icons/whatsapp.png" alt="WhatsApp" className="avatar-img" />
+                {isWhatsapp && (
+                  <img
+                    src="/icons/whatsapp.png"
+                    alt="whatsapp"
+                    className="avatar-img"
+                  />
                 )}
               </div>
 
               <div className="chat-details">
                 <div className="chat-title">
-                  {conv.name || conv.user_id.split('@')[0]}
-                  {hasUnread && <span className="unread-badge">{unread}</span>}
+                  {nomeCliente}
+                  {hasUnread && (
+                    <span className={`unread-indicator ${unreadCount > 0 ? 'with-count' : ''}`}>
+                      {unreadCount > 0 ? unreadCount : ''}
+                    </span>
+                  )}
                 </div>
-                <div className="chat-snippet">
-                  {getSnippet(conv.content)}
-                </div>
+                <div className="chat-snippet">{snippet}</div>
                 <div className="chat-meta">
-                  <span>#{conv.ticket_number || '000000'}</span>
-                  <span>Fila: {conv.fila || 'Orçamento'}</span>
+                  <span className="chat-ticket">#{ticket}</span>
+                  <span className="chat-queue">Fila: {queueName}</span>
                 </div>
               </div>
 
               <div className="chat-time">
-                {conv.timestamp ? new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                {conv.timestamp
+                  ? new Date(conv.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '--:--'}
+                {hasUnread && !unreadCount && (
+                  <span className="unread-dot-time" />
+                )}
               </div>
             </li>
           );
