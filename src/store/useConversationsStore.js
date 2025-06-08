@@ -6,10 +6,9 @@ const useConversationsStore = create((set, get) => ({
   lastRead: {},
   unreadCounts: {},
 
-  // Atualiza uma conversa específica
   setConversation: (userId, data) => {
     if (!userId) return;
-    set((state) => ({
+    set(state => ({
       conversations: {
         ...state.conversations,
         [userId]: { 
@@ -20,20 +19,17 @@ const useConversationsStore = create((set, get) => ({
     }));
   },
 
-  // Busca contagem inicial de não lidas do banco
   fetchInitialUnread: async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from('user_unread_messages')
-        .select('unread_count')
-        .eq('user_id', userId)
-        .maybeSingle(); // Usando maybeSingle para evitar erros
+      const { data, error } = await supabase.rpc('get_unread_count', {
+        user_id: userId
+      });
 
-      if (!error && data) {
+      if (!error && data !== null) {
         set(state => ({
           unreadCounts: {
             ...state.unreadCounts,
-            [userId]: data.unread_count || 0
+            [userId]: data
           }
         }));
       }
@@ -42,7 +38,6 @@ const useConversationsStore = create((set, get) => ({
     }
   },
 
-  // Marca como lido
   markAsRead: async (userId) => {
     try {
       await supabase
@@ -68,7 +63,6 @@ const useConversationsStore = create((set, get) => ({
     }
   },
 
-  // Incrementa não lidas
   incrementUnread: (userId) => {
     if (!userId) return;
     set(state => ({
@@ -79,7 +73,6 @@ const useConversationsStore = create((set, get) => ({
     }));
   },
 
-  // Remove conversa
   removeConversation: (userId) => {
     set(state => {
       const newConvs = { ...state.conversations };
