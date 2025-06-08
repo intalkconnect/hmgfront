@@ -1,117 +1,161 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { supabase } from "./services/supabaseClient";
-import { connectSocket } from "./services/socket";
-import Sidebar from "./components/Sidebar/Sidebar";
-import ChatWindow from "./components/ChatWindow/ChatWindow";
-import DetailsPanel from "./components/DetailsPanel/DetailsPanel";
-import useConversationsStore from "./store/useConversationsStore";
-import "./App.css";
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from './services/supabaseClient';
+import { connectSocket, getSocket } from './services/socket';
+import Sidebar from './components/Sidebar/Sidebar';
+import ChatWindow from './components/ChatWindow/ChatWindow';
+import DetailsPanel from './components/DetailsPanel/DetailsPanel';
+import useConversationsStore from './store/useConversationsStore';
+import './App.css';
 
 export default function App() {
   const [userIdSelecionado, setUserIdSelecionado] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [socketError, setSocketError] = useState(null);
+  const setConversation = useConversationsStore((state) => state.setConversation);
+  const setLastRead = useConversationsStore((state) => state.setLastRead);
+  const incrementUnread = useConversationsStore((state) => state.incrementUnread);
+  const conversations = useConversationsStore((state) => state.conversations);
+
   const userIdSelecionadoRef = useRef(null);
-  const socketRef = useRef(null);
 
-  const {
-    conversations,
-    setConversation,
-    setLastRead,
-    incrementUnread,
-    markAsRead,
-    fetchInitialUnread
-  } = useConversationsStore();
-
-  // Configuração do WebSocket
+  // Initialize socket connection
   useEffect(() => {
-    socketRef.current = connectSocket();
+    try {
+      connectSocket();
+      const socket = getSocket();
 
-    const handleNewMessage = (msg) => {
-      if (!msg?.user_id) return;
-
-      setConversation(msg.user_id, {
-        ...msg,
-        ticket_number: msg.ticket_number || msg.ticket,
-        timestamp: msg.timestamp,
-        content: msg.content
+      socket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err);
+        setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
       });
 
-      if (userIdSelecionadoRef.current !== msg.user_id) {
-        incrementUnread(msg.user_id);
+      socket.on('connect', () => {
+        console.log('Socket connected successfully');
+        setSocketError(null);
+      });
+
+      return () => {
+        socket.off('connect_error');
+        socket.off('connect');
+      };
+    } catch (error) {
+      console.error('Socket initialization error:', error);
+      setSocketError('Erro ao conectar com o servidor de mensagens');
+    }
+  }, []);
+
+  // Fetch conversations on mount
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  // Setup message listeners
+  useEffect(() => {
+    const socket = getSocket();
+    let isMounted = true;
+
+    const handleNewMessage = (nova) => {
+      if (!isMounted) return;
+
+      console.log('[App] Recebeu new_message:', nova);
+
+      setConversation(nova.user_id, {
+        ...nova,
+        ticket_number: nova.ticket_number || nova.ticket,
+        timestamp: nova.timestamp,
+        content: nova.content
+      });
+
+      // If the received conversation isn't open → count as unread
+      if (userIdSelecionadoRef.current !== nova.user_id) {
+        incrementUnread(nova.user_id);
       }
+
+      socket.emit('new_message', nova);
     };
 
-    socketRef.current.on('new_message', handleNewMessage);
+    socket.on('new_message', handleNewMessage);
 
     return () => {
-      socketRef.current?.off('new_message', handleNewMessage);
-      socketRef.current?.disconnect();
+      isMounted = false;
+      socket.off('new_message', handleNewMessage);
     };
   }, [setConversation, incrementUnread]);
 
-  // Atualiza referência do usuário
-  useEffect(() => {
-    userIdSelecionadoRef.current = userIdSelecionado;
-  }, [userIdSelecionado]);
-
-  // Busca conversas iniciais
-  const fetchConversations = useCallback(async () => {
-    setLoading(true);
+  async function fetchConversations() {
     try {
-      const { data, error } = await supabase.rpc("listar_conversas");
-      if (error) throw error;
-      
-      if (data?.length) {
-        await Promise.all(data.map(conv => {
+      const { data, error } = await supabase.rpc('listar_conversas');
+      if (error) {
+        console.error('Erro ao buscar conversas:', error);
+      } else {
+        data.forEach((conv) => {
           setConversation(conv.user_id, conv);
-          return fetchInitialUnread(conv.user_id);
-        }));
+        });
       }
     } catch (error) {
-      console.error("Erro ao carregar conversas:", error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching conversations:', error);
     }
-  }, [setConversation, fetchInitialUnread]);
+  }
 
-  useEffect(() => { 
-    fetchConversations(); 
-  }, [fetchConversations]);
-
-  // Handler de seleção de usuário
-  const handleSelectUser = useCallback(async (userId) => {
+  const handleSelectUser = async (uid) => {
     try {
-      const fullId = userId.includes("@") ? userId : `${userId}@w.msgcli.net`;
+      const fullId = uid.includes('@') ? uid : `${uid}@w.msgcli.net`;
       setUserIdSelecionado(fullId);
-      await markAsRead(fullId);
-      socketRef.current?.emit("join_room", fullId);
-    } catch (error) {
-      console.error("Erro ao selecionar usuário:", error);
-    }
-  }, [markAsRead]);
+      userIdSelecionadoRef.current = fullId;
 
-  if (loading) return <div className="app-loading">Carregando...</div>;
+      // Mark as read
+      setLastRead(fullId, new Date().toISOString());
+
+      // Fetch messages for this user
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('user_id', fullId)
+        .order('timestamp', { ascending: true });
+
+      if (!error) {
+        const socket = getSocket();
+        socket.emit('join_room', fullId);
+        socket.emit('force_refresh', fullId);
+      }
+    } catch (error) {
+      console.error('Error selecting user:', error);
+    }
+  };
+
+  const conversaSelecionada =
+    Object.values(conversations).find((c) => {
+      const idNormalizado = c.user_id.includes('@')
+        ? c.user_id
+        : `${c.user_id}@w.msgcli.net`;
+      return idNormalizado === userIdSelecionado;
+    }) || null;
 
   return (
     <div className="app-container">
+      {socketError && (
+        <div className="socket-error-banner">
+          {socketError}
+        </div>
+      )}
+      
       <aside className="sidebar">
         <Sidebar
           onSelectUser={handleSelectUser}
           userIdSelecionado={userIdSelecionado}
         />
       </aside>
-      
+
       <main className="chat-container">
         <ChatWindow
           userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversations[userIdSelecionado]}
+          conversaSelecionada={conversaSelecionada}
         />
       </main>
 
       <aside className="details-panel">
         <DetailsPanel
           userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversations[userIdSelecionado]}
+          conversaSelecionada={conversaSelecionada}
         />
       </aside>
     </div>
