@@ -7,35 +7,14 @@ import "./Sidebar.css";
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const {
     conversations = {},
-    lastRead = {},
     unreadCounts = {},
-    fetchInitialUnread = () => {},
-    markAsRead = () => {}
+    markAsRead,
+    fetchInitialUnread
   } = useConversationsStore();
 
   const [distribuicaoTickets, setDistribuicaoTickets] = useState("manual");
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    const socket = window.socket; // Assumindo que o socket está global
-
-    const handleNewMessage = (message) => {
-      if (message.user_id !== userIdSelecionado) {
-        incrementUnread(message.user_id);
-      }
-    };
-
-    if (socket) {
-      socket.on('new_message', handleNewMessage);
-    }
-
-    return () => {
-      if (socket) {
-        socket.off('new_message', handleNewMessage);
-      }
-    };
-  }, [userIdSelecionado, incrementUnread]);
 
   const getSnippet = (content) => {
     try {
@@ -86,7 +65,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
   const filteredConversations = Object.values(conversations)
     .filter(conv => {
       if (!conv) return false;
-      if (!searchTerm || !conv) return true;
+      if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
       return (
         (conv.name || '').toLowerCase().includes(term) ||
