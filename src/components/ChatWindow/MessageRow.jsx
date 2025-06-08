@@ -17,18 +17,18 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
 
   let content = msg.content;
 
-  // Tratamento seguro do conteúdo
+  // Modified content parsing logic
   if (typeof content === 'string') {
-    // Se for string numérica (qualquer comprimento), mantém como string
+    // If it's a numeric string (all digits), keep as string
     if (/^\d+$/.test(content)) {
-      // Não faz parse, mantém como texto puro
+      // Do nothing, keep as string
     } 
-    // Só tenta parsear JSON se a string parece ser JSON
+    // Only try to parse if it looks like JSON
     else if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
       try {
         content = JSON.parse(content);
       } catch {
-        // Mantém como string se o parse falhar
+        // Keep as string if parsing fails
       }
     }
   }
@@ -38,7 +38,25 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
   const rowClass = `message-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
   const bubbleClass = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
 
-  // ... (restante do código de renderTimeAndStatus permanece igual)
+  const renderTimeAndStatus = () => (
+    <div className="message-time">
+      {new Date(msg.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+      {isOutgoing && (
+        <span className="message-status">
+          {msg.status === 'delivered' ? (
+            <CheckCheck size={14} className="check delivered" />
+          ) : msg.status === 'sent' ? (
+            <CheckCheck size={14} className="check sent" />
+          ) : (
+            <Check size={14} className="check pending" />
+          )}
+        </span>
+      )}
+    </div>
+  );
 
   const urlLower = String(content?.url || '').toLowerCase();
   const isAudio = msg.type === 'audio' || content?.voice || /\.(ogg|mp3|wav)$/i.test(urlLower);
@@ -48,9 +66,8 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
 
   let messageContent = null;
 
-  // Tratamento do conteúdo para renderização
+  // Content rendering logic with numeric string handling
   if (typeof content === 'string' && /^\d+$/.test(content)) {
-    // Strings numéricas longas são tratadas como texto puro
     messageContent = <TextMessage content={content} />;
   } else if (typeof content === 'number' || typeof content === 'boolean') {
     messageContent = <TextMessage content={String(content)} />;
@@ -84,39 +101,39 @@ export default function MessageRow({ msg, onImageClick, onPdfClick, onReply }) {
     messageContent = <UnknownMessage />;
   }
 
-
   const handleCopy = () => {
     if (typeof content === 'string') {
       navigator.clipboard.writeText(content);
+    } else if (typeof content === 'object' && content?.text) {
+      navigator.clipboard.writeText(content.text);
     }
     setMenuOpen(false);
   };
 
-const handleDownload = async () => {
-  const fileUrl = content?.url;
-  const filename = content?.filename || 'arquivo';
+  const handleDownload = async () => {
+    const fileUrl = content?.url;
+    const filename = content?.filename || 'arquivo';
 
-  if (!fileUrl) return;
+    if (!fileUrl) return;
 
-  try {
-    const response = await fetch(fileUrl);
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(blobUrl);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
 
-    setMenuOpen(false);
-  } catch (err) {
-    console.error('Erro ao baixar arquivo:', err);
-  }
-};
-
+      setMenuOpen(false);
+    } catch (err) {
+      console.error('Erro ao baixar arquivo:', err);
+    }
+  };
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
 
@@ -134,50 +151,46 @@ const handleDownload = async () => {
     <div className={rowClass}>
       <div className={bubbleClass}>
         <div className="message-bubble-content">
-          {/* Ícone de seta no canto superior direito */}
-          {/* Ícone de seta no canto superior direito */}
-<div className="menu-arrow" ref={menuRef}>
-  <button onClick={toggleMenu} className="menu-button" title="Mais opções">
-    <ChevronDown size={16} />
-  </button>
-  {menuOpen && (
-    <div className={`menu-dropdown ${isOutgoing ? 'right' : 'left'}`}>
-
-      {onReply && (
-        <button onClick={() => { onReply(msg); setMenuOpen(false); }}>
-          <CornerDownLeft size={14} /> Responder
-        </button>
-      )}
-      {typeof content === 'string' && (
-        <button onClick={handleCopy}>
-          <Copy size={14} /> Copiar
-        </button>
-      )}
-      {(isImage || isPdf) && (
-        <button onClick={handleDownload}>
-          <Download size={14} /> Baixar
-        </button>
-      )}
-    </div>
-  )}
-</div>
-{msg.replyTo && (
-  <div className="replied-message">
-    <div className="replied-content">
-      {(msg.reply_direction === 'outgoing') && <strong>Você</strong>}
-      <div className="replied-text">
-        {renderReplyContent(msg.replyTo)}
+          <div className="menu-arrow" ref={menuRef}>
+            <button onClick={toggleMenu} className="menu-button" title="Mais opções">
+              <ChevronDown size={16} />
+            </button>
+            {menuOpen && (
+              <div className={`menu-dropdown ${isOutgoing ? 'right' : 'left'}`}>
+                {onReply && (
+                  <button onClick={() => { onReply(msg); setMenuOpen(false); }}>
+                    <CornerDownLeft size={14} /> Responder
+                  </button>
+                )}
+                {(typeof content === 'string' || (typeof content === 'object' && content?.text)) && (
+                  <button onClick={handleCopy}>
+                    <Copy size={14} /> Copiar
+                  </button>
+                )}
+                {(isImage || isPdf) && (
+                  <button onClick={handleDownload}>
+                    <Download size={14} /> Baixar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {msg.replyTo && (
+            <div className="replied-message">
+              <div className="replied-content">
+                {(msg.reply_direction === 'outgoing') && <strong>Você</strong>}
+                <div className="replied-text">
+                  {renderReplyContent(msg.replyTo)}
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="message-content">
+            {messageContent}
+          </div>
+          {renderTimeAndStatus()}
+        </div>
       </div>
     </div>
-  </div>
-)}
-           <div className="message-content">
-            {messageContent}
-           </div>
-
-           {renderTimeAndStatus()}
-           </div>
-            </div>
-           </div>
   );
 }
