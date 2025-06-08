@@ -16,13 +16,13 @@ export default function OriginalMessageSnippet({ messageId, allMessages }) {
   const type = original.type;
   const direction = original.direction === 'incoming' ? 'Contato' : 'Você';
 
-  // Se for string, verifica se é JSON válido ou trata como texto puro
+  // Se for string, verifica se é numérica longa (mais de 15 dígitos) ou JSON
   if (typeof content === 'string') {
-    // Se for uma string numérica (apenas dígitos), usa como texto puro
-    if (/^\d+$/.test(content)) {
+    // Se for uma string numérica longa (> 15 dígitos), força como texto puro
+    if (/^\d{16,}$/.test(content)) {
       content = { text: content };
     } 
-    // Só tenta parsear se parece JSON (evita erros desnecessários)
+    // Só tenta parsear se parece JSON (evita conversões indesejadas)
     else if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
       try {
         content = JSON.parse(content);
