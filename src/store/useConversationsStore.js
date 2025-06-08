@@ -6,6 +6,11 @@ const useConversationsStore = create((set, get) => ({
   lastRead: {},
   unreadCounts: {},
 
+    // Busca o nome do contato pelo user_id
+  getContactName: (userId) => {
+    return get().conversations[userId]?.name || userId;
+  },
+  
   // Define a conversa para um usuário específico
   setConversation: (userId, data) =>
     set((state) => ({
