@@ -1,60 +1,22 @@
-// src/components/Sidebar/Sidebar.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "../../services/supabaseClient";
 import { File, Mic } from "lucide-react";
 import useConversationsStore from "../../store/useConversationsStore";
 import "./Sidebar.css";
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const {
-    conversations,
-    lastRead,
-    unreadCounts,
-    fetchInitialUnread,
-    markAsRead
-  } = useConversationsStore((state) => ({
-    conversations: state.conversations,
-    lastRead: state.lastRead,
-    unreadCounts: state.unreadCounts,
-    fetchInitialUnread: state.fetchInitialUnread,
-    markAsRead: state.markAsRead
-  }));
+  const conversations = useConversationsStore((state) => state.conversations);
+  const lastRead = useConversationsStore((state) => state.lastRead);
+  const unreadCounts = useConversationsStore((state) => state.unreadCounts);
+  const fetchInitialUnread = useConversationsStore((state) => state.fetchInitialUnread);
+  const markAsRead = useConversationsStore((state) => state.markAsRead);
 
   const [distribuicaoTickets, setDistribuicaoTickets] = useState("manual");
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Busca configurações e atualiza fila
-  useEffect(() => {
-    const fetchSettingsAndFila = async () => {
-      const { data } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "distribuicao_tickets")
-        .single();
-
-      if (data?.value) setDistribuicaoTickets(data.value);
-
-      const filaAtivos = Object.values(conversations).filter(conv => !conv.atendido);
-      setFilaCount(filaAtivos.length);
-    };
-
-    fetchSettingsAndFila();
-  }, [conversations]);
-
-  // Carrega contagens não lidas iniciais
-  useEffect(() => {
-    Object.keys(conversations).forEach(userId => {
-      fetchInitialUnread(userId);
-    });
-  }, [conversations, fetchInitialUnread]);
-
-  const handleSelectUser = async (userId) => {
-    await markAsRead(userId);
-    onSelectUser(userId);
-  };
-
-  const getSnippet = (rawContent) => {
+  // Memoize the function to prevent unnecessary recreations
+  const getSnippet = useCallback((rawContent) => {
     try {
       const parsed = JSON.parse(rawContent);
       
@@ -77,9 +39,46 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
       const plain = rawContent || '';
       return plain.length > 40 ? `${plain.slice(0, 37)}...` : plain;
     }
+  }, []);
+
+  // Fetch settings and count
+  useEffect(() => {
+    const fetchSettingsAndFila = async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "distribuicao_tickets")
+        .single();
+
+      if (data?.value) setDistribuicaoTickets(data.value);
+
+      const filaAtivos = Object.values(conversations).filter(conv => !conv.atendido);
+      setFilaCount(filaAtivos.length);
+    };
+
+    fetchSettingsAndFila();
+  }, [conversations]);
+
+  // Load initial unread counts
+  useEffect(() => {
+    const loadUnreadCounts = async () => {
+      await Promise.all(
+        Object.keys(conversations).map(userId => fetchInitialUnread(userId))
+      );
+    };
+
+    loadUnreadCounts();
+  }, [conversations, fetchInitialUnread]);
+
+  const handleSelectUser = async (userId) => {
+    try {
+      await markAsRead(userId);
+      onSelectUser(userId);
+    } catch (error) {
+      console.error("Error selecting user:", error);
+    }
   };
 
-  // Filtra conversas baseado no search term
   const filteredConversations = Object.values(conversations).filter(conv => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -146,7 +145,7 @@ export default function Sidebar({ onSelectUser, userIdSelecionado }) {
                 <div className="chat-title">
                   {conv.name || fullId.split('@')[0]}
                   {hasUnread && (
-                    <span className="unread-badge pulse">
+                    <span className="unread-badge">
                       {unreadCount}
                     </span>
                   )}
