@@ -89,20 +89,26 @@ const userFilas = useConversationsStore((state) => state.userFilas);
     const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
     // ✅ Atualiza conversa e cliente ativo
-    setConversation(userIdSelecionado, {
-      channel: canal,
-      ticket_number: clienteRes?.ticket_number || '000000',
-      fila: clienteRes?.fila || 'Orçamento',
-      name: clienteRes?.name || userIdSelecionado,
-    });
+setConversation(userIdSelecionado, {
+  channel: canal,
+  ticket_number: clienteRes?.ticket_number || '000000',
+  fila: clienteRes?.fila || ticket.fila || 'Orçamento',
+  name: clienteRes?.name || userIdSelecionado,
+  assigned_to: ticket.assigned_to,
+  status: ticket.status,
+});
 
-    const info = {
-      name: clienteRes.name,
-      phone: clienteRes.phone,
-      channel: clienteRes.channel,
-      ticket_number: clienteRes.ticket_number,
-      fila: clienteRes.fila,
-    };
+
+const info = {
+  name: clienteRes.name,
+  phone: clienteRes.phone,
+  channel: clienteRes.channel,
+  ticket_number: clienteRes.ticket_number,
+  fila: clienteRes.fila,
+  assigned_to: ticket.assigned_to,
+  status: ticket.status,
+};
+
     setClienteInfo(info);
     setClienteAtivo(info);
   } catch (err) {
