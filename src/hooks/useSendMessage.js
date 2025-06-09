@@ -125,13 +125,8 @@ export function useSendMessage() {
 
 console.log('🚀 Payload FINAL enviado para o servidor:', payload);
 
-      const resp = await apiPost(
-        '/messages/send',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
+const resp = await apiPost('/messages/send', payload);
+     }
       );
       const responseText = await resp.text();
 
@@ -140,7 +135,7 @@ console.log('🚀 Payload FINAL enviado para o servidor:', payload);
       }
 
       if (typeof onMessageAdded === 'function') {
-        const serverData = responseText ? JSON.parse(responseText) : null;
+        const serverData = resp;
         onMessageAdded({
           id: tempId,
           status: 'sent',
