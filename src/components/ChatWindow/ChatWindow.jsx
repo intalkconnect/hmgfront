@@ -52,14 +52,11 @@ export default function ChatWindow({ userIdSelecionado }) {
       try {
         console.log('[fetchData] Buscando dados para:', userIdSelecionado);
 
-        const [msgRes, clienteRes] = await Promise.all([
+        const [msgData, clienteRes] = await Promise.all([
           apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
           apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
         ]);
-console.log('📦 Resposta bruta da API (mensagens):', msgRes);
-        const msgData = Array.isArray(msgRes);
-
-        console.log('📥 msgData extraído:', msgData);
+console.log('📦 Resposta bruta da API (mensagens):', msgData);
 
         messageCacheRef.current.set(userIdSelecionado, msgData);
         setAllMessages(msgData);
