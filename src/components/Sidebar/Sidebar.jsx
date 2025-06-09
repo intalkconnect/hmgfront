@@ -5,11 +5,13 @@ import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
 
 export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-  const {
-    conversations,
-    lastRead,
-    unreadCounts,
-  } = useConversationsStore();
+const {
+  conversations,
+  lastRead,
+  unreadCounts,
+  clienteAtivo, // ⬅️ Acesso aqui
+} = useConversationsStore();
+
   
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
@@ -123,11 +125,12 @@ const getSnippet = (rawContent) => {
               className={`chat-list-item ${isSelected ? 'active' : ''}`}
               onClick={() => onSelectUser(fullId)}
             >
-              <div className="chat-avatar">
-                {conv.channel === 'whatsapp' && (
-                  <img src="/icons/whatsapp.png" alt="whatsapp" className="avatar-img" />
-                )}
-              </div>
+<div className="chat-avatar">
+  {(isSelected ? clienteAtivo?.channel : conv.channel) === 'whatsapp' && (
+    <img src="/icons/whatsapp.png" alt="whatsapp" className="avatar-img" />
+  )}
+</div>
+
 
               <div className="chat-details">
                 <div className="chat-title">
@@ -140,8 +143,12 @@ const getSnippet = (rawContent) => {
                 </div>
                 <div className="chat-snippet">{getSnippet(conv.content)}</div>
                 <div className="chat-meta">
-                  <span className="chat-ticket">#{conv.ticket_number || '000000'}</span>
-                  <span className="chat-queue">Fila: {conv.fila || 'Orçamento'}</span>
+<span className="chat-ticket">
+  #{isSelected && clienteAtivo?.ticket_number ? clienteAtivo.ticket_number : conv.ticket_number || '000000'}
+</span>
+<span className="chat-queue">
+  Fila: {isSelected && clienteAtivo?.fila ? clienteAtivo.fila : conv.fila || 'Orçamento'}
+</span>
                 </div>
               </div>
 
