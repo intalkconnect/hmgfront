@@ -59,7 +59,12 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
           apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
         ]);
 
-        console.log(clienteRes)
+
+                const msgData = msgRes.data || [];
+        messageCacheRef.current.set(userIdSelecionado, msgData);
+        setAllMessages(msgData);
+        updateDisplayedMessages(msgData, 1);
+
         // mensagens omitidas por brevidade
 
         if (clienteRes) {
