@@ -9,7 +9,9 @@ const {
   conversations,
   lastRead,
   unreadCounts,
-  clienteAtivo, // ⬅️ Acesso aqui
+  clienteAtivo,
+    userEmail,
+  userFilas,
 } = useConversationsStore();
 
   
@@ -71,8 +73,25 @@ const getSnippet = (rawContent) => {
   return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
 };
 
-  const filteredConversations = Object.values(conversations).filter(conv => {
-    if (!searchTerm) return true;
+  const filteredConversations = Object.values(conversations).filter((conv) => {
+  // 🔒 Respeita permissões
+  const autorizado =
+    conv.status === 'open' &&
+    conv.assigned_to === userEmail &&
+    userFilas.includes(conv.fila);
+
+  if (!autorizado) return false;
+
+  if (!searchTerm) return true;
+
+  const searchLower = searchTerm.toLowerCase();
+  return (
+    conv.name?.toLowerCase().includes(searchLower) ||
+    conv.user_id?.toLowerCase().includes(searchLower) ||
+    conv.content?.toLowerCase().includes(searchLower)
+  );
+});
+
     const searchLower = searchTerm.toLowerCase();
     return (
       conv.name?.toLowerCase().includes(searchLower) ||
