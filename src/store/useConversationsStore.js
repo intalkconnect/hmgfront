@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiGet, apiPut } from '../services/apiClient';
 
 const useConversationsStore = create((set, get) => ({
   conversations: {},
@@ -25,28 +26,20 @@ const useConversationsStore = create((set, get) => ({
   // Atualiza o último horário de leitura e zera as não lidas
   setLastRead: async (userId, timestamp) => {
     try {
-      const res = await fetch('/last-read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, last_read: timestamp }),
-      });
+      await apiPut(`/messages/read-status/${userId}`, { last_read: timestamp });
 
-      if (res.ok) {
-        set((state) => ({
-          lastRead: {
-            ...state.lastRead,
-            [userId]: timestamp,
-          },
-          unreadCounts: {
-            ...state.unreadCounts,
-            [userId]: 0,
-          },
-        }));
-      } else {
-        console.error('Erro ao atualizar last_read:', await res.text());
-      }
+      set((state) => ({
+        lastRead: {
+          ...state.lastRead,
+          [userId]: timestamp,
+        },
+        unreadCounts: {
+          ...state.unreadCounts,
+          [userId]: 0,
+        },
+      }));
     } catch (err) {
-      console.error('Erro na requisição de last_read:', err);
+      console.error('Erro ao atualizar lastRead:', err);
     }
   },
 
@@ -59,39 +52,31 @@ const useConversationsStore = create((set, get) => ({
       },
     })),
 
-  // Carrega as contagens de mensagens não lidas do backend
+  // Carrega as contagens de mensagens não lidas do banco de dados
   loadUnreadCounts: async () => {
     try {
-      const res = await fetch('/unread-counts');
-      if (!res.ok) throw new Error('Erro ao buscar contagem de não lidas');
-      const data = await res.json();
-
+      const data = await apiGet('/messages/unread-counts');
       const counts = data.reduce((acc, item) => {
         acc[item.user_id] = item.unread_count;
         return acc;
       }, {});
-
       set({ unreadCounts: counts });
-    } catch (err) {
-      console.error('Erro ao carregar unreadCounts:', err);
+    } catch (error) {
+      console.error('Erro ao carregar unreadCounts:', error);
     }
   },
 
-  // Carrega os últimos horários de leitura do backend
+  // Carrega os últimos horários de leitura
   loadLastReadTimes: async () => {
     try {
-      const res = await fetch('/last-read');
-      if (!res.ok) throw new Error('Erro ao buscar lastRead');
-      const data = await res.json();
-
+      const data = await apiGet('/messages/read-status');
       const lastRead = data.reduce((acc, item) => {
         acc[item.user_id] = item.last_read;
         return acc;
       }, {});
-
       set({ lastRead });
-    } catch (err) {
-      console.error('Erro ao carregar lastRead:', err);
+    } catch (error) {
+      console.error('Erro ao carregar lastReadTimes:', error);
     }
   },
 }));

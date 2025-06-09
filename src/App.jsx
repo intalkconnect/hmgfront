@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiGet } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
@@ -12,8 +13,7 @@ export default function App() {
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
-  const userIdSelecionadoRef = useRef(null);
-
+  
   const {
     setConversation,
     setLastRead,
@@ -23,10 +23,13 @@ export default function App() {
     loadLastReadTimes,
     getContactName
   } = useConversationsStore();
+  
+  const userIdSelecionadoRef = useRef(null);
 
+  // Inicializa o player de áudio
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
-    audioPlayer.current.volume = 0.3;
+    audioPlayer.current.volume = 0.3; // Volume ajustável
     return () => {
       if (audioPlayer.current) {
         audioPlayer.current.pause();
@@ -35,6 +38,7 @@ export default function App() {
     };
   }, []);
 
+  // Verifica se a janela está ativa
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
@@ -48,6 +52,7 @@ export default function App() {
     };
   }, []);
 
+  // Inicializa socket e carrega dados
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -83,10 +88,12 @@ export default function App() {
     initializeApp();
   }, []);
 
+  // Configura listener de novas mensagens
   useEffect(() => {
     const socket = getSocket();
-
+    
     const handleNewMessage = async (message) => {
+      // Atualiza a conversa no estado
       setConversation(message.user_id, {
         ...message,
         ticket_number: message.ticket_number || message.ticket,
@@ -96,6 +103,8 @@ export default function App() {
 
       if (userIdSelecionadoRef.current !== message.user_id) {
         incrementUnread(message.user_id);
+        
+        // Toca o som de notificação
         try {
           audioPlayer.current.currentTime = 0;
           await audioPlayer.current.play();
@@ -103,6 +112,7 @@ export default function App() {
           console.log("Falha ao tocar som:", err);
         }
 
+        // Mostra notificação se a janela não está ativa
         if (!isWindowActive) {
           const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
@@ -114,6 +124,7 @@ export default function App() {
     return () => socket.off('new_message', handleNewMessage);
   }, [isWindowActive, setConversation, incrementUnread, getContactName]);
 
+  // Função para mostrar notificação
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
 
@@ -131,7 +142,8 @@ export default function App() {
         window.focus();
         handleSelectUser(message.user_id);
       };
-    } else if (Notification.permission !== 'denied') {
+    }
+    else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           const contactName = getContactName(message.user_id);
@@ -141,6 +153,7 @@ export default function App() {
     }
   };
 
+  // Função para extrair texto prévio da mensagem
   const getMessagePreview = (content) => {
     try {
       const parsed = JSON.parse(content);
@@ -154,13 +167,9 @@ export default function App() {
   };
 
   async function fetchConversations() {
-    try {
-      const res = await fetch('/conversas');
-      const data = await res.json();
-      data.forEach((conv) => setConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error("Erro ao buscar conversas:", err);
-    }
+const data = await apiGet('/messages/conversations');
+data.forEach((conv) => setConversation(conv.user_id, conv));
+
   }
 
   const handleSelectUser = async (userId) => {
@@ -170,15 +179,12 @@ export default function App() {
 
     await setLastRead(fullId, new Date().toISOString());
 
-    try {
-      const res = await fetch(`/messages/${fullId}`);
-      const data = await res.json();
+    const data = await apiGet(`/messages/${fullId}`);
 
+    if (data) {
       const socket = getSocket();
       socket.emit('join_room', fullId);
       socket.emit('force_refresh', fullId);
-    } catch (err) {
-      console.error("Erro ao buscar mensagens:", err);
     }
   };
 

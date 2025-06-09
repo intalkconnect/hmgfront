@@ -1,12 +1,27 @@
-// src/apiClient.js
-import axios from 'axios'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-// URL base da sua API (ex: http://localhost:3000 ou a URL da API em produção)
-const apiBaseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+export async function apiGet(path) {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`GET ${path} failed`);
+  return res.json();
+}
 
-export const api = axios.create({
-  baseURL: apiBaseURL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+export async function apiPost(path, data) {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`POST ${path} failed`);
+  return res.json();
+}
+
+export async function apiPut(path, data) {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`PUT ${path} failed`);
+  return res.json();
+}
