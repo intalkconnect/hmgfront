@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 import { apiGet, apiPut } from '../services/apiClient';
 
-const useConversationsStore = create((set) => ({
+const useConversationsStore = create((set, get) => ({
   conversations: {},
   lastRead: {},
   unreadCounts: {},
-  clienteAtivo: null, // ⬅️ Novo: dados de cliente + ticket
+  clienteAtivo: null,
+
+  userEmail: null,
+  userFilas: [],
+  setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
 
   setClienteAtivo: (info) => set({ clienteAtivo: info }),
 
-  // Define a conversa para um usuário específico
   setConversation: (userId, data) =>
     set((state) => ({
       conversations: {
@@ -21,12 +24,10 @@ const useConversationsStore = create((set) => ({
       },
     })),
 
-  // Busca o nome do contato pelo user_id
   getContactName: (userId) => {
     return get().conversations[userId]?.name || userId;
   },
 
-  // Atualiza o último horário de leitura e zera as não lidas
   setLastRead: async (userId, timestamp) => {
     try {
       await apiPut(`/messages/read-status/${userId}`, { last_read: timestamp });
@@ -46,7 +47,6 @@ const useConversationsStore = create((set) => ({
     }
   },
 
-  // Incrementa a contagem de não lidas
   incrementUnread: (userId) =>
     set((state) => ({
       unreadCounts: {
@@ -55,7 +55,6 @@ const useConversationsStore = create((set) => ({
       },
     })),
 
-  // Carrega as contagens de mensagens não lidas do banco de dados
   loadUnreadCounts: async () => {
     try {
       const data = await apiGet('/messages/unread-counts');
@@ -69,7 +68,6 @@ const useConversationsStore = create((set) => ({
     }
   },
 
-  // Carrega os últimos horários de leitura
   loadLastReadTimes: async () => {
     try {
       const data = await apiGet('/messages/read-status');
@@ -82,7 +80,19 @@ const useConversationsStore = create((set) => ({
       console.error('Erro ao carregar lastReadTimes:', error);
     }
   },
-}));
 
+  getFilteredConversations: () => {
+    const { conversations, userEmail, userFilas } = get();
+    return Object.fromEntries(
+      Object.entries(conversations).filter(([_, conv]) => {
+        return (
+          conv.status === 'open' &&
+          conv.assigned_to === userEmail &&
+          userFilas.includes(conv.fila)
+        );
+      })
+    );
+  },
+}));
 
 export default useConversationsStore;
