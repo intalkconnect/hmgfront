@@ -14,7 +14,7 @@ import './ChatWindowPagination.css'; // Novo CSS para paginação
 
 export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
-  const setConversationChannel = useConversationsStore((state) => state.setConversationChannel);
+  const setConversation = useConversationsStore((state) => state.setConversation);
   const [allMessages, setAllMessages] = useState([]); // Todas as mensagens
   const [displayedMessages, setDisplayedMessages] = useState([]); // Mensagens exibidas
   const [modalImage, setModalImage] = useState(null);
@@ -63,12 +63,22 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
 
   // ✅ Adiciona esta parte para mostrar as mensagens
   const msgData = msgRes;
-  messageCacheRef.current.set(userIdSelecionado, msgData);
-  setAllMessages(msgData);
-  updateDisplayedMessages(msgData, 1);
+messageCacheRef.current.set(userIdSelecionado, msgData);
+setAllMessages(msgData);
+updateDisplayedMessages(msgData, 1);
 
-  const canal = msgData[msgData.length - 1]?.channel || 'desconhecido';
-  setConversationChannel(userIdSelecionado, canal);
+// Dados derivados da última mensagem
+const lastMsg = msgData[msgData.length - 1];
+const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
+
+// Atualiza Zustand conversations
+setConversation(userIdSelecionado, {
+  channel: canal,
+  ticket_number: clienteRes?.ticket_number || '000000',
+  fila: clienteRes?.fila || 'Orçamento',
+  name: clienteRes?.name || userIdSelecionado,
+});
+
 
   if (clienteRes) {
     const info = {
