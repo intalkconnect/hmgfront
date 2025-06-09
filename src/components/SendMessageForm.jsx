@@ -53,7 +53,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded }) {
     formData.append('file', file);
 
     try {
-      const res = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/bucket/upload', {
+      const res = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/api/v1/bucket/upload', {
         method: 'POST',
         body: formData
       });
