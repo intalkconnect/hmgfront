@@ -45,7 +45,7 @@ export async function uploadFileAndGetURL(fileToUpload) {
 
   try {
     const res = await fetch(
-      'https://ia-srv-meta.9j9goo.easypanel.host/bucket/upload',
+      'https://ia-srv-meta.9j9goo.easypanel.host/api/v1/bucket/upload',
       { method: 'POST', body: formData }
     );
     const data = await res.json();
