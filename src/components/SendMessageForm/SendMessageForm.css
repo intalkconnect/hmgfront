@@ -217,41 +217,4 @@
   cursor: pointer;
 }
 
-.upload-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
 
-.upload-modal {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 400px;
-  max-width: 90%;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.upload-modal h2 {
-  margin-top: 0;
-}
-
-.upload-modal textarea {
-  width: 100%;
-  margin-top: 10px;
-  resize: vertical;
-}
-
-.upload-modal-buttons {
-  margin-top: 15px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
