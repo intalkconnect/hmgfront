@@ -73,8 +73,7 @@ const getSnippet = (rawContent) => {
   return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
 };
 
-  const filteredConversations = Object.values(conversations).filter((conv) => {
-  // 🔒 Respeita permissões
+const filteredConversations = Object.values(conversations).filter((conv) => {
   const autorizado =
     conv.status === 'open' &&
     conv.assigned_to === userEmail &&
@@ -91,14 +90,6 @@ const getSnippet = (rawContent) => {
     conv.content?.toLowerCase().includes(searchLower)
   );
 });
-
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      conv.name?.toLowerCase().includes(searchLower) ||
-      conv.user_id?.toLowerCase().includes(searchLower) ||
-      conv.content?.toLowerCase().includes(searchLower)
-    );
-
 
   return (
     <div className="sidebar-container">
