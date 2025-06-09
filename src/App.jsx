@@ -173,7 +173,7 @@ export default function App() {
       if (!userEmail || userFilas.length === 0) return;
 
       const params = new URLSearchParams({
-        email: userEmail,
+        assigned_to: userEmail,
         filas: userFilas.join(',')
       });
 
