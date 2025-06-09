@@ -39,26 +39,43 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
  * Faz upload de um File (docs/imagem/áudio) para o servidor e retorna a URL pública.
  * Retorna null se falhar.
  */
-export async function uploadFileAndGetURL(fileToUpload) {
-  const formData = new FormData();
-  formData.append('file', fileToUpload);
-
+export async function uploadFileAndGetURL(file) {
   try {
+    const query = new URLSearchParams({
+      filename: file.name,
+      mimetype: file.type,
+    });
+
+    // 1. Solicita uma URL assinada ao backend
     const res = await fetch(
-      'https://ia-srv-meta.9j9goo.easypanel.host/api/v1/bucket/upload',
-      { method: 'POST', body: formData }
+      `https://ia-srv-meta.9j9goo.easypanel.host/api/v1/bucket/presigned-url?${query}`
     );
-    const data = await res.json();
-    if (!res.ok || !data.url) {
-      console.error('[❌ Upload erro]', data);
-      return null;
+    const { uploadUrl, publicUrl } = await res.json();
+
+    if (!uploadUrl || !publicUrl) {
+      throw new Error('Falha ao obter URL assinado');
     }
-    return data.url;
+
+    // 2. Faz upload direto para o MinIO
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error('Falha ao enviar o arquivo para MinIO');
+    }
+
+    return publicUrl;
   } catch (err) {
-    console.error('[❌ Upload falhou]', err);
+    console.error('[❌ Upload direto falhou]', err);
     return null;
   }
 }
+
 
 /**
  * Valida se um File tem tipo permitido e tamanho OK.
