@@ -9,17 +9,6 @@ const useConversationsStore = create((set) => ({
 
   setClienteAtivo: (info) => set({ clienteAtivo: info }),
 
-    setConversationChannel: (userId, channel) =>
-    set((state) => ({
-      conversations: {
-        ...state.conversations,
-        [userId]: {
-          ...state.conversations[userId],
-          channel: channel,
-        },
-      },
-    })),
-
   // Define a conversa para um usuário específico
   setConversation: (userId, data) =>
     set((state) => ({
