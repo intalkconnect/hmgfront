@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import './UploadFileModal.css';
 
 export default function UploadFileModal({ file, onClose, onSubmit }) {
   const [caption, setCaption] = useState('');
