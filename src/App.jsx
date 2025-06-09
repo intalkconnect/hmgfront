@@ -168,6 +168,7 @@ export default function App() {
 
   async function fetchConversations() {
 const data = await apiGet('/messages/conversations');
+console.log(`data conmversations: ${data}`)
 data.forEach((conv) => setConversation(conv.user_id, conv));
 
   }
@@ -180,6 +181,7 @@ data.forEach((conv) => setConversation(conv.user_id, conv));
     await setLastRead(fullId, new Date().toISOString());
 
     const data = await apiGet(`/messages/${fullId}`);
+    console.log(`data message: ${data}`)
 
     if (data) {
       const socket = getSocket();
