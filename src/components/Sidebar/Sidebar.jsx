@@ -98,7 +98,7 @@ const getSnippet = (rawContent) => {
       conv.user_id?.toLowerCase().includes(searchLower) ||
       conv.content?.toLowerCase().includes(searchLower)
     );
-  });
+
 
   return (
     <div className="sidebar-container">
