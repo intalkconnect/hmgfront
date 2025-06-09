@@ -83,51 +83,43 @@ export function useSendMessage() {
     });
 
     try {
-      const to = userId.replace('@w.msgcli.net', '');
-      const payload = { to };
+  const to = userId.replace('@w.msgcli.net', '');
+  const payload = { to };
 
-      if (file) {
-        // Valida o arquivo antes de enviar
-        const { valid, errorMsg } = validateFile(file);
-        if (!valid) {
-          toast.error(errorMsg, { position: 'bottom-right', autoClose: 2000 });
-          setIsSending(false);
-          return;
-        }
-        const fileUrl = await uploadFileAndGetURL(file);
-        if (!fileUrl) throw new Error('Não foi possível obter URL.');
+  if (file) {
+    const { valid, errorMsg } = validateFile(file);
+    if (!valid) {
+      toast.error(errorMsg, { position: 'bottom-right', autoClose: 2000 });
+      setIsSending(false);
+      return;
+    }
+    const fileUrl = await uploadFileAndGetURL(file);
+    if (!fileUrl) throw new Error('Não foi possível obter URL.');
 
-        const isAudioFile = file.type.startsWith('audio/');
-        const isImage = file.type.startsWith('image/');
-        if (isAudioFile) {
-          payload.type = 'audio';
-          payload.content = { url: fileUrl, voice: true };
-        } else {
-          const caption = text.trim() || file.name;
-          payload.type = isImage ? 'image' : 'document';
-          payload.content = {
-            url: fileUrl,
-            filename: file.name,
-            caption,
-          };
-        }
-} else {
-  payload.type = 'text';
-
-  if (replyTo) {
-    payload.context = {
-      message_id: replyTo
-    };
+    const isAudioFile = file.type.startsWith('audio/');
+    const isImage = file.type.startsWith('image/');
+    if (isAudioFile) {
+      payload.type = 'audio';
+      payload.content = { url: fileUrl, voice: true };
+    } else {
+      const caption = text.trim() || file.name;
+      payload.type = isImage ? 'image' : 'document';
+      payload.content = {
+        url: fileUrl,
+        filename: file.name,
+        caption,
+      };
+    }
+  } else {
+    payload.type = 'text';
+    if (replyTo) {
+      payload.context = { message_id: replyTo };
+    }
+    payload.content = { body: text.trim() };
   }
 
-  payload.content = { body: text.trim() };
-}
+  console.log('🚀 Payload FINAL enviado para o servidor:', payload);
 
-// ...
-
-console.log('🚀 Payload FINAL enviado para o servidor:', payload);
-
-try {
   const serverData = await apiPost('/messages/send', payload);
 
   if (typeof onMessageAdded === 'function') {
@@ -156,8 +148,9 @@ try {
     autoClose: 2000,
   });
 } finally {
-      setIsSending(false);
-    }
+  setIsSending(false);
+}
+
   };
 
   return { isSending, sendMessage };
