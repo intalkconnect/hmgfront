@@ -5,19 +5,17 @@ import './ChatHeader.css'
 import useConversationsStore from '../../store/useConversationsStore'
 
 export default function ChatHeader({ userIdSelecionado }) {
-  const conversation = useConversationsStore(
-    (state) => state.conversations[userIdSelecionado]
-  )
+  const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
 
-  if (!conversation) return null
+  if (!clienteAtivo) return null;
 
   const {
-    name,
+    name = 'Cliente',
     ticket_number = '000000',
     fila = 'Indefinida',
-    user_id,
+    user_id = userIdSelecionado,
     channel = 'desconhecido'
-  } = conversation
+  } = clienteAtivo;
 
   return (
     <div className="chat-header">
@@ -57,5 +55,5 @@ export default function ChatHeader({ userIdSelecionado }) {
         </button>
       </div>
     </div>
-  )
+  );
 }
