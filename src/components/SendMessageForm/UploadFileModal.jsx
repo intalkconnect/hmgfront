@@ -6,13 +6,12 @@ export default function UploadFileModal({ file, onClose, onSubmit }) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!file) return;
     setIsUploading(true);
     try {
       await onSubmit(file, caption);
       onClose();
     } catch (err) {
-      console.error('Erro ao enviar arquivo:', err);
+      console.error('Erro ao enviar:', err);
     } finally {
       setIsUploading(false);
     }
