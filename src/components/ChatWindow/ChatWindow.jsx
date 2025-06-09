@@ -3,6 +3,7 @@ import { socket, connectSocket } from '../../services/socket';
 import { apiGet } from '../../services/apiClient';
 import useConversationsStore from '../../store/useConversationsStore';
 
+
 import SendMessageForm from '../SendMessageForm/SendMessageForm';
 import MessageList from './MessageList';
 import ImageModal from './modals/ImageModal';
@@ -13,6 +14,7 @@ import './ChatWindowPagination.css'; // Novo CSS para paginação
 
 export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
+  const setConversationChannel = useConversationsStore((state) => state.setConversationChannel);
   const [allMessages, setAllMessages] = useState([]); // Todas as mensagens
   const [displayedMessages, setDisplayedMessages] = useState([]); // Mensagens exibidas
   const [modalImage, setModalImage] = useState(null);
@@ -64,6 +66,9 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   messageCacheRef.current.set(userIdSelecionado, msgData);
   setAllMessages(msgData);
   updateDisplayedMessages(msgData, 1);
+
+  const canal = msgData[msgData.length - 1]?.channel || 'desconhecido';
+  setConversationChannel(userIdSelecionado, canal);
 
   if (clienteRes) {
     const info = {
