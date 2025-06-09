@@ -60,6 +60,7 @@ export default function ChatWindow({ userIdSelecionado }) {
         const msgData = msgRes?.data || [];
         messageCacheRef.current.set(userIdSelecionado, msgData);
         setAllMessages(msgData);
+        console.log('🧾 Mensagens definidas no estado:', msgData);
 
         if (clienteRes?.data) {
           setClienteInfo({
