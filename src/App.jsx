@@ -13,7 +13,7 @@ export default function App() {
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
-  
+
   const {
     setConversation,
     setLastRead,
@@ -23,13 +23,12 @@ export default function App() {
     loadLastReadTimes,
     getContactName
   } = useConversationsStore();
-  
+
   const userIdSelecionadoRef = useRef(null);
 
-  // Inicializa o player de áudio
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
-    audioPlayer.current.volume = 0.3; // Volume ajustável
+    audioPlayer.current.volume = 0.3;
     return () => {
       if (audioPlayer.current) {
         audioPlayer.current.pause();
@@ -38,7 +37,6 @@ export default function App() {
     };
   }, []);
 
-  // Verifica se a janela está ativa
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
@@ -52,7 +50,6 @@ export default function App() {
     };
   }, []);
 
-  // Inicializa socket e carrega dados
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -88,12 +85,10 @@ export default function App() {
     initializeApp();
   }, []);
 
-  // Configura listener de novas mensagens
   useEffect(() => {
     const socket = getSocket();
-    
+
     const handleNewMessage = async (message) => {
-      // Atualiza a conversa no estado
       setConversation(message.user_id, {
         ...message,
         ticket_number: message.ticket_number || message.ticket,
@@ -104,8 +99,7 @@ export default function App() {
 
       if (userIdSelecionadoRef.current !== message.user_id) {
         incrementUnread(message.user_id);
-        
-        // Toca o som de notificação
+
         try {
           audioPlayer.current.currentTime = 0;
           await audioPlayer.current.play();
@@ -113,7 +107,6 @@ export default function App() {
           console.log("Falha ao tocar som:", err);
         }
 
-        // Mostra notificação se a janela não está ativa
         if (!isWindowActive) {
           const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
@@ -125,13 +118,12 @@ export default function App() {
     return () => socket.off('new_message', handleNewMessage);
   }, [isWindowActive, setConversation, incrementUnread, getContactName]);
 
-  // Função para mostrar notificação
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
       const notification = new Notification(
-        `Nova mensagem de ${contactName || message.user_id}`, 
+        `Nova mensagem de ${contactName || message.user_id}`,
         {
           body: getMessagePreview(message.content),
           icon: '/icons/whatsapp.png',
@@ -143,8 +135,7 @@ export default function App() {
         window.focus();
         handleSelectUser(message.user_id);
       };
-    }
-    else if (Notification.permission !== 'denied') {
+    } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           const contactName = getContactName(message.user_id);
@@ -154,7 +145,6 @@ export default function App() {
     }
   };
 
-  // Função para extrair texto prévio da mensagem
   const getMessagePreview = (content) => {
     try {
       const parsed = JSON.parse(content);
@@ -168,10 +158,20 @@ export default function App() {
   };
 
   async function fetchConversations() {
-const data = await apiGet('/messages/conversations');
-console.log(`data conmversations: ${data}`)
-data.forEach((conv) => setConversation(conv.user_id, conv));
+    try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
 
+      const params = new URLSearchParams({
+        email: userEmail,
+        filas: userFilas.join(',')
+      });
+
+      const data = await apiGet(`/chats?${params.toString()}`);
+      data.forEach((conv) => setConversation(conv.user_id, conv));
+    } catch (err) {
+      console.error('Erro ao buscar /chats:', err);
+    }
   }
 
   const handleSelectUser = async (userId) => {
@@ -182,8 +182,6 @@ data.forEach((conv) => setConversation(conv.user_id, conv));
     await setLastRead(fullId, new Date().toISOString());
 
     const data = await apiGet(`/messages/${fullId}`);
-    console.log(`data message: ${data}`)
-
     if (data) {
       const socket = getSocket();
       socket.emit('join_room', fullId);
@@ -191,7 +189,7 @@ data.forEach((conv) => setConversation(conv.user_id, conv));
     }
   };
 
-  const conversaSelecionada = userIdSelecionado 
+  const conversaSelecionada = userIdSelecionado
     ? Object.values(conversations).find((c) => {
         const idNormalizado = c.user_id.includes('@')
           ? c.user_id
@@ -201,13 +199,13 @@ data.forEach((conv) => setConversation(conv.user_id, conv));
     : null;
 
   return (
-    <div className="app-container">      
+    <div className="app-container">
       {socketError && (
         <div className="socket-error-banner">
           {socketError}
         </div>
       )}
-      
+
       <aside className="sidebar">
         <Sidebar
           onSelectUser={handleSelectUser}
