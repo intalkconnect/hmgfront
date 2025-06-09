@@ -57,9 +57,7 @@ export default function ChatWindow({ userIdSelecionado }) {
           apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
         ]);
 console.log('📦 Resposta bruta da API (mensagens):', msgRes);
-        const msgData = Array.isArray(msgRes.data)
-  ? msgRes.data
-  : msgRes.data?.data || [];
+        const msgData = Array.isArray(msgRes);
 
         console.log('📥 msgData extraído:', msgData);
 
