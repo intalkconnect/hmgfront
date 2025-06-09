@@ -56,8 +56,10 @@ export default function ChatWindow({ userIdSelecionado }) {
           apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
           apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
         ]);
-
+console.log('📦 Resposta bruta da API (mensagens):', msgRes);
         const msgData = msgRes?.data || [];
+        console.log('📥 msgData extraído:', msgData);
+
         messageCacheRef.current.set(userIdSelecionado, msgData);
         setAllMessages(msgData);
         console.log('🧾 Mensagens definidas no estado:', msgData);
