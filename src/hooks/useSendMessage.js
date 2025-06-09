@@ -77,10 +77,6 @@ export function useSendMessage() {
     }
 
     setIsSending(true);
-    toast.info('Enviando…', {
-      position: 'bottom-right',
-      autoClose: 1500,
-    });
 
     try {
   const to = userId.replace('@w.msgcli.net', '');
@@ -89,7 +85,6 @@ export function useSendMessage() {
   if (file) {
     const { valid, errorMsg } = validateFile(file);
     if (!valid) {
-      toast.error(errorMsg, { position: 'bottom-right', autoClose: 2000 });
       setIsSending(false);
       return;
     }
@@ -130,10 +125,6 @@ export function useSendMessage() {
     });
   }
 
-  toast.success('Enviado com sucesso!', {
-    position: 'bottom-right',
-    autoClose: 1500,
-  });
 } catch (err) {
   console.error('[❌ Erro ao enviar]', err);
   if (typeof onMessageAdded === 'function') {
@@ -143,10 +134,7 @@ export function useSendMessage() {
       errorMessage: err.message,
     });
   }
-  toast.error('Falha ao enviar.', {
-    position: 'bottom-right',
-    autoClose: 2000,
-  });
+
 } finally {
   setIsSending(false);
 }
