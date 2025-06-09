@@ -99,6 +99,7 @@ export default function App() {
         ticket_number: message.ticket_number || message.ticket,
         timestamp: message.timestamp,
         content: message.content,
+        channel: message.channel
       });
 
       if (userIdSelecionadoRef.current !== message.user_id) {
