@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 import { apiGet, apiPut } from '../services/apiClient';
 
-const useConversationsStore = create((set, get) => ({
+const useConversationsStore = create((set) => ({
   conversations: {},
   lastRead: {},
   unreadCounts: {},
+  clienteAtivo: null, // ⬅️ Novo: dados de cliente + ticket
+
+  setClienteAtivo: (info) => set({ clienteAtivo: info }),
 
   // Define a conversa para um usuário específico
   setConversation: (userId, data) =>
