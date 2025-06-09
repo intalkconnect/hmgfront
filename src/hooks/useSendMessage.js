@@ -123,44 +123,39 @@ export function useSendMessage() {
   payload.content = { body: text.trim() };
 }
 
+// ...
+
 console.log('🚀 Payload FINAL enviado para o servidor:', payload);
 
-const resp = await apiPost('/messages/send', payload);
-     }
-      );
-      const responseText = await resp.text();
+try {
+  const serverData = await apiPost('/messages/send', payload);
 
-      if (!resp.ok) {
-        throw new Error(`Servidor retornou ${resp.status}: ${responseText}`);
-      }
+  if (typeof onMessageAdded === 'function') {
+    onMessageAdded({
+      id: tempId,
+      status: 'sent',
+      serverResponse: serverData,
+    });
+  }
 
-      if (typeof onMessageAdded === 'function') {
-        const serverData = resp;
-        onMessageAdded({
-          id: tempId,
-          status: 'sent',
-          serverResponse: serverData,
-        });
-      }
-
-      toast.success('Enviado com sucesso!', {
-        position: 'bottom-right',
-        autoClose: 1500,
-      });
-    } catch (err) {
-      console.error('[❌ Erro ao enviar]', err);
-      if (typeof onMessageAdded === 'function') {
-        onMessageAdded({
-          id: tempId,
-          status: 'error',
-          errorMessage: err.message,
-        });
-      }
-      toast.error('Falha ao enviar.', {
-        position: 'bottom-right',
-        autoClose: 2000,
-      });
-    } finally {
+  toast.success('Enviado com sucesso!', {
+    position: 'bottom-right',
+    autoClose: 1500,
+  });
+} catch (err) {
+  console.error('[❌ Erro ao enviar]', err);
+  if (typeof onMessageAdded === 'function') {
+    onMessageAdded({
+      id: tempId,
+      status: 'error',
+      errorMessage: err.message,
+    });
+  }
+  toast.error('Falha ao enviar.', {
+    position: 'bottom-right',
+    autoClose: 2000,
+  });
+} finally {
       setIsSending(false);
     }
   };
