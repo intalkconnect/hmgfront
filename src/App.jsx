@@ -25,6 +25,16 @@ export default function App() {
   } = useConversationsStore();
 
   const userIdSelecionadoRef = useRef(null);
+  useEffect(() => {
+  // Simulação do login de um usuário com email e filas
+  const emailSimulado = 'dan_rodrigo@hotmail.com';
+  const filasSimuladas = ['Comercial', 'Suporte'];
+
+  useConversationsStore.getState().setUserInfo({
+    email: emailSimulado,
+    filas: filasSimuladas
+  });
+}, []);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
