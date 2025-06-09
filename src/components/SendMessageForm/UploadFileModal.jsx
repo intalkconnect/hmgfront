@@ -3,6 +3,20 @@ import './UploadFileModal.css';
 
 export default function UploadFileModal({ file, onClose, onSubmit }) {
   const [caption, setCaption] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      await onSubmit(file, caption);
+      onClose();
+    } catch (err) {
+      console.error('Erro ao enviar arquivo:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="upload-modal-overlay">
@@ -16,8 +30,10 @@ export default function UploadFileModal({ file, onClose, onSubmit }) {
           onChange={(e) => setCaption(e.target.value)}
         />
         <div className="upload-modal-buttons">
-          <button onClick={onClose}>Cancelar</button>
-          <button onClick={() => onSubmit(file, caption)}>Enviar</button>
+          <button onClick={onClose} disabled={isUploading}>Cancelar</button>
+          <button onClick={handleSubmit} disabled={isUploading}>
+            {isUploading ? <span className="spinner" /> : 'Enviar'}
+          </button>
         </div>
       </div>
     </div>
