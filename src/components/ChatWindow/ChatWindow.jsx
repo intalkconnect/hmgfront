@@ -23,6 +23,9 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const userEmail = useConversationsStore((state) => state.userEmail);
+const userFilas = useConversationsStore((state) => state.userFilas);
+
 
   const messageListRef = useRef(null);
   const currentUserIdRef = useRef(null);
@@ -54,33 +57,45 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
     }
 
        const fetchData = async () => {
-      setIsLoading(true);
-      try {
-  const [msgRes, clienteRes] = await Promise.all([
-    apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
-    apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
-  ]);
+  setIsLoading(true);
+  try {
+    const [msgRes, clienteRes, ticketRes] = await Promise.all([
+      apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
+      apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`),
+      apiGet(`/tickets/${encodeURIComponent(userIdSelecionado)}`),
+    ]);
 
-  // ✅ Adiciona esta parte para mostrar as mensagens
-  const msgData = msgRes;
-messageCacheRef.current.set(userIdSelecionado, msgData);
-setAllMessages(msgData);
-updateDisplayedMessages(msgData, 1);
+    // ✅ Validação de permissão
+    const ticket = ticketRes;
+    const isAuthorized =
+      ticket.status === 'open' &&
+      ticket.assigned_to === userEmail &&
+      userFilas.includes(ticket.fila);
 
-// Dados derivados da última mensagem
-const lastMsg = msgData[msgData.length - 1];
-const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
+    if (!isAuthorized) {
+      console.warn('Acesso negado ao ticket deste usuário.');
+      setClienteAtivo(null);
+      setClienteInfo(null);
+      return;
+    }
 
-// Atualiza Zustand conversations
-setConversation(userIdSelecionado, {
-  channel: canal,
-  ticket_number: clienteRes?.ticket_number || '000000',
-  fila: clienteRes?.fila || 'Orçamento',
-  name: clienteRes?.name || userIdSelecionado,
-});
+    // ✅ Mensagens
+    const msgData = msgRes;
+    messageCacheRef.current.set(userIdSelecionado, msgData);
+    setAllMessages(msgData);
+    updateDisplayedMessages(msgData, 1);
 
+    const lastMsg = msgData[msgData.length - 1];
+    const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
-  if (clienteRes) {
+    // ✅ Atualiza conversa e cliente ativo
+    setConversation(userIdSelecionado, {
+      channel: canal,
+      ticket_number: clienteRes?.ticket_number || '000000',
+      fila: clienteRes?.fila || 'Orçamento',
+      name: clienteRes?.name || userIdSelecionado,
+    });
+
     const info = {
       name: clienteRes.name,
       phone: clienteRes.phone,
@@ -90,15 +105,14 @@ setConversation(userIdSelecionado, {
     };
     setClienteInfo(info);
     setClienteAtivo(info);
+  } catch (err) {
+    console.error('Erro ao buscar cliente:', err);
+    setClienteAtivo(null);
+  } finally {
+    setIsLoading(false);
   }
-} catch (err) {
-  console.error('Erro ao buscar cliente:', err);
-  setClienteAtivo(null);
-}
- finally {
-        setIsLoading(false);
-      }
-    };
+};
+
 
     fetchData();
   }, [userIdSelecionado]);
