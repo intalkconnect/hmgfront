@@ -1,6 +1,7 @@
 // SendMessageForm.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
+import { apiPost } from '../services/apiClient';
 import 'emoji-picker-element';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -192,7 +193,7 @@ if (fileToSend) {
 
       console.log('[📨 Enviando payload]', payload);
 
-      const resp = await fetch('https://ia-srv-meta.9j9goo.easypanel.host/messages/send', {
+      const resp = await apiPost('/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

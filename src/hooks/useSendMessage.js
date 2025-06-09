@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiPost } from '../services/apiClient';
 import { uploadFileAndGetURL, validateFile } from '../utils/fileUtils';
 
 /**
@@ -124,8 +125,8 @@ export function useSendMessage() {
 
 console.log('🚀 Payload FINAL enviado para o servidor:', payload);
 
-      const resp = await fetch(
-        'https://ia-srv-meta.9j9goo.easypanel.host/messages/send',
+      const resp = await apiPost(
+        '/messages/send',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
