@@ -59,41 +59,48 @@ export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
         return;
       }
 
-      try {
-        const [msgRes, clienteRes] = await Promise.all([
-apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
+     try {
+  console.log('[fetchData] Iniciando busca de mensagens e dados do cliente para:', userIdSelecionado);
 
-apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
+  const [msgRes, clienteRes] = await Promise.all([
+    apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
+    apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`)
+  ]);
 
-        ]);
+  console.log('[fetchData] Resposta de mensagens:', msgRes);
+  console.log('[fetchData] Resposta de cliente:', clienteRes);
 
-        const msgData = msgRes.data || [];
-        messageCacheRef.current.set(userIdSelecionado, msgData);
-        setAllMessages(msgData);
-        updateDisplayedMessages(msgData, 1);
+  const msgData = msgRes?.data || [];
+  messageCacheRef.current.set(userIdSelecionado, msgData);
+  setAllMessages(msgData);
+  updateDisplayedMessages(msgData, 1);
 
-        if (clienteRes.data) {
-          setClienteInfo({
-            name: clienteRes.data.name,
-            phone: clienteRes.data.phone,
-          });
-        } else {
-          const fallback = msgData[0] || {};
-          setClienteInfo({
-            name: userIdSelecionado,
-            phone: userIdSelecionado.split('@')[0],
-            ticket: fallback.ticket || '000000',
-            fila: fallback.fila || 'Não definida',
-          });
-        }
-      } catch (err) {
-        console.error('❌ Erro ao buscar dados:', err);
-        setAllMessages([]);
-        setDisplayedMessages([]);
-        setClienteInfo(null);
-      } finally {
-        setIsLoading(false);
-      }
+  if (clienteRes?.data) {
+    console.log('[fetchData] Dados do cliente encontrados.');
+    setClienteInfo({
+      name: clienteRes.data.name,
+      phone: clienteRes.data.phone,
+    });
+  } else {
+    console.warn('[fetchData] Cliente não encontrado. Usando dados de fallback.');
+    const fallback = msgData[0] || {};
+    setClienteInfo({
+      name: userIdSelecionado,
+      phone: userIdSelecionado.split('@')[0],
+      ticket: fallback.ticket || '000000',
+      fila: fallback.fila || 'Não definida',
+    });
+  }
+} catch (err) {
+  console.error('❌ Erro ao buscar dados:', err);
+  setAllMessages([]);
+  setDisplayedMessages([]);
+  setClienteInfo(null);
+} finally {
+  console.log('[fetchData] Finalizado');
+  setIsLoading(false);
+}
+
     };
 
     fetchData();
