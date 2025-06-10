@@ -146,52 +146,56 @@ export default function Sidebar() {
 
           return (
             <li
-              key={fullId}
-              className={`chat-list-item ${isSelected ? 'active' : ''}`}
-              onClick={() => setSelectedUserId(fullId)}
-            >
-              <div className="chat-avatar">
-                {(isSelected ? clienteAtivo?.channel : conv.channel) === 'whatsapp' && (
-                  <img
-                    src="/icons/whatsapp.png"
-                    alt="whatsapp"
-                    className="avatar-img"
-                  />
-                )}
-              </div>
+  key={fullId}
+  className={`chat-list-item ${isSelected ? 'active' : ''}`}
+  onClick={() => setSelectedUserId(fullId)}
+>
+  {(() => {
+    const canalWhatsapp = clienteAtivo?.channel === 'whatsapp';
 
-              <div className="chat-details">
-                <div className="chat-title">
-                  {conv.name || fullId}
-                  {hasUnread && <span className="unread-badge">{unreadCount}</span>}
-                </div>
+    return (
+      <>
+        <div className="chat-avatar">
+          {canalWhatsapp && (
+            <img
+              src="/icons/whatsapp.png"
+              alt="whatsapp"
+              className="avatar-img"
+            />
+          )}
+        </div>
 
-                <div className="chat-snippet">{getSnippet(conv.content)}</div>
+        <div className="chat-details">
+          <div className="chat-title">
+            {conv.name || fullId}
+            {hasUnread && <span className="unread-badge">{unreadCount}</span>}
+          </div>
 
-                <div className="chat-meta">
-                  <span className="chat-ticket">
-                    #{isSelected && clienteAtivo?.ticket_number
-                      ? clienteAtivo.ticket_number
-                      : conv.ticket_number || '000000'}
-                  </span>
-                  <span className="chat-queue">
-                    Fila:{' '}
-                    {isSelected && clienteAtivo?.fila
-                      ? clienteAtivo.fila
-                      : conv.fila || 'Orçamento'}
-                  </span>
-                </div>
-              </div>
+          <div className="chat-snippet">{getSnippet(conv.content)}</div>
 
-              <div className="chat-time">
-                {conv.timestamp
-                  ? new Date(conv.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : '--:--'}
-              </div>
-            </li>
+          <div className="chat-meta">
+            <span className="chat-ticket">
+              #{clienteAtivo?.ticket_number || conv.ticket_number || '000000'}
+            </span>
+            <span className="chat-queue">
+              Fila: {clienteAtivo?.fila || conv.fila || 'Orçamento'}
+            </span>
+          </div>
+        </div>
+
+        <div className="chat-time">
+          {conv.timestamp
+            ? new Date(conv.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '--:--'}
+        </div>
+      </>
+    );
+  })()}
+</li>
+
           );
         })}
       </ul>
