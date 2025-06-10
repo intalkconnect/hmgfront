@@ -1,3 +1,4 @@
+// App.jsx atualizado com Zustand consistente
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
@@ -9,30 +10,30 @@ import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
-  const [socketError, setSocketError] = useState(null);
-  const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
+  const socketRef = useRef(null);
 
   const {
-    setConversation,
+    selectedUserId,
+    setSelectedUserId,
+    setUserInfo,
+    mergeConversation,
     incrementUnread,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
-    setUserInfo,
-    conversations,
-    selectedUserId,
-    setSelectedUserId,
+    conversations
   } = useConversationsStore();
 
-  const selectedUserIdRef = useRef(null);
+  const [socketError, setSocketError] = useState(null);
+  const [isWindowActive, setIsWindowActive] = useState(true);
 
   useEffect(() => {
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
       filas: ['Comercial', 'Suporte']
     });
-  }, []);
+  }, [setUserInfo]);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
@@ -57,72 +58,68 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const initializeApp = async () => {
+    const initialize = async () => {
       try {
         connectSocket();
         const socket = getSocket();
+        socketRef.current = socket;
 
-        socket.on('connect_error', (err) => {
-          console.error('Socket connection error:', err);
+        socket.on('connect_error', () => {
           setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
         });
 
         socket.on('connect', () => {
-          console.log('Socket connected successfully');
           setSocketError(null);
         });
 
-        await Promise.all([
-          fetchConversations(),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
-        ]);
+        socket.on('new_message', async (message) => {
+          mergeConversation(message.user_id, {
+            ticket_number: message.ticket_number || message.ticket,
+            timestamp: message.timestamp,
+            content: message.content,
+            channel: message.channel,
+          });
 
-        return () => {
-          socket.off('connect_error');
-          socket.off('connect');
-        };
-      } catch (error) {
-        console.error('Initialization error:', error);
+          if (selectedUserId !== message.user_id) {
+            incrementUnread(message.user_id);
+            try {
+              audioPlayer.current.currentTime = 0;
+              await audioPlayer.current.play();
+            } catch (e) {}
+
+            if (!isWindowActive) {
+              const contactName = getContactName(message.user_id);
+              showNotification(message, contactName);
+            }
+          }
+        });
+
+        await Promise.all([fetchConversations(), loadLastReadTimes(), loadUnreadCounts()]);
+      } catch (err) {
         setSocketError('Erro ao inicializar a aplicação');
       }
     };
+    initialize();
+  }, [selectedUserId, isWindowActive, mergeConversation, incrementUnread, getContactName, loadLastReadTimes, loadUnreadCounts]);
 
-    initializeApp();
-  }, []);
+  const fetchConversations = async () => {
+    try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
 
-  useEffect(() => {
-    const socket = getSocket();
-
-    const handleNewMessage = async (message) => {
-      setConversation(message.user_id, {
-        ...message,
-        ticket_number: message.ticket_number || message.ticket,
-        timestamp: message.timestamp,
-        content: message.content,
-        channel: message.channel
+      const params = new URLSearchParams({
+        assigned_to: userEmail,
+        filas: userFilas.join(',')
       });
 
-      if (selectedUserIdRef.current !== message.user_id) {
-        incrementUnread(message.user_id);
-
-        try {
-          audioPlayer.current.currentTime = 0;
-          await audioPlayer.current.play();
-        } catch (err) {
-          console.log("Falha ao tocar som:", err);
-        }
-
-        if (!isWindowActive) {
-          const contactName = getContactName(message.user_id);
-          showNotification(message, contactName);
-        }
-      }
-    };
-
-    socket.on('new_message', handleNewMessage);
-    return () => socket.off('new_message', handleNewMessage);
-  }, [isWindowActive, setConversation, incrementUnread, getContactName]);
+      const data = await apiGet(`/chats?${params.toString()}`);
+      data.forEach((conv) => {
+        mergeConversation(conv.user_id, conv);
+      });
+    } catch (err) {
+      console.error('Erro ao buscar /chats:', err);
+    }
+  };
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
@@ -144,6 +141,7 @@ export default function App() {
     } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
+          const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
         }
       });
@@ -155,62 +153,31 @@ export default function App() {
       const parsed = JSON.parse(content);
       if (parsed.text) return parsed.text;
       if (parsed.caption) return parsed.caption;
-      if (parsed.url) return "[Arquivo]";
-      return "[Mensagem]";
+      if (parsed.url) return '[Arquivo]';
+      return '[Mensagem]';
     } catch {
-      return content.length > 50 ? content.substring(0, 47) + '...' : content;
+      return content?.length > 50 ? content.substring(0, 47) + '...' : content;
     }
   };
 
-  async function fetchConversations() {
-    try {
-      const { userEmail, userFilas } = useConversationsStore.getState();
-      if (!userEmail || userFilas.length === 0) return;
-
-      const params = new URLSearchParams({
-        assigned_to: userEmail,
-        filas: userFilas.join(',')
-      });
-
-      const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => setConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
-    }
-  }
-
-  useEffect(() => {
-    selectedUserIdRef.current = selectedUserId;
-  }, [selectedUserId]);
+  const conversaSelecionada = selectedUserId
+    ? conversations[selectedUserId] || null
+    : null;
 
   return (
     <div className="app-container">
-      {socketError && (
-        <div className="socket-error-banner">
-          {socketError}
-        </div>
-      )}
+      {socketError && <div className="socket-error-banner">{socketError}</div>}
 
       <aside className="sidebar">
         <Sidebar />
       </aside>
 
       <main className="chat-container">
-        <ChatWindow userIdSelecionado={selectedUserId} />
+        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </main>
 
       <aside className="details-panel">
-        <DetailsPanel
-          userIdSelecionado={selectedUserId}
-          conversaSelecionada={
-            selectedUserId
-              ? Object.values(conversations).find((c) => {
-                  const id = c.user_id.includes('@') ? c.user_id : `${c.user_id}@w.msgcli.net`;
-                  return id === selectedUserId;
-                }) || null
-              : null
-          }
-        />
+        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </aside>
     </div>
   );
