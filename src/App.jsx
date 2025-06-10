@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { apiGet } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -9,7 +9,6 @@ import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
-  const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
@@ -17,17 +16,18 @@ export default function App() {
   const {
     setConversation,
     incrementUnread,
-    conversations,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
-    setUserInfo
+    setUserInfo,
+    conversations,
+    selectedUserId,
+    setSelectedUserId,
   } = useConversationsStore();
 
-  const userIdSelecionadoRef = useRef(null);
+  const selectedUserIdRef = useRef(null);
 
   useEffect(() => {
-    // Simulação do login de um usuário com email e filas
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
       filas: ['Comercial', 'Suporte']
@@ -103,7 +103,7 @@ export default function App() {
         channel: message.channel
       });
 
-      if (userIdSelecionadoRef.current !== message.user_id) {
+      if (selectedUserIdRef.current !== message.user_id) {
         incrementUnread(message.user_id);
 
         try {
@@ -139,12 +139,11 @@ export default function App() {
 
       notification.onclick = () => {
         window.focus();
-        handleSelectUser(message.user_id);
+        setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
-          const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
         }
       });
@@ -180,20 +179,9 @@ export default function App() {
     }
   }
 
-  const handleSelectUser = async (userId) => {
-    const fullId = userId.includes('@') ? userId : `${userId}@w.msgcli.net`;
-    setUserIdSelecionado(fullId);
-    userIdSelecionadoRef.current = fullId;
-  };
-
-  const conversaSelecionada = userIdSelecionado
-    ? Object.values(conversations).find((c) => {
-        const idNormalizado = c.user_id.includes('@')
-          ? c.user_id
-          : `${c.user_id}@w.msgcli.net`;
-        return idNormalizado === userIdSelecionado;
-      }) || null
-    : null;
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId;
+  }, [selectedUserId]);
 
   return (
     <div className="app-container">
@@ -204,23 +192,24 @@ export default function App() {
       )}
 
       <aside className="sidebar">
-        <Sidebar
-          onSelectUser={handleSelectUser}
-          userIdSelecionado={userIdSelecionado}
-        />
+        <Sidebar />
       </aside>
 
       <main className="chat-container">
-        <ChatWindow
-          userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversaSelecionada}
-        />
+        <ChatWindow userIdSelecionado={selectedUserId} />
       </main>
 
       <aside className="details-panel">
         <DetailsPanel
-          userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversaSelecionada}
+          userIdSelecionado={selectedUserId}
+          conversaSelecionada={
+            selectedUserId
+              ? Object.values(conversations).find((c) => {
+                  const id = c.user_id.includes('@') ? c.user_id : `${c.user_id}@w.msgcli.net`;
+                  return id === selectedUserId;
+                }) || null
+              : null
+          }
         />
       </aside>
     </div>
