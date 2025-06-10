@@ -14,8 +14,9 @@ const useConversationsStore = create((set, get) => ({
   setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
 
   // Atualiza conversa selecionada, zera não lidas do atual e do anterior
-setSelectedUserId: (userId) => {
+setSelectedUserId: async (userId) => {
   const previousId = get().selectedUserId;
+  const now = new Date().toISOString();
 
   set({ selectedUserId: userId });
 
@@ -24,22 +25,34 @@ setSelectedUserId: (userId) => {
     get().clearNotified(previousId);
   }
 
-  const now = new Date().toISOString();
-
   get().resetUnread(userId);
   get().clearNotified(userId);
 
+  // Atualiza visualmente
   set((state) => ({
     lastRead: {
       ...state.lastRead,
       [userId]: now,
     },
+    unreadCounts: {
+      ...state.unreadCounts,
+      [userId]: 0,
+    },
   }));
 
-  apiPut(`/messages/read-status/${userId}`, {
-    last_read: now,
-  }).catch((err) => console.error('Erro ao marcar como lido:', err));
+  // Marcar como lido no backend
+  try {
+    await apiPut(`/messages/read-status/${userId}`, {
+      last_read: now,
+    });
+
+    // 🔁 Atualiza contagens do backend após marcar como lido
+    await get().loadUnreadCounts();
+  } catch (err) {
+    console.error('Erro ao marcar como lido:', err);
+  }
 },
+
 
 
 
