@@ -85,7 +85,7 @@ export default function App() {
         });
 
 socket.on('new_message', async (message) => {
-  const isFromMe = message.direction === 'out' || message.from_me === true;
+  const isFromMe = message.direction === 'outgoing' || message.from_me === true;
   const isChatActive = selectedUserId === message.user_id;
 
   mergeConversation(message.user_id, {
