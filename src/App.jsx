@@ -109,18 +109,17 @@ socket.on('new_message', async (message) => {
 
   if (isFromMe) return;
 
-  if (isActiveChat) {
-    // ✅ Marcar como lido no backend imediatamente
-    resetUnread(message.user_id);
-    apiPut(`/messages/read-status/${message.user_id}`, {
-      last_read: new Date().toISOString(),
-    }).catch((err) => console.error('Erro ao marcar como lido no socket:', err));
-
-    return; // ❌ NÃO incrementa
-  }
+if (isActiveChat) {
+  // Marcar como lida no backend
+  resetUnread(message.user_id);
+  apiPut(`/messages/read-status/${message.user_id}`, {
+    last_read: new Date().toISOString(),
+  }).catch((err) => console.error('Erro ao marcar como lido no socket:', err));
+  return;
+}
 
   // Incrementa contagem de não lidas se não estiver visualizando
-  incrementUnread(message.user_id);
+ incrementUnread(message.user_id, message.timestamp);
 
   // Notifica se ainda não notificou e a aba estiver fora de foco
   if (!notifiedConversations[message.user_id] && !isWindowFocused) {
