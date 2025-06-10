@@ -25,6 +25,16 @@ const useConversationsStore = create((set, get) => ({
         },
       },
     })),
+mergeConversation: (userId, newData) =>
+  set((state) => ({
+    conversations: {
+      ...state.conversations,
+      [userId]: {
+        ...(state.conversations[userId] || {}),
+        ...newData,
+      },
+    },
+  })),
 
   getContactName: (userId) => {
     return get().conversations[userId]?.name || userId;
