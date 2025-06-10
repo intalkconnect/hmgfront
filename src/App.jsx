@@ -1,3 +1,4 @@
+// App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
@@ -59,17 +60,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isWindowActive && selectedUserId) {
-      resetUnread(selectedUserId);
-      apiPut(`/messages/read-status/${selectedUserId}`, {
-        last_read: new Date().toISOString(),
-      }).finally(() => {
-        loadUnreadCounts(); // garante atualização mesmo após PUT
-      });
-    }
-  }, [isWindowActive, selectedUserId]);
-
-  useEffect(() => {
     const initialize = async () => {
       try {
         connectSocket();
@@ -87,7 +77,6 @@ export default function App() {
         socket.on('new_message', async (message) => {
           const {
             selectedUserId,
-            resetUnread,
             mergeConversation,
             getContactName,
             notifiedConversations,
@@ -95,7 +84,7 @@ export default function App() {
             loadUnreadCounts,
           } = useConversationsStore.getState();
 
-          const isFromMe = message.direction === 'outgoing' || message.from_me === true;
+          const isFromMe = message.direction === 'out' || message.from_me === true;
           const isActiveChat = message.user_id === selectedUserId;
           const isWindowFocused = document.hasFocus();
 
@@ -108,17 +97,17 @@ export default function App() {
 
           if (isFromMe) return;
 
-          if (isActiveChat) {
-            resetUnread(message.user_id);
+          // ✅ Marca como lida apenas se estiver com o chat aberto e aba ativa
+          if (isActiveChat && isWindowFocused) {
             await apiPut(`/messages/read-status/${message.user_id}`, {
               last_read: new Date().toISOString(),
             });
+            return;
           }
 
-          // 🔁 Sempre recarrega contagens do backend para garantir precisão
           await loadUnreadCounts();
 
-          if (!isActiveChat && !notifiedConversations[message.user_id] && !isWindowFocused) {
+          if (!notifiedConversations[message.user_id] && !isWindowFocused) {
             const contactName = getContactName(message.user_id);
             showNotification(message, contactName);
             markNotified(message.user_id);
@@ -145,7 +134,7 @@ export default function App() {
     };
 
     initialize();
-  }, []);
+  }, [selectedUserId, isWindowActive]);
 
   const fetchConversations = async () => {
     try {
@@ -167,7 +156,8 @@ export default function App() {
   };
 
   const showNotification = (message, contactName) => {
-    if (isWindowActive || !('Notification' in window)) return;
+    if (isWindowActive) return;
+    if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
       const notification = new Notification(
@@ -218,17 +208,11 @@ export default function App() {
       </aside>
 
       <main className="chat-container">
-        <ChatWindow
-          userIdSelecionado={selectedUserId}
-          conversaSelecionada={conversaSelecionada}
-        />
+        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </main>
 
       <aside className="details-panel">
-        <DetailsPanel
-          userIdSelecionado={selectedUserId}
-          conversaSelecionada={conversaSelecionada}
-        />
+        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </aside>
     </div>
   );
