@@ -15,18 +15,23 @@ const useConversationsStore = create((set, get) => ({
   setSelectedUserId: (userId) => {
     set({ selectedUserId: userId });
 
-    // Zera contagem de não lidas + atualiza read status
-    get().resetUnreadCount(userId);
+    // Zera contagem de não lidas e atualiza read status local e remoto
+    get().resetUnread(userId);
     apiPut(`/messages/read-status/${userId}`, {
       last_read: new Date().toISOString(),
     }).catch((err) => console.error('Erro ao marcar como lido:', err));
   },
 
-  resetUnreadCount: (userId) =>
+  // Renomeado para resetUnread para consistência com App.jsx
+  resetUnread: (userId) =>
     set((state) => ({
       unreadCounts: {
         ...state.unreadCounts,
         [userId]: 0,
+      },
+      lastRead: {
+        ...state.lastRead,
+        [userId]: new Date().toISOString(),
       },
     })),
 
