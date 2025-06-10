@@ -78,7 +78,7 @@ export default function Sidebar() {
         }
         return parsed.text || parsed.caption || '';
       } catch {
-        // Fallback to string
+        // Fallback
       }
     }
 
@@ -138,60 +138,60 @@ export default function Sidebar() {
       </div>
 
       <ul className="chat-list">
-  {filteredConversations.map((conv) => {
-    const fullId = conv.user_id;
-    const unreadCount = unreadCounts[fullId] || 0;
-    const hasUnread = unreadCount > 0;
-    const canalWhatsapp = clienteAtivo?.channel === 'whatsapp';
-    const isSelected = fullId === selectedUserId; // só para aplicar classe ativa
+        {filteredConversations.map((conv) => {
+          const fullId = conv.user_id;
+          const isSelected = fullId === selectedUserId;
+          const unreadCount = unreadCounts[fullId] || 0;
+          const hasUnread = unreadCount > 0;
 
-    return (
-      <li
-        key={fullId}
-        className={`chat-list-item ${isSelected ? 'active' : ''}`}
-        onClick={() => setSelectedUserId(fullId)}
-      >
-        <div className="chat-avatar">
-          {canalWhatsapp && (
-            <img
-              src="/icons/whatsapp.png"
-              alt="whatsapp"
-              className="avatar-img"
-            />
-          )}
-        </div>
+          const canalWhatsapp = conv.channel === 'whatsapp';
 
-        <div className="chat-details">
-          <div className="chat-title">
-            {conv.name || fullId}
-            {hasUnread && <span className="unread-badge">{unreadCount}</span>}
-          </div>
+          return (
+            <li
+              key={fullId}
+              className={`chat-list-item ${isSelected ? 'active' : ''}`}
+              onClick={() => setSelectedUserId(fullId)}
+            >
+              <div className="chat-avatar">
+                {canalWhatsapp && (
+                  <img
+                    src="/icons/whatsapp.png"
+                    alt="whatsapp"
+                    className="avatar-img"
+                  />
+                )}
+              </div>
 
-          <div className="chat-snippet">{getSnippet(conv.content)}</div>
+              <div className="chat-details">
+                <div className="chat-title">
+                  {conv.name || fullId}
+                  {hasUnread && <span className="unread-badge">{unreadCount}</span>}
+                </div>
 
-          <div className="chat-meta">
-            <span className="chat-ticket">
-              #{clienteAtivo?.ticket_number || conv.ticket_number || '000000'}
-            </span>
-            <span className="chat-queue">
-              Fila: {clienteAtivo?.fila || conv.fila || 'Orçamento'}
-            </span>
-          </div>
-        </div>
+                <div className="chat-snippet">{getSnippet(conv.content)}</div>
 
-        <div className="chat-time">
-          {conv.timestamp
-            ? new Date(conv.timestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-            : '--:--'}
-        </div>
-      </li>
-    );
-  })}
-</ul>
+                <div className="chat-meta">
+                  <span className="chat-ticket">
+                    #{conv.ticket_number || '000000'}
+                  </span>
+                  <span className="chat-queue">
+                    Fila: {conv.fila || 'Orçamento'}
+                  </span>
+                </div>
+              </div>
 
+              <div className="chat-time">
+                {conv.timestamp
+                  ? new Date(conv.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '--:--'}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
