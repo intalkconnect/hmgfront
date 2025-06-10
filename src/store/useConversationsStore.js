@@ -47,13 +47,25 @@ setSelectedUserId: (userId) => {
     })),
 
   // Incrementa contagem de não lidas
-  incrementUnread: (userId) =>
-    set((state) => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [userId]: (state.unreadCounts[userId] || 0) + 1,
-      },
-    })),
+incrementUnread: (userId, messageTimestamp) => {
+  const { lastRead, unreadCounts } = get();
+
+  const last = lastRead[userId] ? new Date(lastRead[userId]) : null;
+  const current = new Date(messageTimestamp);
+
+  if (last && current <= last) {
+    // Já foi lida
+    return;
+  }
+
+  set({
+    unreadCounts: {
+      ...unreadCounts,
+      [userId]: (unreadCounts[userId] || 0) + 1,
+    },
+  });
+},
+
 
   setClienteAtivo: (info) => set({ clienteAtivo: info }),
 
