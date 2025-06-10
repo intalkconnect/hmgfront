@@ -14,24 +14,24 @@ const useConversationsStore = create((set, get) => ({
   setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
 
   // Atualiza conversa selecionada, zera não lidas do atual e do anterior
-  setSelectedUserId: (userId) => {
-    const previousId = get().selectedUserId;
+setSelectedUserId: (userId) => {
+  const previousId = get().selectedUserId;
 
-    set({ selectedUserId: userId });
+  set({ selectedUserId: userId });
 
-    // Zera a conversa que estava aberta antes
-    if (previousId && previousId !== userId) {
-      get().resetUnread(previousId);
-    }
+  if (previousId && previousId !== userId) {
+    get().resetUnread(previousId);
+    get().clearNotified(previousId); // limpa notificação anterior
+  }
 
-    // Zera a conversa que está sendo aberta agora
-    get().resetUnread(userId);
+  get().resetUnread(userId);
+  get().clearNotified(userId);
 
-    // Marca como lido no backend
-    apiPut(`/messages/read-status/${userId}`, {
-      last_read: new Date().toISOString(),
-    }).catch((err) => console.error('Erro ao marcar como lido:', err));
-  },
+  apiPut(`/messages/read-status/${userId}`, {
+    last_read: new Date().toISOString(),
+  }).catch((err) => console.error('Erro ao marcar como lido:', err));
+},
+
 
   // Zera contagem de não lidas
   resetUnread: (userId) =>
@@ -111,6 +111,24 @@ const useConversationsStore = create((set, get) => ({
       )
     );
   },
+
+  notifiedConversations: {},
+
+markNotified: (userId) =>
+  set((state) => ({
+    notifiedConversations: {
+      ...state.notifiedConversations,
+      [userId]: true,
+    },
+  })),
+
+clearNotified: (userId) =>
+  set((state) => {
+    const updated = { ...state.notifiedConversations };
+    delete updated[userId];
+    return { notifiedConversations: updated };
+  }),
+
 }));
 
 export default useConversationsStore;
