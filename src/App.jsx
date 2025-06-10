@@ -9,51 +9,46 @@ import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
-  const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
 
   const {
+    selectedUserId,
+    setSelectedUserId,
     setConversation,
     setLastRead,
     incrementUnread,
     conversations,
     loadUnreadCounts,
     loadLastReadTimes,
-    getContactName
+    getContactName,
+    setUserInfo,
   } = useConversationsStore();
 
-  const userIdSelecionadoRef = useRef(null);
-  useEffect(() => {
-  // Simulação do login de um usuário com email e filas
-  const emailSimulado = 'dan_rodrigo@hotmail.com';
-  const filasSimuladas = ['Comercial', 'Suporte'];
+  const selectedUserIdRef = useRef(null);
 
-  useConversationsStore.getState().setUserInfo({
-    email: emailSimulado,
-    filas: filasSimuladas
-  });
-}, []);
+  useEffect(() => {
+    // Simula login
+    const emailSimulado = 'dan_rodrigo@hotmail.com';
+    const filasSimuladas = ['Comercial', 'Suporte'];
+    setUserInfo({ email: emailSimulado, filas: filasSimuladas });
+  }, [setUserInfo]);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
     return () => {
-      if (audioPlayer.current) {
-        audioPlayer.current.pause();
-        audioPlayer.current = null;
-      }
+      audioPlayer.current?.pause();
+      audioPlayer.current = null;
     };
   }, []);
 
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
-
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
-
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
@@ -72,7 +67,7 @@ export default function App() {
         });
 
         socket.on('connect', () => {
-          console.log('Socket connected successfully');
+          console.log('Socket conectado com sucesso');
           setSocketError(null);
         });
 
@@ -87,13 +82,13 @@ export default function App() {
           socket.off('connect');
         };
       } catch (error) {
-        console.error('Initialization error:', error);
+        console.error('Erro na inicialização:', error);
         setSocketError('Erro ao inicializar a aplicação');
       }
     };
 
     initializeApp();
-  }, []);
+  }, [loadUnreadCounts, loadLastReadTimes]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -104,17 +99,16 @@ export default function App() {
         ticket_number: message.ticket_number || message.ticket,
         timestamp: message.timestamp,
         content: message.content,
-        channel: message.channel
+        channel: message.channel,
       });
 
-      if (userIdSelecionadoRef.current !== message.user_id) {
+      if (selectedUserIdRef.current !== message.user_id) {
         incrementUnread(message.user_id);
-
         try {
           audioPlayer.current.currentTime = 0;
           await audioPlayer.current.play();
         } catch (err) {
-          console.log("Falha ao tocar som:", err);
+          console.warn('Erro ao tocar som:', err);
         }
 
         if (!isWindowActive) {
@@ -127,6 +121,39 @@ export default function App() {
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
   }, [isWindowActive, setConversation, incrementUnread, getContactName]);
+
+  useEffect(() => {
+    if (!selectedUserId) return;
+
+    selectedUserIdRef.current = selectedUserId;
+    (async () => {
+      await setLastRead(selectedUserId, new Date().toISOString());
+
+      const data = await apiGet(`/messages/${selectedUserId}`);
+      if (data) {
+        const socket = getSocket();
+        socket.emit('join_room', selectedUserId);
+        socket.emit('force_refresh', selectedUserId);
+      }
+    })();
+  }, [selectedUserId, setLastRead]);
+
+  const fetchConversations = async () => {
+    try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
+
+      const params = new URLSearchParams({
+        assigned_to: userEmail,
+        filas: userFilas.join(','),
+      });
+
+      const data = await apiGet(`/chats?${params.toString()}`);
+      data.forEach((conv) => setConversation(conv.user_id, conv));
+    } catch (err) {
+      console.error('Erro ao buscar /chats:', err);
+    }
+  };
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
@@ -143,12 +170,11 @@ export default function App() {
 
       notification.onclick = () => {
         window.focus();
-        handleSelectUser(message.user_id);
+        setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
+      Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
         }
       });
@@ -160,81 +186,27 @@ export default function App() {
       const parsed = JSON.parse(content);
       if (parsed.text) return parsed.text;
       if (parsed.caption) return parsed.caption;
-      if (parsed.url) return "[Arquivo]";
-      return "[Mensagem]";
+      if (parsed.url) return '[Arquivo]';
+      return '[Mensagem]';
     } catch {
-      return content.length > 50 ? content.substring(0, 47) + '...' : content;
+      return content.length > 50 ? content.slice(0, 47) + '...' : content;
     }
   };
-
-  async function fetchConversations() {
-    try {
-      const { userEmail, userFilas } = useConversationsStore.getState();
-      if (!userEmail || userFilas.length === 0) return;
-
-      const params = new URLSearchParams({
-        assigned_to: userEmail,
-        filas: userFilas.join(',')
-      });
-
-      const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => setConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
-    }
-  }
-
-  const handleSelectUser = async (userId) => {
-    const fullId = userId.includes('@') ? userId : `${userId}@w.msgcli.net`;
-    setUserIdSelecionado(fullId);
-    userIdSelecionadoRef.current = fullId;
-
-    await setLastRead(fullId, new Date().toISOString());
-
-    const data = await apiGet(`/messages/${fullId}`);
-    if (data) {
-      const socket = getSocket();
-      socket.emit('join_room', fullId);
-      socket.emit('force_refresh', fullId);
-    }
-  };
-
-  const conversaSelecionada = userIdSelecionado
-    ? Object.values(conversations).find((c) => {
-        const idNormalizado = c.user_id.includes('@')
-          ? c.user_id
-          : `${c.user_id}@w.msgcli.net`;
-        return idNormalizado === userIdSelecionado;
-      }) || null
-    : null;
 
   return (
     <div className="app-container">
-      {socketError && (
-        <div className="socket-error-banner">
-          {socketError}
-        </div>
-      )}
+      {socketError && <div className="socket-error-banner">{socketError}</div>}
 
       <aside className="sidebar">
-        <Sidebar
-          onSelectUser={handleSelectUser}
-          userIdSelecionado={userIdSelecionado}
-        />
+        <Sidebar />
       </aside>
 
       <main className="chat-container">
-        <ChatWindow
-          userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversaSelecionada}
-        />
+        <ChatWindow />
       </main>
 
       <aside className="details-panel">
-        <DetailsPanel
-          userIdSelecionado={userIdSelecionado}
-          conversaSelecionada={conversaSelecionada}
-        />
+        <DetailsPanel />
       </aside>
     </div>
   );
