@@ -1,4 +1,4 @@
-// ChatWindow.jsx corrigido para zerar unread quando o chat está ativo
+// ChatWindow.jsx atualizado com uso de mergeConversation e Zustand
 import React, { useEffect, useRef, useState } from 'react';
 import { socket, connectSocket } from '../../services/socket';
 import { apiGet } from '../../services/apiClient';
@@ -14,9 +14,7 @@ import './ChatWindowPagination.css';
 
 export default function ChatWindow({ userIdSelecionado }) {
   const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
-  const setConversation = useConversationsStore((state) => state.setConversation);
-  const setLastRead = useConversationsStore((state) => state.setLastRead);
-
+  const mergeConversation = useConversationsStore((state) => state.mergeConversation);
   const [allMessages, setAllMessages] = useState([]);
   const [displayedMessages, setDisplayedMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
@@ -76,7 +74,7 @@ export default function ChatWindow({ userIdSelecionado }) {
         const lastMsg = msgData[msgData.length - 1];
         const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
-        setConversation(userIdSelecionado, {
+        mergeConversation(userIdSelecionado, {
           channel: canal,
           ticket_number: clienteRes?.ticket_number || '000000',
           fila: clienteRes?.fila || ticket.fila || 'Orçamento',
@@ -97,9 +95,6 @@ export default function ChatWindow({ userIdSelecionado }) {
 
         setClienteInfo(info);
         setClienteAtivo(info);
-
-        // Atualiza o lastRead e zera contagem de não lidas
-        await setLastRead(userIdSelecionado, new Date().toISOString());
       } catch (err) {
         console.error('Erro ao buscar cliente:', err);
         if (currentUserIdRef.current === userIdSelecionado) {
@@ -159,36 +154,94 @@ export default function ChatWindow({ userIdSelecionado }) {
     };
   }, [userIdSelecionado]);
 
-  return !userIdSelecionado ? (
-    <div className="chat-window placeholder">
-      <div className="chat-placeholder">
-        <svg className="chat-icon" width="80" height="80" viewBox="0 0 24 24" fill="var(--color-border)">
-          <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
-        </svg>
-        <h2 className="placeholder-title">Tudo pronto para atender</h2>
-        <p className="placeholder-subtitle">Escolha um ticket na lista ao lado para abrir a conversa</p>
+  useEffect(() => {
+    const handleNewMessage = (novaMsg) => {
+      const activeUser = currentUserIdRef.current;
+      if (novaMsg.user_id !== activeUser) return;
+
+      setAllMessages((prev) => {
+        if (prev.find((m) => m.id === novaMsg.id)) return prev;
+        const updated = [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        messageCacheRef.current.set(novaMsg.user_id, updated);
+        updateDisplayedMessages(updated, page);
+        return updated;
+      });
+    };
+
+    const handleUpdateMessage = (updatedMsg) => {
+      const activeUser = currentUserIdRef.current;
+      if (updatedMsg.user_id !== activeUser) return;
+
+      setAllMessages((prev) => {
+        const updated = prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m));
+        messageCacheRef.current.set(updatedMsg.user_id, updated);
+        updateDisplayedMessages(updated, page);
+        return updated;
+      });
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('update_message', handleUpdateMessage);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('update_message', handleUpdateMessage);
+    };
+  }, [page]);
+
+  if (!userIdSelecionado) {
+    return (
+      <div className="chat-window placeholder">
+        <div className="chat-placeholder">
+          <svg
+            className="chat-icon"
+            width="80"
+            height="80"
+            viewBox="0 0 24 24"
+            fill="var(--color-border)"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
+          </svg>
+          <h2 className="placeholder-title">Tudo pronto para atender</h2>
+          <p className="placeholder-subtitle">
+            Escolha um ticket na lista ao lado para abrir a conversa
+          </p>
+        </div>
       </div>
-    </div>
-  ) : isLoading ? (
-    <div className="chat-window loading">
-      <div className="loading-container">
-        <div className="spinner" />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="chat-window loading">
+        <div className="loading-container">
+          <div className="spinner" />
+        </div>
       </div>
-    </div>
-  ) : (
+    );
+  }
+
+  return (
     <div className="chat-window">
       <ChatHeader userIdSelecionado={userIdSelecionado} />
+
       <div className="messages-list">
-        {hasMoreMessages && <div ref={loaderRef} className="pagination-loader">Carregando mensagens mais antigas...</div>}
+        {hasMoreMessages && (
+          <div ref={loaderRef} className="pagination-loader">
+            Carregando mensagens mais antigas...
+          </div>
+        )}
         <MessageList
           initialKey={userIdSelecionado}
           ref={messageListRef}
           messages={displayedMessages}
-          onImageClick={setModalImage}
-          onPdfClick={setPdfModal}
-          onReply={setReplyTo}
+          onImageClick={(url) => setModalImage(url)}
+          onPdfClick={(url) => setPdfModal(url)}
+          onReply={(msg) => setReplyTo(msg)}
         />
       </div>
+
       <div className="chat-input">
         <SendMessageForm
           userIdSelecionado={userIdSelecionado}
@@ -196,6 +249,7 @@ export default function ChatWindow({ userIdSelecionado }) {
           setReplyTo={setReplyTo}
         />
       </div>
+
       {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
       {pdfModal && <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />}
     </div>
