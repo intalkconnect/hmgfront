@@ -11,20 +11,22 @@ import ChatHeader from './ChatHeader';
 import './ChatWindow.css';
 import './ChatWindowPagination.css';
 
-export default function ChatWindow({ userIdSelecionado }) {
-  const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
-  const setConversation = useConversationsStore((state) => state.setConversation);
+export default function ChatWindow() {
+  const {
+    selectedUserId: userIdSelecionado,
+    userEmail,
+    userFilas,
+    setClienteAtivo,
+    setConversation,
+  } = useConversationsStore();
+
   const [allMessages, setAllMessages] = useState([]);
   const [displayedMessages, setDisplayedMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
   const [pdfModal, setPdfModal] = useState(null);
-  const [clienteInfo, setClienteInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
-
-  const userEmail = useConversationsStore((state) => state.userEmail);
-  const userFilas = useConversationsStore((state) => state.userFilas);
 
   const messageListRef = useRef(null);
   const currentUserIdRef = useRef(null);
@@ -65,12 +67,11 @@ export default function ChatWindow({ userIdSelecionado }) {
           return;
         }
 
-        const msgData = msgRes;
-        messageCacheRef.current.set(userIdSelecionado, msgData);
-        setAllMessages(msgData);
-        updateDisplayedMessages(msgData, 1);
+        messageCacheRef.current.set(userIdSelecionado, msgRes);
+        setAllMessages(msgRes);
+        updateDisplayedMessages(msgRes, 1);
 
-        const lastMsg = msgData[msgData.length - 1];
+        const lastMsg = msgRes[msgRes.length - 1];
         const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
         setConversation(userIdSelecionado, {
@@ -82,7 +83,7 @@ export default function ChatWindow({ userIdSelecionado }) {
           status: ticket.status,
         });
 
-        const info = {
+        setClienteAtivo({
           name: clienteRes.name,
           phone: clienteRes.phone,
           channel: clienteRes.channel,
@@ -90,15 +91,11 @@ export default function ChatWindow({ userIdSelecionado }) {
           fila: clienteRes.fila,
           assigned_to: ticket.assigned_to,
           status: ticket.status,
-        };
-
-        setClienteInfo(info);
-        setClienteAtivo(info);
+        });
       } catch (err) {
         console.error('Erro ao buscar cliente:', err);
         if (currentUserIdRef.current === userIdSelecionado) {
           setClienteAtivo(null);
-          setClienteInfo(null);
           setAllMessages([]);
           setDisplayedMessages([]);
         }
@@ -148,9 +145,7 @@ export default function ChatWindow({ userIdSelecionado }) {
   useEffect(() => {
     if (!userIdSelecionado) return;
     socket.emit('join_room', userIdSelecionado);
-    return () => {
-      socket.emit('leave_room', userIdSelecionado);
-    };
+    return () => socket.emit('leave_room', userIdSelecionado);
   }, [userIdSelecionado]);
 
   useEffect(() => {
@@ -192,20 +187,11 @@ export default function ChatWindow({ userIdSelecionado }) {
     return (
       <div className="chat-window placeholder">
         <div className="chat-placeholder">
-          <svg
-            className="chat-icon"
-            width="80"
-            height="80"
-            viewBox="0 0 24 24"
-            fill="var(--color-border)"
-            xmlns="http://www.w3.org/2000/svg"
-          >
+          <svg className="chat-icon" width="80" height="80" viewBox="0 0 24 24" fill="var(--color-border)">
             <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
           </svg>
           <h2 className="placeholder-title">Tudo pronto para atender</h2>
-          <p className="placeholder-subtitle">
-            Escolha um ticket na lista ao lado para abrir a conversa
-          </p>
+          <p className="placeholder-subtitle">Escolha um ticket na lista ao lado para abrir a conversa</p>
         </div>
       </div>
     );
