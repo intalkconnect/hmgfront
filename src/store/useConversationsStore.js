@@ -1,4 +1,3 @@
-// store/useConversationsStore.js
 import { create } from 'zustand';
 import { apiGet, apiPut } from '../services/apiClient';
 
@@ -7,15 +6,41 @@ const useConversationsStore = create((set, get) => ({
   lastRead: {},
   unreadCounts: {},
   clienteAtivo: null,
+  selectedUserId: null,
   userEmail: null,
   userFilas: [],
-  selectedUserId: null,
 
   setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
-  setClienteAtivo: (info) => set({ clienteAtivo: info }),
-  setSelectedUserId: (id) => set({ selectedUserId: id }),
 
-  setConversation: (userId, data) =>
+  setSelectedUserId: (userId) => {
+    set({ selectedUserId: userId });
+
+    // Zera contagem de não lidas + atualiza read status
+    get().resetUnreadCount(userId);
+    apiPut(`/messages/read-status/${userId}`, {
+      last_read: new Date().toISOString(),
+    }).catch((err) => console.error('Erro ao marcar como lido:', err));
+  },
+
+  resetUnreadCount: (userId) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [userId]: 0,
+      },
+    })),
+
+  incrementUnread: (userId) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [userId]: (state.unreadCounts[userId] || 0) + 1,
+      },
+    })),
+
+  setClienteAtivo: (info) => set({ clienteAtivo: info }),
+
+  mergeConversation: (userId, data) =>
     set((state) => ({
       conversations: {
         ...state.conversations,
@@ -25,46 +50,10 @@ const useConversationsStore = create((set, get) => ({
         },
       },
     })),
-mergeConversation: (userId, newData) =>
-  set((state) => ({
-    conversations: {
-      ...state.conversations,
-      [userId]: {
-        ...(state.conversations[userId] || {}),
-        ...newData,
-      },
-    },
-  })),
 
   getContactName: (userId) => {
     return get().conversations[userId]?.name || userId;
   },
-
-  setLastRead: async (userId, timestamp) => {
-    try {
-      await apiPut(`/messages/read-status/${userId}`, { last_read: timestamp });
-      set((state) => ({
-        lastRead: {
-          ...state.lastRead,
-          [userId]: timestamp,
-        },
-        unreadCounts: {
-          ...state.unreadCounts,
-          [userId]: 0,
-        },
-      }));
-    } catch (err) {
-      console.error('Erro ao atualizar lastRead:', err);
-    }
-  },
-
-  incrementUnread: (userId) =>
-    set((state) => ({
-      unreadCounts: {
-        ...state.unreadCounts,
-        [userId]: (state.unreadCounts[userId] || 0) + 1,
-      },
-    })),
 
   loadUnreadCounts: async () => {
     try {
