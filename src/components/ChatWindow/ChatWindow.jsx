@@ -11,15 +11,9 @@ import ChatHeader from './ChatHeader';
 import './ChatWindow.css';
 import './ChatWindowPagination.css';
 
-export default function ChatWindow() {
-  const {
-    selectedUserId,
-    userEmail,
-    userFilas,
-    setClienteAtivo,
-    setConversation,
-  } = useConversationsStore();
-
+export default function ChatWindow({ userIdSelecionado }) {
+  const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
+  const setConversation = useConversationsStore((state) => state.setConversation);
   const [allMessages, setAllMessages] = useState([]);
   const [displayedMessages, setDisplayedMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
@@ -28,11 +22,15 @@ export default function ChatWindow() {
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const [page, setPage] = useState(1);
 
-  const messageCacheRef = useRef(new Map());
+  const userEmail = useConversationsStore((state) => state.userEmail);
+  const userFilas = useConversationsStore((state) => state.userFilas);
+
+  const messageListRef = useRef(null);
   const currentUserIdRef = useRef(null);
+  const messageCacheRef = useRef(new Map());
   const loaderRef = useRef(null);
+  const [page, setPage] = useState(1);
   const messagesPerPage = 100;
 
   useEffect(() => {
@@ -40,26 +38,20 @@ export default function ChatWindow() {
   }, []);
 
   useEffect(() => {
-    currentUserIdRef.current = selectedUserId;
+    currentUserIdRef.current = userIdSelecionado;
     setPage(1);
-  }, [selectedUserId]);
+  }, [userIdSelecionado]);
 
   useEffect(() => {
-    if (!selectedUserId) {
-      setAllMessages([]);
-      setDisplayedMessages([]);
-      setClienteInfo(null);
-      setClienteAtivo(null);
-      return;
-    }
+    if (!userIdSelecionado) return;
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const [msgRes, clienteRes, ticketRes] = await Promise.all([
-          apiGet(`/messages/${encodeURIComponent(selectedUserId)}`),
-          apiGet(`/clientes/${encodeURIComponent(selectedUserId)}`),
-          apiGet(`/tickets/${encodeURIComponent(selectedUserId)}`),
+          apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
+          apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`),
+          apiGet(`/tickets/${encodeURIComponent(userIdSelecionado)}`),
         ]);
 
         const ticket = ticketRes;
@@ -69,25 +61,23 @@ export default function ChatWindow() {
           userFilas.includes(ticket.fila);
 
         if (!isAuthorized) {
-          console.warn('Acesso negado.');
-          setClienteAtivo(null);
-          setClienteInfo(null);
+          console.warn('Acesso negado ao ticket deste usuário.');
           return;
         }
 
-        const messages = msgRes;
-        messageCacheRef.current.set(selectedUserId, messages);
-        setAllMessages(messages);
-        updateDisplayedMessages(messages, 1);
+        const msgData = msgRes;
+        messageCacheRef.current.set(userIdSelecionado, msgData);
+        setAllMessages(msgData);
+        updateDisplayedMessages(msgData, 1);
 
-        const lastMsg = messages[messages.length - 1];
+        const lastMsg = msgData[msgData.length - 1];
         const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
-        setConversation(selectedUserId, {
+        setConversation(userIdSelecionado, {
           channel: canal,
           ticket_number: clienteRes?.ticket_number || '000000',
           fila: clienteRes?.fila || ticket.fila || 'Orçamento',
-          name: clienteRes?.name || selectedUserId,
+          name: clienteRes?.name || userIdSelecionado,
           assigned_to: ticket.assigned_to,
           status: ticket.status,
         });
@@ -106,14 +96,19 @@ export default function ChatWindow() {
         setClienteAtivo(info);
       } catch (err) {
         console.error('Erro ao buscar cliente:', err);
-        setClienteAtivo(null);
+        if (currentUserIdRef.current === userIdSelecionado) {
+          setClienteAtivo(null);
+          setClienteInfo(null);
+          setAllMessages([]);
+          setDisplayedMessages([]);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [selectedUserId]);
+  }, [userIdSelecionado]);
 
   const updateDisplayedMessages = (messages, currentPage) => {
     const startIndex = Math.max(0, messages.length - currentPage * messagesPerPage);
@@ -139,17 +134,24 @@ export default function ChatWindow() {
       { threshold: 0.1 }
     );
 
-    if (loaderRef.current) observer.observe(loaderRef.current);
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
     return () => {
-      if (loaderRef.current) observer.unobserve(loaderRef.current);
+      if (loaderRef.current) {
+        observer.unobserve(loaderRef.current);
+      }
     };
   }, [hasMoreMessages, page]);
 
   useEffect(() => {
-    if (!selectedUserId) return;
-    socket.emit('join_room', selectedUserId);
-    return () => socket.emit('leave_room', selectedUserId);
-  }, [selectedUserId]);
+    if (!userIdSelecionado) return;
+    socket.emit('join_room', userIdSelecionado);
+    return () => {
+      socket.emit('leave_room', userIdSelecionado);
+    };
+  }, [userIdSelecionado]);
 
   useEffect(() => {
     const handleNewMessage = (novaMsg) => {
@@ -158,9 +160,7 @@ export default function ChatWindow() {
 
       setAllMessages((prev) => {
         if (prev.find((m) => m.id === novaMsg.id)) return prev;
-        const updated = [...prev, novaMsg].sort((a, b) =>
-          new Date(a.timestamp) - new Date(b.timestamp)
-        );
+        const updated = [...prev, novaMsg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         messageCacheRef.current.set(novaMsg.user_id, updated);
         updateDisplayedMessages(updated, page);
         return updated;
@@ -172,9 +172,7 @@ export default function ChatWindow() {
       if (updatedMsg.user_id !== activeUser) return;
 
       setAllMessages((prev) => {
-        const updated = prev.map((m) =>
-          m.id === updatedMsg.id ? updatedMsg : m
-        );
+        const updated = prev.map((m) => (m.id === updatedMsg.id ? updatedMsg : m));
         messageCacheRef.current.set(updatedMsg.user_id, updated);
         updateDisplayedMessages(updated, page);
         return updated;
@@ -190,11 +188,18 @@ export default function ChatWindow() {
     };
   }, [page]);
 
-  if (!selectedUserId) {
+  if (!userIdSelecionado) {
     return (
       <div className="chat-window placeholder">
         <div className="chat-placeholder">
-          <svg className="chat-icon" width="80" height="80" viewBox="0 0 24 24">
+          <svg
+            className="chat-icon"
+            width="80"
+            height="80"
+            viewBox="0 0 24 24"
+            fill="var(--color-border)"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
           </svg>
           <h2 className="placeholder-title">Tudo pronto para atender</h2>
@@ -218,7 +223,7 @@ export default function ChatWindow() {
 
   return (
     <div className="chat-window">
-      <ChatHeader userIdSelecionado={selectedUserId} />
+      <ChatHeader userIdSelecionado={userIdSelecionado} />
 
       <div className="messages-list">
         {hasMoreMessages && (
@@ -227,7 +232,8 @@ export default function ChatWindow() {
           </div>
         )}
         <MessageList
-          initialKey={selectedUserId}
+          initialKey={userIdSelecionado}
+          ref={messageListRef}
           messages={displayedMessages}
           onImageClick={(url) => setModalImage(url)}
           onPdfClick={(url) => setPdfModal(url)}
@@ -237,7 +243,7 @@ export default function ChatWindow() {
 
       <div className="chat-input">
         <SendMessageForm
-          userIdSelecionado={selectedUserId}
+          userIdSelecionado={userIdSelecionado}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
         />
