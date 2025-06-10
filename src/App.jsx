@@ -16,25 +16,23 @@ export default function App() {
 
   const {
     setConversation,
-    setLastRead,
     incrementUnread,
     conversations,
     loadUnreadCounts,
     loadLastReadTimes,
-    getContactName
+    getContactName,
+    setUserInfo
   } = useConversationsStore();
 
   const userIdSelecionadoRef = useRef(null);
-  useEffect(() => {
-  // Simulação do login de um usuário com email e filas
-  const emailSimulado = 'dan_rodrigo@hotmail.com';
-  const filasSimuladas = ['Comercial', 'Suporte'];
 
-  useConversationsStore.getState().setUserInfo({
-    email: emailSimulado,
-    filas: filasSimuladas
-  });
-}, []);
+  useEffect(() => {
+    // Simulação do login de um usuário com email e filas
+    setUserInfo({
+      email: 'dan_rodrigo@hotmail.com',
+      filas: ['Comercial', 'Suporte']
+    });
+  }, []);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
@@ -50,10 +48,8 @@ export default function App() {
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
-
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
-
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
@@ -188,15 +184,6 @@ export default function App() {
     const fullId = userId.includes('@') ? userId : `${userId}@w.msgcli.net`;
     setUserIdSelecionado(fullId);
     userIdSelecionadoRef.current = fullId;
-
-    await setLastRead(fullId, new Date().toISOString());
-
-    const data = await apiGet(`/messages/${fullId}`);
-    if (data) {
-      const socket = getSocket();
-      socket.emit('join_room', fullId);
-      socket.emit('force_refresh', fullId);
-    }
   };
 
   const conversaSelecionada = userIdSelecionado
