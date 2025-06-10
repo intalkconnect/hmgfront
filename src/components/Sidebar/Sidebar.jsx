@@ -7,9 +7,7 @@ import './Sidebar.css';
 export default function Sidebar() {
   const {
     conversations,
-    lastRead,
     unreadCounts,
-    clienteAtivo,
     userEmail,
     userFilas,
     selectedUserId,
@@ -19,14 +17,6 @@ export default function Sidebar() {
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then((permission) => {
-        console.log('Permissão para notificações:', permission);
-      });
-    }
-  }, []);
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
@@ -78,7 +68,7 @@ export default function Sidebar() {
         }
         return parsed.text || parsed.caption || '';
       } catch {
-        // Fallback
+        // fallback
       }
     }
 
@@ -142,8 +132,7 @@ export default function Sidebar() {
           const fullId = conv.user_id;
           const isSelected = fullId === selectedUserId;
           const unreadCount = unreadCounts[fullId] || 0;
-          const hasUnread = unreadCount > 0;
-
+          const showUnread = !isSelected && unreadCount > 0;
           const canalWhatsapp = conv.channel === 'whatsapp';
 
           return (
@@ -165,7 +154,9 @@ export default function Sidebar() {
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-                  {hasUnread && <span className="unread-badge">{unreadCount}</span>}
+                  {showUnread && (
+                    <span className="unread-badge">{unreadCount}</span>
+                  )}
                 </div>
 
                 <div className="chat-snippet">{getSnippet(conv.content)}</div>
