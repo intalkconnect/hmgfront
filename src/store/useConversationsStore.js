@@ -21,16 +21,26 @@ setSelectedUserId: (userId) => {
 
   if (previousId && previousId !== userId) {
     get().resetUnread(previousId);
-    get().clearNotified(previousId); // limpa notificação anterior
+    get().clearNotified(previousId);
   }
+
+  const now = new Date().toISOString();
 
   get().resetUnread(userId);
   get().clearNotified(userId);
 
+  set((state) => ({
+    lastRead: {
+      ...state.lastRead,
+      [userId]: now,
+    },
+  }));
+
   apiPut(`/messages/read-status/${userId}`, {
-    last_read: new Date().toISOString(),
+    last_read: now,
   }).catch((err) => console.error('Erro ao marcar como lido:', err));
 },
+
 
 
   // Zera contagem de não lidas
