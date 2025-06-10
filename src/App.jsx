@@ -113,13 +113,16 @@ export default function App() {
             markNotified(message.user_id);
           }
 
-          try {
-            if (audioPlayer.current) {
-              audioPlayer.current.currentTime = 0;
-              await audioPlayer.current.play();
+          // ❌ Não tocar som se janela estiver inativa
+          if (isWindowFocused) {
+            try {
+              if (audioPlayer.current) {
+                audioPlayer.current.currentTime = 0;
+                await audioPlayer.current.play();
+              }
+            } catch (e) {
+              console.warn('Erro ao reproduzir som:', e);
             }
-          } catch (e) {
-            console.warn('Erro ao reproduzir som:', e);
           }
         });
 
