@@ -138,23 +138,19 @@ export default function Sidebar() {
       </div>
 
       <ul className="chat-list">
-        {filteredConversations.map((conv) => {
-          const fullId = conv.user_id;
-          const isSelected = fullId === selectedUserId;
-          const unreadCount = unreadCounts[fullId] || 0;
-          const hasUnread = unreadCount > 0;
-
-          return (
-            <li
-  key={fullId}
-  className={`chat-list-item ${isSelected ? 'active' : ''}`}
-  onClick={() => setSelectedUserId(fullId)}
->
-  {(() => {
+  {filteredConversations.map((conv) => {
+    const fullId = conv.user_id;
+    const unreadCount = unreadCounts[fullId] || 0;
+    const hasUnread = unreadCount > 0;
     const canalWhatsapp = clienteAtivo?.channel === 'whatsapp';
+    const isSelected = fullId === selectedUserId; // só para aplicar classe ativa
 
     return (
-      <>
+      <li
+        key={fullId}
+        className={`chat-list-item ${isSelected ? 'active' : ''}`}
+        onClick={() => setSelectedUserId(fullId)}
+      >
         <div className="chat-avatar">
           {canalWhatsapp && (
             <img
@@ -191,14 +187,11 @@ export default function Sidebar() {
               })
             : '--:--'}
         </div>
-      </>
+      </li>
     );
-  })()}
-</li>
+  })}
+</ul>
 
-          );
-        })}
-      </ul>
     </div>
   );
 }
