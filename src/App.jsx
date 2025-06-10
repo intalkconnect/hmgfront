@@ -9,38 +9,39 @@ import notificationSound from './assets/notification.mp3';
 import './App.css';
 
 export default function App() {
+  const [userIdSelecionado, setUserIdSelecionado] = useState(null);
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
   const audioPlayer = useRef(null);
 
   const {
-    selectedUserId,
-    setSelectedUserId,
     setConversation,
-    setLastRead,
     incrementUnread,
     conversations,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
-    setUserInfo,
+    setUserInfo
   } = useConversationsStore();
 
-  const selectedUserIdRef = useRef(null);
+  const userIdSelecionadoRef = useRef(null);
 
   useEffect(() => {
-    // Simula login
-    const emailSimulado = 'dan_rodrigo@hotmail.com';
-    const filasSimuladas = ['Comercial', 'Suporte'];
-    setUserInfo({ email: emailSimulado, filas: filasSimuladas });
-  }, [setUserInfo]);
+    // Simulação do login de um usuário com email e filas
+    setUserInfo({
+      email: 'dan_rodrigo@hotmail.com',
+      filas: ['Comercial', 'Suporte']
+    });
+  }, []);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
     return () => {
-      audioPlayer.current?.pause();
-      audioPlayer.current = null;
+      if (audioPlayer.current) {
+        audioPlayer.current.pause();
+        audioPlayer.current = null;
+      }
     };
   }, []);
 
@@ -67,7 +68,7 @@ export default function App() {
         });
 
         socket.on('connect', () => {
-          console.log('Socket conectado com sucesso');
+          console.log('Socket connected successfully');
           setSocketError(null);
         });
 
@@ -82,13 +83,13 @@ export default function App() {
           socket.off('connect');
         };
       } catch (error) {
-        console.error('Erro na inicialização:', error);
+        console.error('Initialization error:', error);
         setSocketError('Erro ao inicializar a aplicação');
       }
     };
 
     initializeApp();
-  }, [loadUnreadCounts, loadLastReadTimes]);
+  }, []);
 
   useEffect(() => {
     const socket = getSocket();
@@ -99,16 +100,17 @@ export default function App() {
         ticket_number: message.ticket_number || message.ticket,
         timestamp: message.timestamp,
         content: message.content,
-        channel: message.channel,
+        channel: message.channel
       });
 
-      if (selectedUserIdRef.current !== message.user_id) {
+      if (userIdSelecionadoRef.current !== message.user_id) {
         incrementUnread(message.user_id);
+
         try {
           audioPlayer.current.currentTime = 0;
           await audioPlayer.current.play();
         } catch (err) {
-          console.warn('Erro ao tocar som:', err);
+          console.log("Falha ao tocar som:", err);
         }
 
         if (!isWindowActive) {
@@ -121,39 +123,6 @@ export default function App() {
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
   }, [isWindowActive, setConversation, incrementUnread, getContactName]);
-
-  useEffect(() => {
-    if (!selectedUserId) return;
-
-    selectedUserIdRef.current = selectedUserId;
-    (async () => {
-      await setLastRead(selectedUserId, new Date().toISOString());
-
-      const data = await apiGet(`/messages/${selectedUserId}`);
-      if (data) {
-        const socket = getSocket();
-        socket.emit('join_room', selectedUserId);
-        socket.emit('force_refresh', selectedUserId);
-      }
-    })();
-  }, [selectedUserId, setLastRead]);
-
-  const fetchConversations = async () => {
-    try {
-      const { userEmail, userFilas } = useConversationsStore.getState();
-      if (!userEmail || userFilas.length === 0) return;
-
-      const params = new URLSearchParams({
-        assigned_to: userEmail,
-        filas: userFilas.join(','),
-      });
-
-      const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => setConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
-    }
-  };
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
@@ -170,11 +139,12 @@ export default function App() {
 
       notification.onclick = () => {
         window.focus();
-        setSelectedUserId(message.user_id);
+        handleSelectUser(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((permission) => {
+      Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
+          const contactName = getContactName(message.user_id);
           showNotification(message, contactName);
         }
       });
@@ -186,27 +156,72 @@ export default function App() {
       const parsed = JSON.parse(content);
       if (parsed.text) return parsed.text;
       if (parsed.caption) return parsed.caption;
-      if (parsed.url) return '[Arquivo]';
-      return '[Mensagem]';
+      if (parsed.url) return "[Arquivo]";
+      return "[Mensagem]";
     } catch {
-      return content.length > 50 ? content.slice(0, 47) + '...' : content;
+      return content.length > 50 ? content.substring(0, 47) + '...' : content;
     }
   };
 
+  async function fetchConversations() {
+    try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
+
+      const params = new URLSearchParams({
+        assigned_to: userEmail,
+        filas: userFilas.join(',')
+      });
+
+      const data = await apiGet(`/chats?${params.toString()}`);
+      data.forEach((conv) => setConversation(conv.user_id, conv));
+    } catch (err) {
+      console.error('Erro ao buscar /chats:', err);
+    }
+  }
+
+  const handleSelectUser = async (userId) => {
+    const fullId = userId.includes('@') ? userId : `${userId}@w.msgcli.net`;
+    setUserIdSelecionado(fullId);
+    userIdSelecionadoRef.current = fullId;
+  };
+
+  const conversaSelecionada = userIdSelecionado
+    ? Object.values(conversations).find((c) => {
+        const idNormalizado = c.user_id.includes('@')
+          ? c.user_id
+          : `${c.user_id}@w.msgcli.net`;
+        return idNormalizado === userIdSelecionado;
+      }) || null
+    : null;
+
   return (
     <div className="app-container">
-      {socketError && <div className="socket-error-banner">{socketError}</div>}
+      {socketError && (
+        <div className="socket-error-banner">
+          {socketError}
+        </div>
+      )}
 
       <aside className="sidebar">
-        <Sidebar />
+        <Sidebar
+          onSelectUser={handleSelectUser}
+          userIdSelecionado={userIdSelecionado}
+        />
       </aside>
 
       <main className="chat-container">
-        <ChatWindow />
+        <ChatWindow
+          userIdSelecionado={userIdSelecionado}
+          conversaSelecionada={conversaSelecionada}
+        />
       </main>
 
       <aside className="details-panel">
-        <DetailsPanel />
+        <DetailsPanel
+          userIdSelecionado={userIdSelecionado}
+          conversaSelecionada={conversaSelecionada}
+        />
       </aside>
     </div>
   );
