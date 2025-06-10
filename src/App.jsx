@@ -84,31 +84,41 @@ export default function App() {
           setSocketError(null);
         });
 
-        socket.on('new_message', async (message) => {
-          mergeConversation(message.user_id, {
-            ticket_number: message.ticket_number || message.ticket,
-            timestamp: message.timestamp,
-            content: message.content,
-            channel: message.channel,
-          });
+socket.on('new_message', async (message) => {
+  const isFromMe = message.direction === 'out' || message.from_me === true;
+  const isChatActive = selectedUserId === message.user_id;
 
-          // Se mensagem de outra conversa, conta como não lida e dispara alerta
-          if (selectedUserId !== message.user_id) {
-            incrementUnread(message.user_id);
-            try {
-              audioPlayer.current.currentTime = 0;
-              await audioPlayer.current.play();
-            } catch (e) {
-              console.warn('Erro ao reproduzir som:', e);
-            }
+  mergeConversation(message.user_id, {
+    ticket_number: message.ticket_number || message.ticket,
+    timestamp: message.timestamp,
+    content: message.content,
+    channel: message.channel,
+  });
 
-            // Notificação visual apenas quando janela inativa
-            if (!isWindowActive) {
-              const contactName = getContactName(message.user_id);
-              showNotification(message, contactName);
-            }
-          }
-        });
+  // ❌ Não contar mensagens enviadas
+  if (isFromMe) return;
+
+  // ❌ Não contar se conversa estiver selecionada
+  if (isChatActive) return;
+
+  // ✅ Agora sim: contar como não lida
+  incrementUnread(message.user_id);
+
+  // ✅ Som de notificação
+  try {
+    audioPlayer.current.currentTime = 0;
+    await audioPlayer.current.play();
+  } catch (e) {
+    console.warn('Erro ao reproduzir som:', e);
+  }
+
+  // ✅ Notificação visual se janela inativa
+  if (!isWindowActive) {
+    const contactName = getContactName(message.user_id);
+    showNotification(message, contactName);
+  }
+});
+
 
         await Promise.all([fetchConversations(), loadLastReadTimes(), loadUnreadCounts()]);
       } catch (err) {
