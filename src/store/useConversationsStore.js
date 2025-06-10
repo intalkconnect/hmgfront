@@ -1,3 +1,4 @@
+// store/useConversationsStore.js
 import { create } from 'zustand';
 import { apiGet, apiPut } from '../services/apiClient';
 
@@ -6,12 +7,13 @@ const useConversationsStore = create((set, get) => ({
   lastRead: {},
   unreadCounts: {},
   clienteAtivo: null,
-
   userEmail: null,
   userFilas: [],
-  setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
+  selectedUserId: null,
 
+  setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
   setClienteAtivo: (info) => set({ clienteAtivo: info }),
+  setSelectedUserId: (id) => set({ selectedUserId: id }),
 
   setConversation: (userId, data) =>
     set((state) => ({
@@ -31,7 +33,6 @@ const useConversationsStore = create((set, get) => ({
   setLastRead: async (userId, timestamp) => {
     try {
       await apiPut(`/messages/read-status/${userId}`, { last_read: timestamp });
-
       set((state) => ({
         lastRead: {
           ...state.lastRead,
