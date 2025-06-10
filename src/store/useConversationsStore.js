@@ -10,19 +10,19 @@ const useConversationsStore = create((set, get) => ({
   userEmail: null,
   userFilas: [],
 
+  // Configura email e filas do usuário
   setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
 
+  // Atualiza conversa selecionada, zera não lidas e marca como lido no backend
   setSelectedUserId: (userId) => {
     set({ selectedUserId: userId });
-
-    // Zera contagem de não lidas e atualiza read status local e remoto
     get().resetUnread(userId);
     apiPut(`/messages/read-status/${userId}`, {
       last_read: new Date().toISOString(),
     }).catch((err) => console.error('Erro ao marcar como lido:', err));
   },
 
-  // Renomeado para resetUnread para consistência com App.jsx
+  // Zera contagem de não lidas e registra timestamp de leitura
   resetUnread: (userId) =>
     set((state) => ({
       unreadCounts: {
@@ -35,6 +35,7 @@ const useConversationsStore = create((set, get) => ({
       },
     })),
 
+  // Incrementa não lidas
   incrementUnread: (userId) =>
     set((state) => ({
       unreadCounts: {
@@ -45,6 +46,7 @@ const useConversationsStore = create((set, get) => ({
 
   setClienteAtivo: (info) => set({ clienteAtivo: info }),
 
+  // Adiciona ou atualiza dados de conversa
   mergeConversation: (userId, data) =>
     set((state) => ({
       conversations: {
@@ -56,10 +58,10 @@ const useConversationsStore = create((set, get) => ({
       },
     })),
 
-  getContactName: (userId) => {
-    return get().conversations[userId]?.name || userId;
-  },
+  // Retorna nome de contato ou ID
+  getContactName: (userId) => get().conversations[userId]?.name || userId,
 
+  // Carrega contagem de não lidas do servidor
   loadUnreadCounts: async () => {
     try {
       const data = await apiGet('/messages/unread-counts');
@@ -73,6 +75,7 @@ const useConversationsStore = create((set, get) => ({
     }
   },
 
+  // Carrega timestamps de última leitura do servidor
   loadLastReadTimes: async () => {
     try {
       const data = await apiGet('/messages/read-status');
@@ -86,16 +89,15 @@ const useConversationsStore = create((set, get) => ({
     }
   },
 
+  // Filtra conversas abertas e atribuídas ao usuário
   getFilteredConversations: () => {
     const { conversations, userEmail, userFilas } = get();
     return Object.fromEntries(
-      Object.entries(conversations).filter(([_, conv]) => {
-        return (
-          conv.status === 'open' &&
-          conv.assigned_to === userEmail &&
-          userFilas.includes(conv.fila)
-        );
-      })
+      Object.entries(conversations).filter(([_, conv]) =>
+        conv.status === 'open' &&
+        conv.assigned_to === userEmail &&
+        userFilas.includes(conv.fila)
+      )
     );
   },
 }));
