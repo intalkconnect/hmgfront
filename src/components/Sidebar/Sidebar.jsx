@@ -4,24 +4,25 @@ import { File, Mic } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
 
-export default function Sidebar({ onSelectUser, userIdSelecionado }) {
-const {
-  conversations,
-  lastRead,
-  unreadCounts,
-  clienteAtivo,
+export default function Sidebar() {
+  const {
+    conversations,
+    lastRead,
+    unreadCounts,
+    clienteAtivo,
     userEmail,
-  userFilas,
-} = useConversationsStore();
+    userFilas,
+    selectedUserId,
+    setSelectedUserId,
+  } = useConversationsStore();
 
-  
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
+  useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then(permission => {
+      Notification.requestPermission().then((permission) => {
         console.log('Permissão para notificações:', permission);
       });
     }
@@ -29,67 +30,79 @@ const {
 
   useEffect(() => {
     const fetchSettingsAndFila = async () => {
-const settings = await apiGet('/settings');
-const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
-if (distrib?.value) setDistribuicaoTickets(distrib.value);
+      const settings = await apiGet('/settings');
+      const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
+      if (distrib?.value) setDistribuicaoTickets(distrib.value);
 
-      const filaAtivos = Object.values(conversations).filter((conv) => !conv.atendido);
+      const filaAtivos = Object.values(conversations).filter(
+        (conv) => !conv.atendido
+      );
       setFilaCount(filaAtivos.length);
     };
 
     fetchSettingsAndFila();
   }, [conversations]);
 
-const getSnippet = (rawContent) => {
-  if (rawContent === undefined || rawContent === null) return '';
+  const getSnippet = (rawContent) => {
+    if (!rawContent) return '';
 
-  // Se for uma string numérica (apenas dígitos), retorna ela mesma, mesmo se longa
-  if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) {
-    return rawContent;
-  }
+    if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) return rawContent;
 
-  // Só tenta parsear se parece um JSON (evita erros desnecessários)
-  if (typeof rawContent === 'string' && (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))) {
-    try {
-      const parsed = JSON.parse(rawContent);
-      if (parsed.url) {
-        const url = parsed.url.toLowerCase();
-        if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mic size={18} />Áudio</span>;
+    if (
+      typeof rawContent === 'string' &&
+      (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))
+    ) {
+      try {
+        const parsed = JSON.parse(rawContent);
+        if (parsed.url) {
+          const url = parsed.url.toLowerCase();
+          if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
+            return (
+              <span className="chat-icon-snippet">
+                <Mic size={18} /> Áudio
+              </span>
+            );
+          }
+          if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
+            return (
+              <span className="chat-icon-snippet">
+                <File size={18} /> Imagem
+              </span>
+            );
+          }
+          return (
+            <span className="chat-icon-snippet">
+              <File size={18} /> Arquivo
+            </span>
+          );
         }
-        if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-          return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Imagem</span>;
-        }
-        return <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><File size={18} />Arquivo</span>;
+        return parsed.text || parsed.caption || '';
+      } catch {
+        // Fallback to string
       }
-      return parsed.text || parsed.caption || '';
-    } catch {
-      // Se falhar o parse, trata como string normal
     }
-  }
 
-  // Se não for JSON ou se falhar, trata como string (trunca se > 40 chars)
-  const contentStr = String(rawContent);
-  return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
-};
+    const contentStr = String(rawContent);
+    return contentStr.length > 40 ? contentStr.slice(0, 37) + '...' : contentStr;
+  };
 
-const filteredConversations = Object.values(conversations).filter((conv) => {
-  const autorizado =
-    conv.status === 'open' &&
-    conv.assigned_to === userEmail &&
-    userFilas.includes(conv.fila);
+  const filteredConversations = Object.values(conversations).filter((conv) => {
+    const autorizado =
+      conv.status === 'open' &&
+      conv.assigned_to === userEmail &&
+      userFilas.includes(conv.fila);
 
-  if (!autorizado) return false;
+    if (!autorizado) return false;
 
-  if (!searchTerm) return true;
+    if (!searchTerm) return true;
 
-  const searchLower = searchTerm.toLowerCase();
-  return (
-    conv.name?.toLowerCase().includes(searchLower) ||
-    conv.user_id?.toLowerCase().includes(searchLower) ||
-    conv.content?.toLowerCase().includes(searchLower)
-  );
-});
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      conv.name?.toLowerCase().includes(searchLower) ||
+      conv.user_id?.toLowerCase().includes(searchLower) ||
+      conv.content?.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="sidebar-container">
@@ -119,13 +132,15 @@ const filteredConversations = Object.values(conversations).filter((conv) => {
               Próximo
             </button>
           </>
-        ) : 'Auto'}
+        ) : (
+          'Auto'
+        )}
       </div>
 
       <ul className="chat-list">
         {filteredConversations.map((conv) => {
           const fullId = conv.user_id;
-          const isSelected = fullId === userIdSelecionado;
+          const isSelected = fullId === selectedUserId;
           const unreadCount = unreadCounts[fullId] || 0;
           const hasUnread = unreadCount > 0;
 
@@ -133,32 +148,38 @@ const filteredConversations = Object.values(conversations).filter((conv) => {
             <li
               key={fullId}
               className={`chat-list-item ${isSelected ? 'active' : ''}`}
-              onClick={() => onSelectUser(fullId)}
+              onClick={() => setSelectedUserId(fullId)}
             >
-<div className="chat-avatar">
-  {(isSelected ? clienteAtivo?.channel : conv.channel) === 'whatsapp' && (
-    <img src="/icons/whatsapp.png" alt="whatsapp" className="avatar-img" />
-  )}
-</div>
-
+              <div className="chat-avatar">
+                {(isSelected ? clienteAtivo?.channel : conv.channel) === 'whatsapp' && (
+                  <img
+                    src="/icons/whatsapp.png"
+                    alt="whatsapp"
+                    className="avatar-img"
+                  />
+                )}
+              </div>
 
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-                  {hasUnread && (
-                    <span className="unread-badge">
-                      {unreadCount > 0 ? unreadCount : ''}
-                    </span>
-                  )}
+                  {hasUnread && <span className="unread-badge">{unreadCount}</span>}
                 </div>
+
                 <div className="chat-snippet">{getSnippet(conv.content)}</div>
+
                 <div className="chat-meta">
-<span className="chat-ticket">
-  #{isSelected && clienteAtivo?.ticket_number ? clienteAtivo.ticket_number : conv.ticket_number || '000000'}
-</span>
-<span className="chat-queue">
-  Fila: {isSelected && clienteAtivo?.fila ? clienteAtivo.fila : conv.fila || 'Orçamento'}
-</span>
+                  <span className="chat-ticket">
+                    #{isSelected && clienteAtivo?.ticket_number
+                      ? clienteAtivo.ticket_number
+                      : conv.ticket_number || '000000'}
+                  </span>
+                  <span className="chat-queue">
+                    Fila:{' '}
+                    {isSelected && clienteAtivo?.fila
+                      ? clienteAtivo.fila
+                      : conv.fila || 'Orçamento'}
+                  </span>
                 </div>
               </div>
 
@@ -169,7 +190,6 @@ const filteredConversations = Object.values(conversations).filter((conv) => {
                       minute: '2-digit',
                     })
                   : '--:--'}
-{/*                 {hasUnread && <span className="unread-dot" />} */}
               </div>
             </li>
           );
