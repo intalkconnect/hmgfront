@@ -1,6 +1,5 @@
-// App.jsx atualizado com Zustand consistente e correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
-import { apiGet } from './services/apiClient';
+import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
@@ -18,26 +17,25 @@ export default function App() {
     setSelectedUserId,
     setUserInfo,
     mergeConversation,
-    incrementUnread,
     resetUnread,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
-    conversations
+    conversations,
+    notifiedConversations,
+    markNotified,
   } = useConversationsStore();
 
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  // Define informações do usuário
   useEffect(() => {
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte']
+      filas: ['Comercial', 'Suporte'],
     });
   }, [setUserInfo]);
 
-  // Configura áudio de notificação
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -49,7 +47,6 @@ export default function App() {
     };
   }, []);
 
-  // Monitora foco/atividade da janela
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
@@ -61,14 +58,12 @@ export default function App() {
     };
   }, []);
 
-  // Limpa mensagens não lidas ao focar janela ou trocar conversa selecionada
   useEffect(() => {
     if (isWindowActive && selectedUserId) {
       resetUnread(selectedUserId);
     }
   }, [isWindowActive, selectedUserId, resetUnread]);
 
-  // Inicializa conexão de socket e eventos
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -84,68 +79,70 @@ export default function App() {
           setSocketError(null);
         });
 
-socket.on('new_message', async (message) => {
-  const {
-    selectedUserId,
-    incrementUnread,
-    resetUnread,
-    mergeConversation,
-    getContactName,
-    notifiedConversations,
-    markNotified,
-  } = useConversationsStore.getState();
+        socket.on('new_message', async (message) => {
+          const {
+            selectedUserId,
+            resetUnread,
+            mergeConversation,
+            getContactName,
+            notifiedConversations,
+            markNotified,
+            loadUnreadCounts,
+          } = useConversationsStore.getState();
 
-  const isFromMe = message.direction === 'out' || message.from_me === true;
-  const isActiveChat = message.user_id === selectedUserId;
-  const isWindowFocused = document.hasFocus();
+          const isFromMe = message.direction === 'out' || message.from_me === true;
+          const isActiveChat = message.user_id === selectedUserId;
+          const isWindowFocused = document.hasFocus();
 
-  // Atualiza dados da conversa
-  mergeConversation(message.user_id, {
-    ticket_number: message.ticket_number || message.ticket,
-    timestamp: message.timestamp,
-    content: message.content,
-    channel: message.channel,
-  });
+          mergeConversation(message.user_id, {
+            ticket_number: message.ticket_number || message.ticket,
+            timestamp: message.timestamp,
+            content: message.content,
+            channel: message.channel,
+          });
 
-  if (isFromMe) return;
+          if (isFromMe) return;
 
-if (isActiveChat) {
-  // Marcar como lida no backend
-  resetUnread(message.user_id);
-  apiPut(`/messages/read-status/${message.user_id}`, {
-    last_read: new Date().toISOString(),
-  }).catch((err) => console.error('Erro ao marcar como lido no socket:', err));
-  return;
-}
+          if (isActiveChat) {
+            resetUnread(message.user_id);
+            apiPut(`/messages/read-status/${message.user_id}`, {
+              last_read: new Date().toISOString(),
+            }).catch((err) => console.error('Erro ao marcar como lido no socket:', err));
+            return;
+          }
 
-  // Incrementa contagem de não lidas se não estiver visualizando
- incrementUnread(message.user_id, message.timestamp);
+          // ❌ Removido incrementUnread
+          await loadUnreadCounts(); // ✅ Usa contagem precisa do backend
 
-  // Notifica se ainda não notificou e a aba estiver fora de foco
-  if (!notifiedConversations[message.user_id] && !isWindowFocused) {
-    const contactName = getContactName(message.user_id);
-    showNotification(message, contactName);
-    markNotified(message.user_id);
-  }
+          if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+            const contactName = getContactName(message.user_id);
+            showNotification(message, contactName);
+            markNotified(message.user_id);
+          }
 
-  try {
-    audioPlayer.current.currentTime = 0;
-    await audioPlayer.current.play();
-  } catch (e) {
-    console.warn('Erro ao reproduzir som:', e);
-  }
-});
+          try {
+            if (audioPlayer.current) {
+              audioPlayer.current.currentTime = 0;
+              await audioPlayer.current.play();
+            }
+          } catch (e) {
+            console.warn('Erro ao reproduzir som:', e);
+          }
+        });
 
-
-        await Promise.all([fetchConversations(), loadLastReadTimes(), loadUnreadCounts()]);
+        await Promise.all([
+          fetchConversations(),
+          loadLastReadTimes(),
+          loadUnreadCounts(),
+        ]);
       } catch (err) {
         setSocketError('Erro ao inicializar a aplicação');
       }
     };
-    initialize();
-  }, [selectedUserId, isWindowActive, mergeConversation, incrementUnread, getContactName, loadLastReadTimes, loadUnreadCounts]);
 
-  // Busca conversas iniciais
+    initialize();
+  }, [selectedUserId, isWindowActive, mergeConversation, getContactName, loadLastReadTimes, loadUnreadCounts]);
+
   const fetchConversations = async () => {
     try {
       const { userEmail, userFilas } = useConversationsStore.getState();
@@ -153,7 +150,7 @@ if (isActiveChat) {
 
       const params = new URLSearchParams({
         assigned_to: userEmail,
-        filas: userFilas.join(',')
+        filas: userFilas.join(','),
       });
 
       const data = await apiGet(`/chats?${params.toString()}`);
@@ -165,9 +162,7 @@ if (isActiveChat) {
     }
   };
 
-  // Função de notificação visual
   const showNotification = (message, contactName) => {
-    // Não exibe notificação se a janela estiver ativa
     if (isWindowActive) return;
     if (!('Notification' in window)) return;
 
@@ -186,7 +181,7 @@ if (isActiveChat) {
         setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
+      Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
           const name = getContactName(message.user_id);
           showNotification(message, name);
@@ -195,7 +190,6 @@ if (isActiveChat) {
     }
   };
 
-  // Pré-visualização da mensagem
   const getMessagePreview = (content) => {
     try {
       const parsed = JSON.parse(content);
