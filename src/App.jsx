@@ -85,9 +85,19 @@ export default function App() {
         });
 
 socket.on('new_message', async (message) => {
-  const isFromMe = message.direction === 'outgoing' || message.from_me === true;
-  const isChatActive = selectedUserId === message.user_id;
+  const {
+    selectedUserId,
+    userEmail,
+    incrementUnread,
+    mergeConversation,
+    getContactName,
+  } = useConversationsStore.getState();
 
+  const isFromMe = message.direction === 'out' || message.from_me === true;
+  const isActiveChat = message.user_id === selectedUserId;
+  const isWindowFocused = document.hasFocus();
+
+  // Atualiza dados da conversa
   mergeConversation(message.user_id, {
     ticket_number: message.ticket_number || message.ticket,
     timestamp: message.timestamp,
@@ -95,29 +105,25 @@ socket.on('new_message', async (message) => {
     channel: message.channel,
   });
 
-  // ❌ Não contar mensagens enviadas
-  if (isFromMe) return;
+  // Ignora mensagens enviadas ou da conversa aberta
+  if (isFromMe || isActiveChat) return;
 
-  // ❌ Não contar se conversa estiver selecionada
-  if (isChatActive) return;
+  // Notificação apenas se janela não estiver em foco
+  if (!isWindowFocused) {
+    const contactName = getContactName(message.user_id);
+    showNotification(message, contactName);
+  }
 
-  // ✅ Agora sim: contar como não lida
   incrementUnread(message.user_id);
 
-  // ✅ Som de notificação
   try {
     audioPlayer.current.currentTime = 0;
     await audioPlayer.current.play();
   } catch (e) {
     console.warn('Erro ao reproduzir som:', e);
   }
-
-  // ✅ Notificação visual se janela inativa
-  if (!isWindowActive) {
-    const contactName = getContactName(message.user_id);
-    showNotification(message, contactName);
-  }
 });
+
 
 
         await Promise.all([fetchConversations(), loadLastReadTimes(), loadUnreadCounts()]);
