@@ -3,143 +3,132 @@ import { socket, connectSocket } from '../../services/socket';
 import { apiGet } from '../../services/apiClient';
 import useConversationsStore from '../../store/useConversationsStore';
 
-
 import SendMessageForm from '../SendMessageForm/SendMessageForm';
 import MessageList from './MessageList';
 import ImageModal from './modals/ImageModal';
 import PdfModal from './modals/PdfModal';
 import ChatHeader from './ChatHeader';
 import './ChatWindow.css';
-import './ChatWindowPagination.css'; // Novo CSS para paginação
+import './ChatWindowPagination.css';
 
-export default function ChatWindow({ userIdSelecionado, conversaSelecionada }) {
-  const setClienteAtivo = useConversationsStore((state) => state.setClienteAtivo);
-  const setConversation = useConversationsStore((state) => state.setConversation);
-  const [allMessages, setAllMessages] = useState([]); // Todas as mensagens
-  const [displayedMessages, setDisplayedMessages] = useState([]); // Mensagens exibidas
+export default function ChatWindow() {
+  const {
+    selectedUserId,
+    userEmail,
+    userFilas,
+    setClienteAtivo,
+    setConversation,
+  } = useConversationsStore();
+
+  const [allMessages, setAllMessages] = useState([]);
+  const [displayedMessages, setDisplayedMessages] = useState([]);
   const [modalImage, setModalImage] = useState(null);
   const [pdfModal, setPdfModal] = useState(null);
   const [clienteInfo, setClienteInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const userEmail = useConversationsStore((state) => state.userEmail);
-const userFilas = useConversationsStore((state) => state.userFilas);
-
-
-  const messageListRef = useRef(null);
-  const currentUserIdRef = useRef(null);
-  const messageCacheRef = useRef(new Map());
-  const loaderRef = useRef(null);
   const [page, setPage] = useState(1);
+
+  const messageCacheRef = useRef(new Map());
+  const currentUserIdRef = useRef(null);
+  const loaderRef = useRef(null);
   const messagesPerPage = 100;
 
-  // 1) Conecta socket uma vez
   useEffect(() => {
     connectSocket();
   }, []);
 
-  // 2) Atualiza referência do usuário ativo
   useEffect(() => {
-    currentUserIdRef.current = userIdSelecionado;
-    setPage(1); // Reseta a paginação ao mudar de usuário
-  }, [userIdSelecionado]);
+    currentUserIdRef.current = selectedUserId;
+    setPage(1);
+  }, [selectedUserId]);
 
-  // 3) Busca histórico de mensagens + dados do cliente
   useEffect(() => {
-    if (!userIdSelecionado) {
+    if (!selectedUserId) {
       setAllMessages([]);
       setDisplayedMessages([]);
       setClienteInfo(null);
-         setClienteInfo(null);
-      setClienteAtivo(null); // Limpa no Zustand também
-      return;
-    }
-
-       const fetchData = async () => {
-  setIsLoading(true);
-  try {
-    const [msgRes, clienteRes, ticketRes] = await Promise.all([
-      apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
-      apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`),
-      apiGet(`/tickets/${encodeURIComponent(userIdSelecionado)}`),
-    ]);
-
-    // ✅ Validação de permissão
-    const ticket = ticketRes;
-    const isAuthorized =
-      ticket.status === 'open' &&
-      ticket.assigned_to === userEmail &&
-      userFilas.includes(ticket.fila);
-
-    if (!isAuthorized) {
-      console.warn('Acesso negado ao ticket deste usuário.');
       setClienteAtivo(null);
-      setClienteInfo(null);
       return;
     }
 
-    // ✅ Mensagens
-    const msgData = msgRes;
-    messageCacheRef.current.set(userIdSelecionado, msgData);
-    setAllMessages(msgData);
-    updateDisplayedMessages(msgData, 1);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [msgRes, clienteRes, ticketRes] = await Promise.all([
+          apiGet(`/messages/${encodeURIComponent(selectedUserId)}`),
+          apiGet(`/clientes/${encodeURIComponent(selectedUserId)}`),
+          apiGet(`/tickets/${encodeURIComponent(selectedUserId)}`),
+        ]);
 
-    const lastMsg = msgData[msgData.length - 1];
-    const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
+        const ticket = ticketRes;
+        const isAuthorized =
+          ticket.status === 'open' &&
+          ticket.assigned_to === userEmail &&
+          userFilas.includes(ticket.fila);
 
-    // ✅ Atualiza conversa e cliente ativo
-setConversation(userIdSelecionado, {
-  channel: canal,
-  ticket_number: clienteRes?.ticket_number || '000000',
-  fila: clienteRes?.fila || ticket.fila || 'Orçamento',
-  name: clienteRes?.name || userIdSelecionado,
-  assigned_to: ticket.assigned_to,
-  status: ticket.status,
-});
+        if (!isAuthorized) {
+          console.warn('Acesso negado.');
+          setClienteAtivo(null);
+          setClienteInfo(null);
+          return;
+        }
 
+        const messages = msgRes;
+        messageCacheRef.current.set(selectedUserId, messages);
+        setAllMessages(messages);
+        updateDisplayedMessages(messages, 1);
 
-const info = {
-  name: clienteRes.name,
-  phone: clienteRes.phone,
-  channel: clienteRes.channel,
-  ticket_number: clienteRes.ticket_number,
-  fila: clienteRes.fila,
-  assigned_to: ticket.assigned_to,
-  status: ticket.status,
-};
+        const lastMsg = messages[messages.length - 1];
+        const canal = lastMsg?.channel || clienteRes?.channel || 'desconhecido';
 
-    setClienteInfo(info);
-    setClienteAtivo(info);
-  } catch (err) {
-    console.error('Erro ao buscar cliente:', err);
-    setClienteAtivo(null);
-  } finally {
-    setIsLoading(false);
-  }
-};
+        setConversation(selectedUserId, {
+          channel: canal,
+          ticket_number: clienteRes?.ticket_number || '000000',
+          fila: clienteRes?.fila || ticket.fila || 'Orçamento',
+          name: clienteRes?.name || selectedUserId,
+          assigned_to: ticket.assigned_to,
+          status: ticket.status,
+        });
 
+        const info = {
+          name: clienteRes.name,
+          phone: clienteRes.phone,
+          channel: clienteRes.channel,
+          ticket_number: clienteRes.ticket_number,
+          fila: clienteRes.fila,
+          assigned_to: ticket.assigned_to,
+          status: ticket.status,
+        };
+
+        setClienteInfo(info);
+        setClienteAtivo(info);
+      } catch (err) {
+        console.error('Erro ao buscar cliente:', err);
+        setClienteAtivo(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
     fetchData();
-  }, [userIdSelecionado]);
+  }, [selectedUserId]);
 
-  // Atualiza as mensagens exibidas baseadas na página atual
   const updateDisplayedMessages = (messages, currentPage) => {
-    const startIndex = Math.max(0, messages.length - (currentPage * messagesPerPage));
+    const startIndex = Math.max(0, messages.length - currentPage * messagesPerPage);
     const endIndex = messages.length;
     const newMessages = messages.slice(startIndex, endIndex);
     setDisplayedMessages(newMessages);
     setHasMoreMessages(startIndex > 0);
   };
 
-  // Carrega mais mensagens quando necessário
   const loadMoreMessages = () => {
     const newPage = page + 1;
     setPage(newPage);
     updateDisplayedMessages(allMessages, newPage);
   };
 
-  // Configura o Intersection Observer para carregar mais mensagens automaticamente
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -150,27 +139,18 @@ const info = {
       { threshold: 0.1 }
     );
 
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current);
-    }
-
+    if (loaderRef.current) observer.observe(loaderRef.current);
     return () => {
-      if (loaderRef.current) {
-        observer.unobserve(loaderRef.current);
-      }
+      if (loaderRef.current) observer.unobserve(loaderRef.current);
     };
   }, [hasMoreMessages, page]);
 
-  // 4) Entra/sai da sala de socket
   useEffect(() => {
-    if (!userIdSelecionado) return;
-    socket.emit('join_room', userIdSelecionado);
-    return () => {
-      socket.emit('leave_room', userIdSelecionado);
-    };
-  }, [userIdSelecionado]);
+    if (!selectedUserId) return;
+    socket.emit('join_room', selectedUserId);
+    return () => socket.emit('leave_room', selectedUserId);
+  }, [selectedUserId]);
 
-  // 5) Listeners de novas mensagens por socket
   useEffect(() => {
     const handleNewMessage = (novaMsg) => {
       const activeUser = currentUserIdRef.current;
@@ -178,8 +158,8 @@ const info = {
 
       setAllMessages((prev) => {
         if (prev.find((m) => m.id === novaMsg.id)) return prev;
-        const updated = [...prev, novaMsg].sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        const updated = [...prev, novaMsg].sort((a, b) =>
+          new Date(a.timestamp) - new Date(b.timestamp)
         );
         messageCacheRef.current.set(novaMsg.user_id, updated);
         updateDisplayedMessages(updated, page);
@@ -210,19 +190,11 @@ const info = {
     };
   }, [page]);
 
-  // 6) Se nenhum contato estiver selecionado → placeholder
-  if (!userIdSelecionado) {
+  if (!selectedUserId) {
     return (
       <div className="chat-window placeholder">
         <div className="chat-placeholder">
-          <svg
-            className="chat-icon"
-            width="80"
-            height="80"
-            viewBox="0 0 24 24"
-            fill="var(--color-border)"
-            xmlns="http://www.w3.org/2000/svg"
-          >
+          <svg className="chat-icon" width="80" height="80" viewBox="0 0 24 24">
             <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
           </svg>
           <h2 className="placeholder-title">Tudo pronto para atender</h2>
@@ -234,7 +206,6 @@ const info = {
     );
   }
 
-  // 7) Se estiver carregando, exibe loading
   if (isLoading) {
     return (
       <div className="chat-window loading">
@@ -245,10 +216,9 @@ const info = {
     );
   }
 
-  // 8) Janela de chat com lista de mensagens
   return (
     <div className="chat-window">
-      <ChatHeader userIdSelecionado={userIdSelecionado} />
+      <ChatHeader userIdSelecionado={selectedUserId} />
 
       <div className="messages-list">
         {hasMoreMessages && (
@@ -257,32 +227,24 @@ const info = {
           </div>
         )}
         <MessageList
-          initialKey={userIdSelecionado}
-          ref={messageListRef}
+          initialKey={selectedUserId}
           messages={displayedMessages}
           onImageClick={(url) => setModalImage(url)}
           onPdfClick={(url) => setPdfModal(url)}
-          onReply={(msg) => {
-            console.log('📨 Respondendo à mensagem:', msg);
-            setReplyTo(msg);
-          }}
+          onReply={(msg) => setReplyTo(msg)}
         />
       </div>
 
       <div className="chat-input">
         <SendMessageForm
-          userIdSelecionado={userIdSelecionado}
+          userIdSelecionado={selectedUserId}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
         />
       </div>
 
-      {modalImage && (
-        <ImageModal url={modalImage} onClose={() => setModalImage(null)} />
-      )}
-      {pdfModal && (
-        <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />
-      )}
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+      {pdfModal && <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />}
     </div>
   );
 }
