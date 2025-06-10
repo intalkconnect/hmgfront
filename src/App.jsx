@@ -1,4 +1,4 @@
-// App.jsx atualizado com Zustand consistente
+// App.jsx atualizado com Zustand consistente e correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
@@ -19,6 +19,7 @@ export default function App() {
     setUserInfo,
     mergeConversation,
     incrementUnread,
+    resetUnread,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
@@ -28,6 +29,7 @@ export default function App() {
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
+  // Define informações do usuário
   useEffect(() => {
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
@@ -35,6 +37,7 @@ export default function App() {
     });
   }, [setUserInfo]);
 
+  // Configura áudio de notificação
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -46,6 +49,7 @@ export default function App() {
     };
   }, []);
 
+  // Monitora foco/atividade da janela
   useEffect(() => {
     const handleFocus = () => setIsWindowActive(true);
     const handleBlur = () => setIsWindowActive(false);
@@ -57,6 +61,14 @@ export default function App() {
     };
   }, []);
 
+  // Limpa mensagens não lidas ao focar janela ou trocar conversa selecionada
+  useEffect(() => {
+    if (isWindowActive && selectedUserId) {
+      resetUnread(selectedUserId);
+    }
+  }, [isWindowActive, selectedUserId, resetUnread]);
+
+  // Inicializa conexão de socket e eventos
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -80,13 +92,17 @@ export default function App() {
             channel: message.channel,
           });
 
+          // Se mensagem de outra conversa, conta como não lida e dispara alerta
           if (selectedUserId !== message.user_id) {
             incrementUnread(message.user_id);
             try {
               audioPlayer.current.currentTime = 0;
               await audioPlayer.current.play();
-            } catch (e) {}
+            } catch (e) {
+              console.warn('Erro ao reproduzir som:', e);
+            }
 
+            // Notificação visual apenas quando janela inativa
             if (!isWindowActive) {
               const contactName = getContactName(message.user_id);
               showNotification(message, contactName);
@@ -102,6 +118,7 @@ export default function App() {
     initialize();
   }, [selectedUserId, isWindowActive, mergeConversation, incrementUnread, getContactName, loadLastReadTimes, loadUnreadCounts]);
 
+  // Busca conversas iniciais
   const fetchConversations = async () => {
     try {
       const { userEmail, userFilas } = useConversationsStore.getState();
@@ -121,7 +138,10 @@ export default function App() {
     }
   };
 
+  // Função de notificação visual
   const showNotification = (message, contactName) => {
+    // Não exibe notificação se a janela estiver ativa
+    if (isWindowActive) return;
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
@@ -141,13 +161,14 @@ export default function App() {
     } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
-          const contactName = getContactName(message.user_id);
-          showNotification(message, contactName);
+          const name = getContactName(message.user_id);
+          showNotification(message, name);
         }
       });
     }
   };
 
+  // Pré-visualização da mensagem
   const getMessagePreview = (content) => {
     try {
       const parsed = JSON.parse(content);
