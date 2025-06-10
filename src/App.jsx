@@ -88,6 +88,7 @@ socket.on('new_message', async (message) => {
   const {
     selectedUserId,
     incrementUnread,
+    resetUnread,
     mergeConversation,
     getContactName,
     notifiedConversations,
@@ -95,7 +96,7 @@ socket.on('new_message', async (message) => {
   } = useConversationsStore.getState();
 
   const isFromMe = message.direction === 'out' || message.from_me === true;
-  const isChatActive = message.user_id === selectedUserId;
+  const isActiveChat = message.user_id === selectedUserId;
   const isWindowFocused = document.hasFocus();
 
   // Atualiza dados da conversa
@@ -106,25 +107,28 @@ socket.on('new_message', async (message) => {
     channel: message.channel,
   });
 
-  // Ignora mensagens enviadas
   if (isFromMe) return;
 
-  // Incrementa badge se NÃO estiver na conversa atual
-  if (!isChatActive) {
-    incrementUnread(message.user_id);
+  if (isActiveChat) {
+    // ✅ Marcar como lido no backend imediatamente
+    resetUnread(message.user_id);
+    apiPut(`/messages/read-status/${message.user_id}`, {
+      last_read: new Date().toISOString(),
+    }).catch((err) => console.error('Erro ao marcar como lido no socket:', err));
+
+    return; // ❌ NÃO incrementa
   }
 
-  // ✅ [CORRIGIDO] notifica se:
-  // - ainda não notificou essa conversa
-  // - aba está fora de foco
-  // - mesmo que conversa esteja aberta
+  // Incrementa contagem de não lidas se não estiver visualizando
+  incrementUnread(message.user_id);
+
+  // Notifica se ainda não notificou e a aba estiver fora de foco
   if (!notifiedConversations[message.user_id] && !isWindowFocused) {
     const contactName = getContactName(message.user_id);
     showNotification(message, contactName);
     markNotified(message.user_id);
   }
 
-  // 🔊 som (opcional)
   try {
     audioPlayer.current.currentTime = 0;
     await audioPlayer.current.play();
@@ -132,6 +136,7 @@ socket.on('new_message', async (message) => {
     console.warn('Erro ao reproduzir som:', e);
   }
 });
+
 
         await Promise.all([fetchConversations(), loadLastReadTimes(), loadUnreadCounts()]);
       } catch (err) {
