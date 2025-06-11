@@ -6,6 +6,7 @@ import {
 import './ChatHeader.css';
 import useConversationsStore from '../../store/useConversationsStore';
 import { apiPut } from '../../services/apiClient';
+import TransferModal from '../Modals/TransferModal';
 
 export default function ChatHeader({ userIdSelecionado }) {
   const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
@@ -61,7 +62,7 @@ export default function ChatHeader({ userIdSelecionado }) {
       </div>
 
       <div className="chat-header-right">
-        <button className="btn-transferir">
+        <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
           <Share2 size={14} />
           <span>Transferir</span>
         </button>
