@@ -10,6 +10,7 @@ import { apiPut } from '../../services/apiClient';
 export default function ChatHeader({ userIdSelecionado }) {
   const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
   const mergeConversation = useConversationsStore((state) => state.mergeConversation);
+  const setSelectedUserId = useConversationsStore((state) => state.setSelectedUserId); // ✅ IMPORTADO
 
   if (!clienteAtivo) return null;
 
@@ -28,7 +29,7 @@ export default function ChatHeader({ userIdSelecionado }) {
     try {
       await apiPut(`/tickets/${user_id}`, { status: 'closed' });
       mergeConversation(user_id, { status: 'closed' });
-      setSelectedUserId(null);
+      setSelectedUserId(null); // ✅ LIMPA A CONVERSA ATIVA
     } catch (err) {
       console.error('Erro ao finalizar ticket:', err);
       alert('Erro ao finalizar atendimento.');
@@ -37,10 +38,8 @@ export default function ChatHeader({ userIdSelecionado }) {
 
   return (
     <div className="chat-header">
-      {/* Lado esquerdo: nome e detalhes */}
       <div className="chat-header-left">
         <div className="cliente-nome">{name}</div>
-
         <div className="cliente-detalhes">
           <div className="detalhe-item">
             <Clipboard size={16} className="detalhe-icon" />
@@ -61,7 +60,6 @@ export default function ChatHeader({ userIdSelecionado }) {
         </div>
       </div>
 
-      {/* Lado direito: botões de ação */}
       <div className="chat-header-right">
         <button className="btn-transferir">
           <Share2 size={14} />
