@@ -1,11 +1,15 @@
-// src/components/ChatHeader.jsx
-import React from 'react'
-import { Clipboard, Folder, Navigation, Phone, Share2, CheckCircle } from 'lucide-react'
-import './ChatHeader.css'
-import useConversationsStore from '../../store/useConversationsStore'
+import React from 'react';
+import {
+  Clipboard, Folder, Navigation, Phone,
+  Share2, CheckCircle
+} from 'lucide-react';
+import './ChatHeader.css';
+import useConversationsStore from '../../store/useConversationsStore';
+import { apiPut } from '../../services/apiClient';
 
 export default function ChatHeader({ userIdSelecionado }) {
   const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
+  const mergeConversation = useConversationsStore((state) => state.mergeConversation);
 
   if (!clienteAtivo) return null;
 
@@ -14,8 +18,22 @@ export default function ChatHeader({ userIdSelecionado }) {
     ticket_number = '000000',
     fila = 'Indefinida',
     user_id = userIdSelecionado,
-    channel = 'desconhecido'
+    channel = 'desconhecido',
   } = clienteAtivo;
+
+  const finalizarAtendimento = async () => {
+    const confirm = window.confirm('Deseja finalizar este atendimento?');
+    if (!confirm) return;
+
+    try {
+      await apiPut(`/tickets/${user_id}`, { status: 'closed' });
+      mergeConversation(user_id, { status: 'closed' });
+      alert('Atendimento finalizado com sucesso.');
+    } catch (err) {
+      console.error('Erro ao finalizar ticket:', err);
+      alert('Erro ao finalizar atendimento.');
+    }
+  };
 
   return (
     <div className="chat-header">
@@ -49,7 +67,7 @@ export default function ChatHeader({ userIdSelecionado }) {
           <Share2 size={14} />
           <span>Transferir</span>
         </button>
-        <button className="btn-finalizar">
+        <button className="btn-finalizar" onClick={finalizarAtendimento}>
           <CheckCircle size={14} />
           <span>Finalizar</span>
         </button>
