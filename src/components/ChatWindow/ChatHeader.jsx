@@ -9,6 +9,7 @@ import { apiPut } from '../../services/apiClient';
 import TransferModal from './modals/TransferModal';
 
 export default function ChatHeader({ userIdSelecionado }) {
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
   const mergeConversation = useConversationsStore((state) => state.mergeConversation);
   const setSelectedUserId = useConversationsStore((state) => state.setSelectedUserId); // ✅ IMPORTADO
