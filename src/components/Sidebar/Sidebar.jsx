@@ -19,16 +19,19 @@ export default function Sidebar() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchSettingsAndFila = async () => {
-      const settings = await apiGet('/settings');
-      const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
-      if (distrib?.value) setDistribuicaoTickets(distrib.value);
+const fetchSettingsAndFila = async () => {
+  const settings = await apiGet('/settings');
+  const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
+  if (distrib?.value) setDistribuicaoTickets(distrib.value);
 
-      const filaAtivos = Object.values(conversations).filter(
-        (conv) => !conv.atendido
-      );
-      setFilaCount(filaAtivos.length);
-    };
+  // ✅ Armazena no Zustand
+  useConversationsStore.getState().setSettings(settings);
+
+  const filaAtivos = Object.values(conversations).filter(
+    (conv) => !conv.atendido
+  );
+  setFilaCount(filaAtivos.length);
+};
 
     fetchSettingsAndFila();
   }, [conversations]);
