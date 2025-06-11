@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../../services/apiClient';
 import './TransferModal.css';
-import useConversationsStore from '../../store/useConversationsStore';
+import useConversationsStore from '../../../store/useConversationsStore';
 
 export default function TransferModal({ userId, onClose }) {
   const { userEmail, mergeConversation, setSelectedUserId } = useConversationsStore();
