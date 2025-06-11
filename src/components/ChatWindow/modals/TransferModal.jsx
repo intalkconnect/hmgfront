@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../../services/apiClient';
+import { apiGet, apiPost } from '../../../services/apiClient';
 import './TransferModal.css';
 import useConversationsStore from '../../../store/useConversationsStore';
 
