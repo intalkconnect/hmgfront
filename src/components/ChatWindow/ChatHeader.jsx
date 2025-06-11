@@ -39,6 +39,7 @@ export default function ChatHeader({ userIdSelecionado }) {
   };
 
   return (
+<>
     <div className="chat-header">
       <div className="chat-header-left">
         <div className="cliente-nome">{name}</div>
@@ -73,5 +74,14 @@ export default function ChatHeader({ userIdSelecionado }) {
         </button>
       </div>
     </div>
+
+      {/* Modal de Transferência */}
+    {showTransferModal && (
+      <TransferModal
+        userId={user_id}
+        onClose={() => setShowTransferModal(false)}
+      />
+    )}
+</>
   );
 }
