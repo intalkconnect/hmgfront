@@ -9,7 +9,9 @@ export default function TransferModal({ userId, onClose }) {
   const [filas, setFilas] = useState([]);
   const [filaSelecionada, setFilaSelecionada] = useState('');
   const [responsavel, setResponsavel] = useState('');
+  const [atendentes, setAtendentes] = useState([]);
 
+  // Carrega filas com permissão
   useEffect(() => {
     const carregarFilas = async () => {
       try {
@@ -25,20 +27,44 @@ export default function TransferModal({ userId, onClose }) {
     carregarFilas();
   }, [userEmail, onClose]);
 
+  // Carrega atendentes da fila selecionada
+  useEffect(() => {
+    const carregarAtendentes = async () => {
+      if (!filaSelecionada) return;
+
+      try {
+        const filaNome = filas.find(f => f.id.toString() === filaSelecionada)?.nome;
+        if (!filaNome) return;
+
+        const data = await apiGet(`/filas/atendentes/${filaNome}`);
+        setAtendentes(data);
+      } catch (err) {
+        console.error('Erro ao buscar atendentes:', err);
+      }
+    };
+
+    carregarAtendentes();
+  }, [filaSelecionada, filas]);
+
   const confirmarTransferencia = async () => {
     if (!filaSelecionada) {
       alert('Selecione uma fila para transferir.');
       return;
     }
 
-    try {
-const body = {
-  from_user_id: userId,
-  to_fila: parseInt(filaSelecionada, 10),
-  to_assigned_to: responsavel || null,
-  transferido_por: userEmail
-};
+    const filaNome = filas.find(f => f.id.toString() === filaSelecionada)?.nome;
+    if (!filaNome) {
+      alert('Fila inválida selecionada.');
+      return;
+    }
 
+    try {
+      const body = {
+        from_user_id: userId,
+        to_fila: filaNome, // nome da fila, não o ID
+        to_assigned_to: responsavel || null,
+        transferido_por: userEmail
+      };
 
       await apiPost('/tickets/transferir', body);
 
@@ -58,24 +84,34 @@ const body = {
 
         <label>
           Fila:
-          <select value={filaSelecionada} onChange={(e) => setFilaSelecionada(e.target.value)}>
+          <select
+            value={filaSelecionada}
+            onChange={(e) => {
+              setFilaSelecionada(e.target.value);
+              setResponsavel('');
+            }}
+          >
             <option value="">Selecione uma fila</option>
             {filas.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
+              <option key={f.id} value={f.id}>{f.nome}</option>
             ))}
           </select>
         </label>
 
         <label>
-          Atribuir para (email - opcional):
-          <input
-            type="email"
-            placeholder="exemplo@dominio"
+          Atribuir para (opcional):
+          <select
             value={responsavel}
             onChange={(e) => setResponsavel(e.target.value)}
-          />
+            disabled={!atendentes.length}
+          >
+            <option value="">-- Qualquer atendente --</option>
+            {atendentes.map((a) => (
+              <option key={a.email} value={a.email}>
+                {a.name} {a.lastname} ({a.email})
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="modal-actions">
