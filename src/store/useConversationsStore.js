@@ -9,6 +9,12 @@ const useConversationsStore = create((set, get) => ({
   selectedUserId: null,
   userEmail: null,
   userFilas: [],
+  settings: [],
+setSettings: (data) => set({ settings: data }),
+getSettingValue: (key) => {
+  const found = get().settings.find(s => s.key === key);
+  return found ? found.value : null;
+}
 
   // Configura email e filas do usuário
   setUserInfo: ({ email, filas }) => set({ userEmail: email, userFilas: filas }),
