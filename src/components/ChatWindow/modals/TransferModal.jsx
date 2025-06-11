@@ -4,16 +4,27 @@ import './TransferModal.css';
 import useConversationsStore from '../../../store/useConversationsStore';
 
 export default function TransferModal({ userId, onClose }) {
-  const { userEmail, mergeConversation, setSelectedUserId } = useConversationsStore();
+  const {
+    userEmail,
+    mergeConversation,
+    setSelectedUserId,
+    settings,
+    getSettingValue
+  } = useConversationsStore();
 
+  /* ──────────────────────── Permissões globais ──────────────────────── */
+  const permiteAtendente =
+    getSettingValue('permitir_transferencia_atendente') === 'true';
+
+  /* ────────────────────────── States locais ─────────────────────────── */
   const [filas, setFilas] = useState([]);
   const [filaSelecionada, setFilaSelecionada] = useState('');
   const [responsavel, setResponsavel] = useState('');
   const [atendentes, setAtendentes] = useState([]);
 
-  // Carrega filas com permissão
+  /* ───────────────── Carrega filas onde usuário pode transferir ───────────────── */
   useEffect(() => {
-    const carregarFilas = async () => {
+    (async () => {
       try {
         const data = await apiGet(`/filas/fila-permissoes/${userEmail}`);
         setFilas(data);
@@ -22,38 +33,35 @@ export default function TransferModal({ userId, onClose }) {
         alert('Erro ao carregar filas disponíveis.');
         onClose();
       }
-    };
-
-    carregarFilas();
+    })();
   }, [userEmail, onClose]);
 
-  // Carrega atendentes da fila selecionada
+  /* ─────────── Carrega atendentes da fila (se permitido & selecionada) ─────────── */
   useEffect(() => {
-    const carregarAtendentes = async () => {
-      if (!filaSelecionada) {
+    (async () => {
+      if (!filaSelecionada || !permiteAtendente) {
+        setAtendentes([]);
+        return;
+      }
+
+      const filaNome = filas.find(f => f.id.toString() === filaSelecionada)?.nome;
+      if (!filaNome) {
         setAtendentes([]);
         return;
       }
 
       try {
-        const filaNome = filas.find(f => f.id.toString() === filaSelecionada)?.nome;
-        if (!filaNome) {
-          setAtendentes([]);
-          return;
-        }
-
-        const response = await apiGet(`/filas/atendentes/${filaNome}`);
-        const atendentesData = Array.isArray(response.atendentes) ? response.atendentes : response;
-        setAtendentes(atendentesData);
+        const resp = await apiGet(`/filas/atendentes/${filaNome}`);
+        const lista = Array.isArray(resp.atendentes) ? resp.atendentes : resp;
+        setAtendentes(lista.filter(a => a.email !== userEmail)); // remove próprio usuário
       } catch (err) {
         console.error('Erro ao buscar atendentes:', err);
         setAtendentes([]);
       }
-    };
+    })();
+  }, [filaSelecionada, filas, permiteAtendente, userEmail]);
 
-    carregarAtendentes();
-  }, [filaSelecionada, filas]);
-
+  /* ─────────────────────────── Confirmar transferência ─────────────────────────── */
   const confirmarTransferencia = async () => {
     if (!filaSelecionada) {
       alert('Selecione uma fila para transferir.');
@@ -69,8 +77,8 @@ export default function TransferModal({ userId, onClose }) {
     try {
       const body = {
         from_user_id: userId,
-        to_fila: filaNome, // nome da fila, não o ID
-        to_assigned_to: responsavel || null,
+        to_fila: filaNome,                         // nome da fila
+        to_assigned_to: permiteAtendente ? (responsavel || null) : null,
         transferido_por: userEmail
       };
 
@@ -85,11 +93,13 @@ export default function TransferModal({ userId, onClose }) {
     }
   };
 
+  /* ─────────────────────────────── JSX ──────────────────────────────── */
   return (
     <div className="modal-overlay">
       <div className="modal">
         <h2>Transferir Atendimento</h2>
 
+        {/* Seleção de Fila */}
         <label>
           Fila:
           <select
@@ -106,24 +116,29 @@ export default function TransferModal({ userId, onClose }) {
           </select>
         </label>
 
-        <label>
-          Atribuir para (opcional):
-          {atendentes.length === 0 ? (
-            <div className="info-text">Nenhum atendente disponível nesta fila.</div>
-          ) : (
-            <select
-              value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-            >
-              <option value="">-- Qualquer atendente --</option>
-              {atendentes.map((a) => (
-                <option key={a.email} value={a.email}>
-                  {a.name} {a.lastname} ({a.email})
-                </option>
-              ))}
-            </select>
-          )}
-        </label>
+        {/* Seleção de Atendente (somente se permitido e após fila escolhida) */}
+        {permiteAtendente && filaSelecionada && (
+          <label>
+            Atribuir para (opcional):
+            {atendentes.length === 0 ? (
+              <div className="info-text">
+                Nenhum atendente disponível nesta fila.
+              </div>
+            ) : (
+              <select
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+              >
+                <option value="">-- Qualquer atendente --</option>
+                {atendentes.map((a) => (
+                  <option key={a.email} value={a.email}>
+                    {a.name} {a.lastname} ({a.email})
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
+        )}
 
         <div className="modal-actions">
           <button onClick={confirmarTransferencia}>Transferir</button>
