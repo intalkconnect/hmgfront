@@ -28,7 +28,7 @@ export default function ChatHeader({ userIdSelecionado }) {
     try {
       await apiPut(`/tickets/${user_id}`, { status: 'closed' });
       mergeConversation(user_id, { status: 'closed' });
-      alert('Atendimento finalizado com sucesso.');
+      setSelectedUserId(null);
     } catch (err) {
       console.error('Erro ao finalizar ticket:', err);
       alert('Erro ao finalizar atendimento.');
