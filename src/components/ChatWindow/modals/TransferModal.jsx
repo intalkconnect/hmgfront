@@ -13,7 +13,7 @@ export default function TransferModal({ userId, onClose }) {
   useEffect(() => {
     const carregarFilas = async () => {
       try {
-        const data = await apiGet(`/fila-permissoes/${userEmail}`);
+        const data = await apiGet(`/fila/fila-permissoes/${userEmail}`);
         setFilas(data);
       } catch (err) {
         console.error('Erro ao buscar filas:', err);
