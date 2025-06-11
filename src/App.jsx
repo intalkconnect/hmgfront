@@ -84,7 +84,7 @@ export default function App() {
             loadUnreadCounts,
           } = useConversationsStore.getState();
 
-          const isFromMe = message.direction === 'out' || message.from_me === true;
+          const isFromMe = message.direction === 'outgoing';
           const isActiveChat = message.user_id === selectedUserId;
           const isWindowFocused = document.hasFocus();
 
