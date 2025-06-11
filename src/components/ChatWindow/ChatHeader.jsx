@@ -6,7 +6,7 @@ import {
 import './ChatHeader.css';
 import useConversationsStore from '../../store/useConversationsStore';
 import { apiPut } from '../../services/apiClient';
-import TransferModal from '../modals/TransferModal';
+import TransferModal from './modals/TransferModal';
 
 export default function ChatHeader({ userIdSelecionado }) {
   const clienteAtivo = useConversationsStore((state) => state.clienteAtivo);
