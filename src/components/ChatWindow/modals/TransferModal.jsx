@@ -29,22 +29,27 @@ export default function TransferModal({ userId, onClose }) {
 
   // Carrega atendentes da fila selecionada
   useEffect(() => {
-const carregarAtendentes = async () => {
-  if (!filaSelecionada) return;
+    const carregarAtendentes = async () => {
+      if (!filaSelecionada) {
+        setAtendentes([]);
+        return;
+      }
 
-  try {
-    const response = await apiGet(`/atendentes/${filaSelecionada}`);
-    if (Array.isArray(response.atendentes)) {
-      setAtendentes(response.atendentes);
-    } else {
-      setAtendentes([]);
-    }
-  } catch (err) {
-    console.error('Erro ao carregar atendentes:', err);
-    setAtendentes([]);
-  }
-};
+      try {
+        const filaNome = filas.find(f => f.id.toString() === filaSelecionada)?.nome;
+        if (!filaNome) {
+          setAtendentes([]);
+          return;
+        }
 
+        const response = await apiGet(`/filas/atendentes/${filaNome}`);
+        const atendentesData = Array.isArray(response.atendentes) ? response.atendentes : response;
+        setAtendentes(atendentesData);
+      } catch (err) {
+        console.error('Erro ao buscar atendentes:', err);
+        setAtendentes([]);
+      }
+    };
 
     carregarAtendentes();
   }, [filaSelecionada, filas]);
@@ -101,27 +106,24 @@ const carregarAtendentes = async () => {
           </select>
         </label>
 
-<label>
-  Atribuir para (opcional):
-  {atendentes.length === 0 ? (
-    <div className="info-text">
-      Nenhum atendente disponível nesta fila.
-    </div>
-  ) : (
-    <select
-      value={responsavel}
-      onChange={(e) => setResponsavel(e.target.value)}
-    >
-      <option value="">-- Qualquer atendente --</option>
-      {atendentes.map((a) => (
-        <option key={a.email} value={a.email}>
-          {a.name} {a.lastname} ({a.email})
-        </option>
-      ))}
-    </select>
-  )}
-</label>
-
+        <label>
+          Atribuir para (opcional):
+          {atendentes.length === 0 ? (
+            <div className="info-text">Nenhum atendente disponível nesta fila.</div>
+          ) : (
+            <select
+              value={responsavel}
+              onChange={(e) => setResponsavel(e.target.value)}
+            >
+              <option value="">-- Qualquer atendente --</option>
+              {atendentes.map((a) => (
+                <option key={a.email} value={a.email}>
+                  {a.name} {a.lastname} ({a.email})
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
 
         <div className="modal-actions">
           <button onClick={confirmarTransferencia}>Transferir</button>
