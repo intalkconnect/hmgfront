@@ -32,12 +32,13 @@ export default function TransferModal({ userId, onClose }) {
     }
 
     try {
-      const body = {
-        from_user_id: userId,
-        to_fila: filaSelecionada,
-        to_assigned_to: responsavel || null,
-        transferido_por: userEmail
-      };
+const body = {
+  from_user_id: userId,
+  to_fila: parseInt(filaSelecionada, 10),
+  to_assigned_to: responsavel || null,
+  transferido_por: userEmail
+};
+
 
       await apiPost('/tickets/transferir', body);
 
@@ -60,7 +61,7 @@ export default function TransferModal({ userId, onClose }) {
           <select value={filaSelecionada} onChange={(e) => setFilaSelecionada(e.target.value)}>
             <option value="">Selecione uma fila</option>
             {filas.map((f) => (
-              <option key={f.id} value={f.nome}>
+              <option key={f.id} value={f.id}>
                 {f.nome}
               </option>
             ))}
