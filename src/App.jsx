@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -18,7 +18,6 @@ export default function App() {
     setSelectedUserId,
     setUserInfo,
     mergeConversation,
-    resetUnread,
     loadUnreadCounts,
     loadLastReadTimes,
     getContactName,
@@ -26,9 +25,6 @@ export default function App() {
     notifiedConversations,
     markNotified,
   } = useConversationsStore();
-
-  const [socketError, setSocketError] = useState(null);
-  const [isWindowActive, setIsWindowActive] = useState(true);
 
   useEffect(() => {
     setUserInfo({
@@ -49,38 +45,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleFocus = () => setIsWindowActive(true);
-    const handleBlur = () => setIsWindowActive(false);
-    
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
-
-  useEffect(() => {
     const initialize = async () => {
       try {
         const { userEmail } = useConversationsStore.getState();
-        connectSocket(userEmail);
+        const cleanup = connectSocket(userEmail);
         const socket = getSocket();
         socketRef.current = socket;
-
-        socket.on('connect_error', () => {
-          setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-        });
-
-        socket.on('connect', () => {
-          setSocketError(null);
-          useConversationsStore.getState().setSocketStatus('online');
-        });
-
-        socket.on('disconnect', () => {
-          useConversationsStore.getState().setSocketStatus('offline');
-        });
 
         socket.on('new_message', async (message) => {
           const {
@@ -94,7 +64,6 @@ export default function App() {
 
           const isFromMe = message.direction === 'outgoing';
           const isActiveChat = message.user_id === selectedUserId;
-          const isWindowFocused = document.hasFocus();
 
           mergeConversation(message.user_id, {
             ticket_number: message.ticket_number || message.ticket,
@@ -105,7 +74,7 @@ export default function App() {
 
           if (isFromMe) return;
 
-          if (isActiveChat && isWindowFocused) {
+          if (isActiveChat) {
             await apiPut(`/messages/read-status/${message.user_id}`, {
               last_read: new Date().toISOString(),
             });
@@ -114,21 +83,19 @@ export default function App() {
 
           await loadUnreadCounts();
 
-          if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+          if (!notifiedConversations[message.user_id]) {
             const contactName = getContactName(message.user_id);
             showNotification(message, contactName);
             markNotified(message.user_id);
           }
 
-          if (isWindowFocused) {
-            try {
-              if (audioPlayer.current) {
-                audioPlayer.current.currentTime = 0;
-                await audioPlayer.current.play();
-              }
-            } catch (e) {
-              console.warn('Erro ao reproduzir som:', e);
+          try {
+            if (audioPlayer.current) {
+              audioPlayer.current.currentTime = 0;
+              await audioPlayer.current.play();
             }
+          } catch (e) {
+            console.warn('Error playing sound:', e);
           }
         });
 
@@ -137,19 +104,22 @@ export default function App() {
           loadLastReadTimes(),
           loadUnreadCounts(),
         ]);
+
+        return cleanup;
       } catch (err) {
-        setSocketError('Erro ao inicializar a aplicação');
+        console.error('Initialization error:', err);
       }
     };
 
-    initialize();
+    const cleanupPromise = initialize();
 
     return () => {
+      cleanupPromise.then(cleanup => cleanup && cleanup());
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
-  }, [selectedUserId, isWindowActive]);
+  }, [selectedUserId]);
 
   const fetchConversations = async () => {
     try {
@@ -166,21 +136,19 @@ export default function App() {
         mergeConversation(conv.user_id, conv);
       });
     } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
+      console.error('Error fetching /chats:', err);
     }
   };
 
   const showNotification = (message, contactName) => {
-    if (isWindowActive) return;
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
       const notification = new Notification(
-        `Nova mensagem de ${contactName || message.user_id}`,
+        `New message from ${contactName || message.user_id}`,
         {
           body: getMessagePreview(message.content),
           icon: '/icons/whatsapp.png',
-          vibrate: [200, 100, 200],
         }
       );
 
@@ -203,8 +171,8 @@ export default function App() {
       const parsed = JSON.parse(content);
       if (parsed.text) return parsed.text;
       if (parsed.caption) return parsed.caption;
-      if (parsed.url) return '[Arquivo]';
-      return '[Mensagem]';
+      if (parsed.url) return '[File]';
+      return '[Message]';
     } catch {
       return content?.length > 50 ? content.substring(0, 47) + '...' : content;
     }
@@ -215,22 +183,17 @@ export default function App() {
     : null;
 
   return (
-    <>
-      <div className="app-container">
-        <SocketDisconnectedModal />
-
-        <aside className="sidebar">
-          <Sidebar />
-        </aside>
-
-        <main className="chat-container">
-          <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-        </main>
-
-        <aside className="details-panel">
-          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-        </aside>
-      </div>
-    </>
+    <div className="app-container">
+      <SocketDisconnectedModal />
+      <aside className="sidebar">
+        <Sidebar />
+      </aside>
+      <main className="chat-container">
+        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+      </main>
+      <aside className="details-panel">
+        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+      </aside>
+    </div>
   );
 }
