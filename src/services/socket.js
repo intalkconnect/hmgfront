@@ -8,7 +8,8 @@ let socket;
 
 let listenersAttached = false;
 
-export function getSocket() {
+export function getSocket(userEmail) {
+ {
   if (!socket) {
     if (!SOCKET_URL) {
       throw new Error('Socket URL is not defined.');
@@ -18,6 +19,9 @@ export function getSocket() {
       autoConnect: false, // conecta manualmente para controlar
       transports: ['websocket'],
       reconnectionAttempts: 5,
+      query: {
+      email: userEmail, 
+  }
     });
   }
 
