@@ -18,7 +18,8 @@ export function getSocket() {
       autoConnect: false,
       transports: ['websocket'],
       reconnectionAttempts: 5,
-      query: { email: userEmail }
+      query: { email: userEmail },
+      auth: { email: userEmail }
     });
   }
 
@@ -74,6 +75,13 @@ export function reconnectSocket(userId) {
   const socket = getSocket();
   if (!socket.connected) {
     connectSocket(userId);
+  }
+}
+
+export function sendUserActivity(isActive) {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    socket.emit(isActive ? 'user_active' : 'user_inactive');
   }
 }
 
