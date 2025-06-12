@@ -78,13 +78,5 @@ export function reconnectSocket(userId) {
   }
 }
 
-export function sendUserActivity(isActive) {
-  const socket = getSocket();
-  if (socket && socket.connected) {
-    socket.emit(isActive ? 'user_active' : 'user_inactive');
-  }
-}
-
-// Isso é necessário para não quebrar os imports existentes:
-// import { socket, connectSocket } from '../../services/socket';
+// Export para compatibilidade
 export { socket };
