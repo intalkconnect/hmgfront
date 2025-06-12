@@ -2,33 +2,40 @@ import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
 let socket;
 let listenersAttached = false;
 
 export function getSocket() {
   if (!socket) {
-    throw new Error('Socket não inicializado.');
+    if (!SOCKET_URL) {
+      throw new Error('Socket URL is not defined.');
+    }
+
+    const { userEmail } = useConversationsStore.getState();
+
+    socket = io(SOCKET_URL, {
+      autoConnect: false,
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
+      query: { email: userEmail }
+    });
   }
+
   return socket;
 }
 
-export function connectSocket(userEmail) {
-  if (!userEmail) {
-    throw new Error('E-mail do usuário é obrigatório para conectar o socket.');
-  }
-  socket = io(SOCKET_URL, {
-    autoConnect: false,
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
-    auth: { email: userEmail },
-  });
-
+export function connectSocket(userId) {
+  const socket = getSocket();
   const { setSocketStatus } = useConversationsStore.getState();
 
   if (!listenersAttached) {
     socket.on('connect', () => {
       console.log('[socket] ✅ Conectado:', socket.id);
-      socket.emit('atendente_online');
+      if (userId) {
+        socket.emit('join_room', userId);
+        socket.emit('atendente_online', userId);
+      }
       setSocketStatus('online');
     });
 
@@ -45,13 +52,31 @@ export function connectSocket(userEmail) {
     listenersAttached = true;
   }
 
-  socket.connect();
+  if (!socket.connected) {
+    console.log('[socket] Conectando a', SOCKET_URL);
+    socket.connect();
+  }
+
   return socket;
 }
 
-export function disconnectSocket() {
+export function disconnectSocket(userId) {
+  const socket = getSocket();
   if (socket && socket.connected) {
+    if (userId) {
+      socket.emit('atendente_offline', userId);
+    }
     socket.disconnect();
-    listenersAttached = false;
   }
 }
+
+export function reconnectSocket(userId) {
+  const socket = getSocket();
+  if (!socket.connected) {
+    connectSocket(userId);
+  }
+}
+
+// Isso é necessário para não quebrar os imports existentes:
+// import { socket, connectSocket } from '../../services/socket';
+export { socket };
