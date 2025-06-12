@@ -18,7 +18,12 @@ export default function SocketDisconnectedModal() {
     socket.on('disconnect', handleDisconnect);
 
     // Check initial state
-    if (!socket.connected) setSocketStatus('offline');
+  // Aguarda 3 segundos antes de marcar offline no load
+  const timeout = setTimeout(() => {
+    if (!socket.connected) {
+      setSocketStatus('offline');
+    }
+  }, 5000);
 
     return () => {
       socket.off('connect', handleConnect);
