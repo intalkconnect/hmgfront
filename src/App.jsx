@@ -1,7 +1,6 @@
-// App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
-import { connectSocket, getSocket } from './services/socket';
+import { connectSocket, getSocket, sendUserActivity } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
@@ -13,6 +12,7 @@ import './App.css';
 export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
+  const heartbeatIntervalRef = useRef(null);
 
   const {
     selectedUserId,
@@ -50,10 +50,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleFocus = () => setIsWindowActive(true);
-    const handleBlur = () => setIsWindowActive(false);
+    const handleFocus = () => {
+      setIsWindowActive(true);
+      sendUserActivity(true);
+    };
+    
+    const handleBlur = () => {
+      setIsWindowActive(false);
+      sendUserActivity(false);
+    };
+    
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
+    
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
@@ -61,25 +70,61 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let inactivityTimer;
+    const activityTimeout = 30000; // 30 segundos
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        sendUserActivity(false);
+      }, activityTimeout);
+    };
+
+    const handleActivity = () => {
+      sendUserActivity(true);
+      resetTimer();
+    };
+
+    // Eventos de atividade do usuário
+    const events = ['mousemove', 'keydown', 'scroll', 'click'];
+    events.forEach(event => window.addEventListener(event, handleActivity));
+
+    resetTimer(); // Inicia o timer inicial
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach(event => window.removeEventListener(event, handleActivity));
+    };
+  }, []);
+
+  useEffect(() => {
     const initialize = async () => {
       try {
-        const { userEmail } = useConversationsStore.getState(); // <-- Aqui
-      connectSocket(userEmail);
-      const socket = getSocket();
-      socketRef.current = socket;
+        const { userEmail } = useConversationsStore.getState();
+        connectSocket(userEmail);
+        const socket = getSocket();
+        socketRef.current = socket;
 
-      socket.on('connect_error', () => {
-        setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-      });
+        // Configura heartbeat
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (socket.connected) {
+            socket.emit('heartbeat', userEmail);
+          }
+        }, 15000); // A cada 15 segundos
 
-      socket.on('connect', () => {
-        setSocketError(null);
-        useConversationsStore.getState().setSocketStatus('online');
-      });
+        socket.on('connect_error', () => {
+          setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
+        });
 
-      socket.on('disconnect', () => {
-        useConversationsStore.getState().setSocketStatus('offline');
-      });
+        socket.on('connect', () => {
+          setSocketError(null);
+          useConversationsStore.getState().setSocketStatus('online');
+          sendUserActivity(true);
+        });
+
+        socket.on('disconnect', () => {
+          useConversationsStore.getState().setSocketStatus('offline');
+        });
 
         socket.on('new_message', async (message) => {
           const {
@@ -104,7 +149,6 @@ export default function App() {
 
           if (isFromMe) return;
 
-          // ✅ Marca como lida apenas se estiver com o chat aberto e aba ativa
           if (isActiveChat && isWindowFocused) {
             await apiPut(`/messages/read-status/${message.user_id}`, {
               last_read: new Date().toISOString(),
@@ -120,7 +164,6 @@ export default function App() {
             markNotified(message.user_id);
           }
 
-          // ❌ Não tocar som se janela estiver inativa
           if (isWindowFocused) {
             try {
               if (audioPlayer.current) {
@@ -133,10 +176,6 @@ export default function App() {
           }
         });
 
-        socket.on('disconnect', () => {
-  useConversationsStore.getState().setSocketStatus('offline');
-});
-
         await Promise.all([
           fetchConversations(),
           loadLastReadTimes(),
@@ -148,6 +187,15 @@ export default function App() {
     };
 
     initialize();
+
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [selectedUserId, isWindowActive]);
 
   const fetchConversations = async () => {
@@ -215,22 +263,21 @@ export default function App() {
 
   return (
     <>
+      <div className="app-container">
+        <SocketDisconnectedModal />
 
-    <div className="app-container">
-      <SocketDisconnectedModal />
+        <aside className="sidebar">
+          <Sidebar />
+        </aside>
 
-      <aside className="sidebar">
-        <Sidebar />
-      </aside>
+        <main className="chat-container">
+          <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        </main>
 
-      <main className="chat-container">
-        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-      </main>
-
-      <aside className="details-panel">
-        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-      </aside>
-    </div>
+        <aside className="details-panel">
+          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        </aside>
+      </div>
     </>
   );
 }
