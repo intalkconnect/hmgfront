@@ -73,6 +73,7 @@ export default function App() {
 
         socket.on('connect', () => {
           setSocketError(null);
+          useConversationsStore.getState().setSocketStatus('online');
         });
 
         socket.on('new_message', async (message) => {
@@ -126,6 +127,10 @@ export default function App() {
             }
           }
         });
+
+        socket.on('disconnect', () => {
+  useConversationsStore.getState().setSocketStatus('offline');
+});
 
         await Promise.all([
           fetchConversations(),
