@@ -7,6 +7,7 @@ import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
 import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
+import SocketDisconnectedModal from './components/SocketDisconnectedModal';
 import './App.css';
 
 export default function App() {
@@ -203,8 +204,10 @@ export default function App() {
     : null;
 
   return (
+    <>
+
     <div className="app-container">
-      {socketError && <div className="socket-error-banner">{socketError}</div>}
+      <SocketDisconnectedModal />
 
       <aside className="sidebar">
         <Sidebar />
@@ -218,5 +221,6 @@ export default function App() {
         <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </aside>
     </div>
+    </>
   );
 }
