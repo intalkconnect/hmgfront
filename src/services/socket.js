@@ -12,6 +12,8 @@ export function getSocket() {
       throw new Error('Socket URL is not defined.');
     }
 
+    const { userEmail } = useConversationsStore.getState();
+
     socket = io(SOCKET_URL, {
       autoConnect: false,
       transports: ['websocket'],
