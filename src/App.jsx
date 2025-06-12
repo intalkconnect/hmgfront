@@ -63,7 +63,9 @@ export default function App() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        connectSocket(userEmail);
+        const { userEmail } = useConversationsStore.getState();
+connectSocket(userEmail);
+
         const socket = getSocket();
         socketRef.current = socket;
 
