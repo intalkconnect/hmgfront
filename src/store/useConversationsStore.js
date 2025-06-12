@@ -10,7 +10,7 @@ const useConversationsStore = create((set, get) => ({
   userEmail: null,
   userFilas: [],
   settings: [],
-  socketStatus: 'offline', // <-- NOVO: status do socket
+  socketStatus: 'connecting', // <-- NOVO: status do socket
 
   // Atualiza o status do WebSocket
   setSocketStatus: (status) => set({ socketStatus: status }),
