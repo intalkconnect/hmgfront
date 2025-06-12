@@ -5,23 +5,19 @@ import useConversationsStore from '../store/useConversationsStore';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 let socket;
-
 let listenersAttached = false;
 
 export function getSocket(userEmail) {
- {
   if (!socket) {
     if (!SOCKET_URL) {
       throw new Error('Socket URL is not defined.');
     }
 
     socket = io(SOCKET_URL, {
-      autoConnect: false, // conecta manualmente para controlar
+      autoConnect: false,
       transports: ['websocket'],
       reconnectionAttempts: 5,
-      query: {
-      email: userEmail, 
-  }
+      query: { email: userEmail }
     });
   }
 
@@ -80,5 +76,3 @@ export function reconnectSocket(userId) {
     connectSocket(userId);
   }
 }
-
-export { socket };
