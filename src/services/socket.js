@@ -1,41 +1,34 @@
-// src/services/socket.js
 import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-
 let socket;
-
 let listenersAttached = false;
 
 export function getSocket() {
   if (!socket) {
-    if (!SOCKET_URL) {
-      throw new Error('Socket URL is not defined.');
-    }
-
-    socket = io(SOCKET_URL, {
-      autoConnect: false, // conecta manualmente para controlar
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-    });
+    throw new Error('Socket não inicializado.');
   }
-
   return socket;
 }
 
-export function connectSocket(userId) {
-  const socket = getSocket();
+export function connectSocket(userEmail) {
+  if (!userEmail) {
+    throw new Error('E-mail do usuário é obrigatório para conectar o socket.');
+  }
+  socket = io(SOCKET_URL, {
+    autoConnect: false,
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    auth: { email: userEmail },
+  });
 
   const { setSocketStatus } = useConversationsStore.getState();
 
   if (!listenersAttached) {
     socket.on('connect', () => {
       console.log('[socket] ✅ Conectado:', socket.id);
-      if (userId) {
-        socket.emit('join_room', userId);
-        socket.emit('atendente_online', userId);
-      }
+      socket.emit('atendente_online');
       setSocketStatus('online');
     });
 
@@ -52,29 +45,13 @@ export function connectSocket(userId) {
     listenersAttached = true;
   }
 
-  if (!socket.connected) {
-    console.log('[socket] Conectando a', SOCKET_URL);
-    socket.connect();
-  }
-
+  socket.connect();
   return socket;
 }
 
-export function disconnectSocket(userId) {
-  const socket = getSocket();
+export function disconnectSocket() {
   if (socket && socket.connected) {
-    if (userId) {
-      socket.emit('atendente_offline', userId);
-    }
     socket.disconnect();
+    listenersAttached = false;
   }
 }
-
-export function reconnectSocket(userId) {
-  const socket = getSocket();
-  if (!socket.connected) {
-    connectSocket(userId);
-  }
-}
-
-export { socket };
