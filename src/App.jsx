@@ -63,7 +63,7 @@ export default function App() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        connectSocket();
+        connectSocket(userEmail);
         const socket = getSocket();
         socketRef.current = socket;
 
