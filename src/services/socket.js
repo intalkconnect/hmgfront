@@ -29,7 +29,6 @@ export function getSocket(userEmail) {
 
 export function connectSocket(userId) {
   const { userEmail, setSocketStatus } = useConversationsStore.getState();
-
   const socket = getSocket(userEmail);
 
   if (!listenersAttached) {
@@ -64,8 +63,7 @@ export function connectSocket(userId) {
 }
 
 export function disconnectSocket(userId) {
-  const { userEmail } = useConversationsStore.getState();
-  const socket = getSocket(userEmail);
+  const socket = getSocket(useConversationsStore.getState().userEmail);
   if (socket && socket.connected) {
     if (userId) {
       socket.emit('atendente_offline', userId);
@@ -75,12 +73,10 @@ export function disconnectSocket(userId) {
 }
 
 export function reconnectSocket(userId) {
-  const { userEmail } = useConversationsStore.getState();
-  const socket = getSocket(userEmail);
+  const socket = getSocket(useConversationsStore.getState().userEmail);
   if (!socket.connected) {
     connectSocket(userId);
   }
 }
 
-// ⚠️ REMOVA essa linha, ela causa erro se importar socket diretamente
-// export { socket }; ❌ ERRADO
+export { socket };
