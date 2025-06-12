@@ -1,235 +1,241 @@
+// --- src/components/ChatWindow/ChatWindow.jsx ---
 import React, { useEffect, useRef, useState } from 'react';
-import { apiGet, apiPut } from './services/apiClient';
-import { connectSocket, disconnectSocket, getSocket } from './services/socket';
-import Sidebar from './components/Sidebar/Sidebar';
-import ChatWindow from './components/ChatWindow/ChatWindow';
-import DetailsPanel from './components/DetailsPanel/DetailsPanel';
-import useConversationsStore from './store/useConversationsStore';
-import notificationSound from './assets/notification.mp3';
-import SocketDisconnectedModal from './components/SocketDisconnectedModal';
-import './App.css';
+import { getSocket, connectSocket } from '../../services/socket';
+import { apiGet } from '../../services/apiClient';
+import useConversationsStore from '../../store/useConversationsStore';
 
-export default function App() {
-  const audioPlayer = useRef(null);
-  const socketRef = useRef(null);
+import SendMessageForm from '../SendMessageForm/SendMessageForm';
+import MessageList from './MessageList';
+import ImageModal from './modals/ImageModal';
+import PdfModal from './modals/PdfModal';
+import ChatHeader from './ChatHeader';
+import './ChatWindow.css';
+import './ChatWindowPagination.css';
 
-  const {
-    selectedUserId,
-    setSelectedUserId,
-    setUserInfo,
-    mergeConversation,
-    resetUnread,
-    loadUnreadCounts,
-    loadLastReadTimes,
-    getContactName,
-    conversations,
-    notifiedConversations,
-    markNotified,
-    userEmail,
-    userFilas,
-  } = useConversationsStore();
+export default function ChatWindow({ userIdSelecionado }) {
+  // Zustand selectors
+  const setClienteAtivo = useConversationsStore(state => state.setClienteAtivo);
+  const mergeConversation = useConversationsStore(state => state.mergeConversation);
+  const userEmail = useConversationsStore(state => state.userEmail);
+  const userFilas = useConversationsStore(state => state.userFilas);
 
-  const [socketError, setSocketError] = useState(null);
-  const [isWindowActive, setIsWindowActive] = useState(true);
+  // state
+  const [allMessages, setAllMessages] = useState([]);
+  const [displayedMessages, setDisplayedMessages] = useState([]);
+  const [modalImage, setModalImage] = useState(null);
+  const [pdfModal, setPdfModal] = useState(null);
+  const [clienteInfo, setClienteInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
 
-  // 1) Configura email e filas
-  useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
-  }, [setUserInfo]);
+  // refs
+  const messageListRef = useRef(null);
+  const loaderRef = useRef(null);
+  const messageCacheRef = useRef(new Map());
+  const currentPageRef = useRef(1);
+  const messagesPerPage = 100;
 
-  // 2) Inicializa áudio de notificação
-  useEffect(() => {
-    audioPlayer.current = new Audio(notificationSound);
-    audioPlayer.current.volume = 0.3;
-    return () => {
-      if (audioPlayer.current) {
-        audioPlayer.current.pause();
-        audioPlayer.current = null;
-      }
-    };
-  }, []);
-
-  // 3) Foco da janela
-  useEffect(() => {
-    const handleFocus = () => setIsWindowActive(true);
-    const handleBlur = () => setIsWindowActive(false);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
-
-  // 4) Conecta socket ao mudar userEmail
+  // 1) conecta socket
   useEffect(() => {
     if (!userEmail) return;
-    // Conectar e guardar instância
-    const socket = connectSocket(userEmail);
-    socketRef.current = socket;
-
-    socket.on('connect_error', () => {
-      setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-    });
-
-    socket.on('connect', () => {
-      setSocketError(null);
-    });
-
-    socket.on('new_message', async (message) => {
-      const state = useConversationsStore.getState();
-      const isFromMe = message.direction === 'outgoing';
-      const isActiveChat = message.user_id === state.selectedUserId;
-      const isWindowFocused = document.hasFocus();
-
-      mergeConversation(message.user_id, {
-        ticket_number: message.ticket_number || message.ticket,
-        timestamp: message.timestamp,
-        content: message.content,
-        channel: message.channel,
-      });
-
-      if (isFromMe) return;
-
-      // Marca como lida se chat ativo e janela em foco
-      if (isActiveChat && isWindowFocused) {
-        await apiPut(`/messages/read-status/${message.user_id}`, {
-          last_read: new Date().toISOString(),
-        });
-        return;
-      }
-
-      await loadUnreadCounts();
-
-      if (!state.notifiedConversations[message.user_id] && !isWindowFocused) {
-        const contactName = getContactName(message.user_id);
-        showNotification(message, contactName);
-        markNotified(message.user_id);
-      }
-
-      if (isWindowFocused) {
-        try {
-          audioPlayer.current.currentTime = 0;
-          await audioPlayer.current.play();
-        } catch (e) {
-          console.warn('Erro ao reproduzir som:', e);
-        }
-      }
-    });
-
-    // Cleanup no unmount ou troca de userEmail
+    connectSocket(userEmail);
+    const socket = getSocket();
     return () => {
-      disconnectSocket();
+      if (socket?.connected) socket.disconnect();
     };
   }, [userEmail]);
 
-  // 5) Detecta logout/fechamento de aba
+  // 2) reset paginação na troca de usuário
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      disconnectSocket();
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
+    if (userIdSelecionado) currentPageRef.current = 1;
+  }, [userIdSelecionado]);
 
-  // 6) Busca conversas iniciais
+  // 3) fetch dados de chat, cliente e ticket
   useEffect(() => {
-    const initialize = async () => {
+    if (!userIdSelecionado) return;
+    setIsLoading(true);
+    (async () => {
       try {
-        await Promise.all([
-          fetchConversations(),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
+        const [msgRes, clienteRes, ticketRes] = await Promise.all([
+          apiGet(`/messages/${encodeURIComponent(userIdSelecionado)}`),
+          apiGet(`/clientes/${encodeURIComponent(userIdSelecionado)}`),
+          apiGet(`/tickets/${encodeURIComponent(userIdSelecionado)}`),
         ]);
+
+        // autorização
+        const ticket = ticketRes;
+        if (
+          ticket.status !== 'open' ||
+          ticket.assigned_to !== userEmail ||
+          !userFilas.includes(ticket.fila)
+        ) {
+          console.warn('Acesso negado ao ticket deste usuário.');
+          return;
+        }
+
+        // cache e estado
+        messageCacheRef.current.set(userIdSelecionado, msgRes);
+        setAllMessages(msgRes);
+        updateDisplayed(msgRes, 1);
+
+        // merge conversa
+        mergeConversation(userIdSelecionado, {
+          channel: clienteRes.channel || 'desconhecido',
+          ticket_number: clienteRes.ticket_number,
+          fila: clienteRes.fila,
+          name: clienteRes.name,
+          assigned_to: ticket.assigned_to,
+          status: ticket.status,
+        });
+
+        const info = {
+          name: clienteRes.name,
+          phone: clienteRes.phone,
+          channel: clienteRes.channel,
+          ticket_number: clienteRes.ticket_number,
+          fila: clienteRes.fila,
+          assigned_to: ticket.assigned_to,
+          status: ticket.status,
+        };
+        setClienteInfo(info);
+        setClienteAtivo(info);
       } catch (err) {
-        console.error(err);
+        console.error('Erro ao buscar cliente:', err);
+        setClienteInfo(null);
+        setAllMessages([]);
+        setDisplayedMessages([]);
+      } finally {
+        setIsLoading(false);
       }
+    })();
+  }, [userIdSelecionado, userEmail, userFilas]);
+
+  // helper para paginação
+  const updateDisplayed = (msgs, page) => {
+    const start = Math.max(0, msgs.length - page * messagesPerPage);
+    setDisplayedMessages(msgs.slice(start));
+    setHasMoreMessages(start > 0);
+  };
+
+  // IntersectionObserver para scroll infinito
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMoreMessages) {
+        const next = currentPageRef.current + 1;
+        const all = messageCacheRef.current.get(userIdSelecionado) || [];
+        updateDisplayed(all, next);
+        currentPageRef.current = next;
+      }
+    }, { threshold: 0.1 });
+
+    if (loaderRef.current) observer.observe(loaderRef.current);
+    return () => {
+      if (loaderRef.current) observer.unobserve(loaderRef.current);
     };
-    if (userEmail && userFilas.length) {
-      initialize();
-    }
-  }, [userEmail, userFilas]);
+  }, [hasMoreMessages, userIdSelecionado]);
 
-  const fetchConversations = async () => {
-    try {
-      const params = new URLSearchParams({
-        assigned_to: userEmail,
-        filas: userFilas.join(','),
+  // eventos de socket: join, leave, new/update
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('join_room', userIdSelecionado);
+
+    const handleNew = novaMsg => {
+      if (novaMsg.user_id !== userIdSelecionado) return;
+      setAllMessages(prev => {
+        if (prev.some(m => m.id === novaMsg.id)) return prev;
+        const updated = [...prev, novaMsg].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+        messageCacheRef.current.set(userIdSelecionado, updated);
+        updateDisplayed(updated, currentPageRef.current);
+        return updated;
       });
-      const data = await apiGet(`/chats?${params}`);
-      data.forEach((conv) => mergeConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
-    }
-  };
+    };
 
-  const showNotification = (message, contactName) => {
-    if (isWindowActive) return;
-    if (!('Notification' in window)) return;
-
-    if (Notification.permission === 'granted') {
-      const notification = new Notification(
-        `Nova mensagem de ${contactName || message.user_id}`,
-        {
-          body: getMessagePreview(message.content),
-          icon: '/icons/whatsapp.png',
-          vibrate: [200, 100, 200],
-        }
-      );
-      notification.onclick = () => {
-        window.focus();
-        setSelectedUserId(message.user_id);
-      };
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          showNotification(message, getContactName(message.user_id));
-        }
+    const handleUpdate = updatedMsg => {
+      if (updatedMsg.user_id !== userIdSelecionado) return;
+      setAllMessages(prev => {
+        const updated = prev.map(m => m.id === updatedMsg.id ? updatedMsg : m);
+        messageCacheRef.current.set(userIdSelecionado, updated);
+        updateDisplayed(updated, currentPageRef.current);
+        return updated;
       });
-    }
-  };
+    };
 
-  const getMessagePreview = (content) => {
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed.text) return parsed.text;
-      if (parsed.caption) return parsed.caption;
-      if (parsed.url) return '[Arquivo]';
-      return '[Mensagem]';
-    } catch {
-      return content?.length > 50
-        ? content.substring(0, 47) + '...'
-        : content;
-    }
-  };
+    socket.on('new_message', handleNew);
+    socket.on('update_message', handleUpdate);
 
-  const conversaSelecionada = selectedUserId
-    ? conversations[selectedUserId] || null
-    : null;
+    return () => {
+      socket.emit('leave_room', userIdSelecionado);
+      socket.off('new_message', handleNew);
+      socket.off('update_message', handleUpdate);
+    };
+  }, [userIdSelecionado]);
+
+  // renderização
+  if (!userIdSelecionado) {
+    return (
+      <div className="chat-window placeholder">
+        <div className="chat-placeholder">
+          <svg
+            className="chat-icon"
+            width="80"
+            height="80"
+            viewBox="0 0 24 24"
+            fill="var(--color-border)"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M4 2h16a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H6l-4 4V4a2 2 0 0 1 2 -2z" />
+          </svg>
+          <h2 className="placeholder-title">Tudo pronto para atender</h2>
+          <p className="placeholder-subtitle">
+            Escolha um ticket na lista ao lado para abrir a conversa
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="chat-window loading">
+        <div className="loading-container">
+          <div className="spinner" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-container">
-      <SocketDisconnectedModal error={socketError} />
-      <aside className="sidebar">
-        <Sidebar />
-      </aside>
-      <main className="chat-container">
-        <ChatWindow
-          userIdSelecionado={selectedUserId}
-          conversaSelecionada={conversaSelecionada}
+    <div className="chat-window">
+      <ChatHeader userIdSelecionado={userIdSelecionado} />
+
+      <div className="messages-list">
+        {hasMoreMessages && (
+          <div ref={loaderRef} className="pagination-loader">
+            Carregando mensagens mais antigas...
+          </div>
+        )}
+        <MessageList
+          initialKey={userIdSelecionado}
+          ref={messageListRef}
+          messages={displayedMessages}
+          onImageClick={url => setModalImage(url)}
+          onPdfClick={url => setPdfModal(url)}
+          onReply={msg => setReplyTo(msg)}
         />
-      </main>
-      <aside className="details-panel">
-        <DetailsPanel
-          userIdSelecionado={selectedUserId}
-          conversaSelecionada={conversaSelecionada}
+      </div>
+
+      <div className="chat-input">
+        <SendMessageForm
+          userIdSelecionado={userIdSelecionado}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
         />
-      </aside>
+      </div>
+
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+      {pdfModal && <PdfModal url={pdfModal} onClose={() => setPdfModal(null)} />}
     </div>
   );
 }
