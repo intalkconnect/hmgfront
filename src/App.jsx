@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
-import { connectSocket, getSocket, sendUserActivity } from './services/socket';
+import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
@@ -12,7 +12,6 @@ import './App.css';
 export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
-  const heartbeatIntervalRef = useRef(null);
 
   const {
     selectedUserId,
@@ -50,15 +49,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleFocus = () => {
-      setIsWindowActive(true);
-      sendUserActivity(true);
-    };
-    
-    const handleBlur = () => {
-      setIsWindowActive(false);
-      sendUserActivity(false);
-    };
+    const handleFocus = () => setIsWindowActive(true);
+    const handleBlur = () => setIsWindowActive(false);
     
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
@@ -70,47 +62,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let inactivityTimer;
-    const activityTimeout = 30000; // 30 segundos
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        sendUserActivity(false);
-      }, activityTimeout);
-    };
-
-    const handleActivity = () => {
-      sendUserActivity(true);
-      resetTimer();
-    };
-
-    // Eventos de atividade do usuário
-    const events = ['mousemove', 'keydown', 'scroll', 'click'];
-    events.forEach(event => window.addEventListener(event, handleActivity));
-
-    resetTimer(); // Inicia o timer inicial
-
-    return () => {
-      clearTimeout(inactivityTimer);
-      events.forEach(event => window.removeEventListener(event, handleActivity));
-    };
-  }, []);
-
-  useEffect(() => {
     const initialize = async () => {
       try {
         const { userEmail } = useConversationsStore.getState();
         connectSocket(userEmail);
         const socket = getSocket();
         socketRef.current = socket;
-
-        // Configura heartbeat
-        heartbeatIntervalRef.current = setInterval(() => {
-          if (socket.connected) {
-            socket.emit('heartbeat', userEmail);
-          }
-        }, 15000); // A cada 15 segundos
 
         socket.on('connect_error', () => {
           setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
@@ -119,7 +76,6 @@ export default function App() {
         socket.on('connect', () => {
           setSocketError(null);
           useConversationsStore.getState().setSocketStatus('online');
-          sendUserActivity(true);
         });
 
         socket.on('disconnect', () => {
@@ -189,9 +145,6 @@ export default function App() {
     initialize();
 
     return () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
