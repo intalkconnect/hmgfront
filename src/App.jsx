@@ -63,20 +63,23 @@ export default function App() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        const { userEmail } = useConversationsStore.getState();
-connectSocket(userEmail);
+        const { userEmail } = useConversationsStore.getState(); // <-- Aqui
+      connectSocket(userEmail);
+      const socket = getSocket();
+      socketRef.current = socket;
 
-        const socket = getSocket();
-        socketRef.current = socket;
+      socket.on('connect_error', () => {
+        setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
+      });
 
-        socket.on('connect_error', () => {
-          setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-        });
+      socket.on('connect', () => {
+        setSocketError(null);
+        useConversationsStore.getState().setSocketStatus('online');
+      });
 
-        socket.on('connect', () => {
-          setSocketError(null);
-          useConversationsStore.getState().setSocketStatus('online');
-        });
+      socket.on('disconnect', () => {
+        useConversationsStore.getState().setSocketStatus('offline');
+      });
 
         socket.on('new_message', async (message) => {
           const {
