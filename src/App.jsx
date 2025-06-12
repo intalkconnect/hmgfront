@@ -1,6 +1,7 @@
-// --- src/components/ChatWindow/ChatWindow.jsx ---
+// --- src/App.jsx ---
 import React, { useEffect, useRef, useState } from 'react';
-import { getSocket, connectSocket } from '../../services/socket';
+import { apiGet, apiPut } from './services/apiClient';
+import { connectSocket, disconnectSocket } from './services/socket';
 import { apiGet } from '../../services/apiClient';
 import useConversationsStore from '../../store/useConversationsStore';
 
