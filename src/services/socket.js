@@ -1,26 +1,23 @@
+// src/services/socket.js
 import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 let socket;
+
 let listenersAttached = false;
 
-export function getSocket(userEmail) {
+export function getSocket() {
   if (!socket) {
     if (!SOCKET_URL) {
       throw new Error('Socket URL is not defined.');
     }
 
-    if (!userEmail) {
-      throw new Error('userEmail must be provided to initialize the socket.');
-    }
-
     socket = io(SOCKET_URL, {
-      autoConnect: false,
+      autoConnect: false, // conecta manualmente para controlar
       transports: ['websocket'],
       reconnectionAttempts: 5,
-      query: { email: userEmail },
     });
   }
 
@@ -28,8 +25,9 @@ export function getSocket(userEmail) {
 }
 
 export function connectSocket(userId) {
-  const { userEmail, setSocketStatus } = useConversationsStore.getState();
-  const socket = getSocket(userEmail);
+  const socket = getSocket();
+
+  const { setSocketStatus } = useConversationsStore.getState();
 
   if (!listenersAttached) {
     socket.on('connect', () => {
@@ -63,7 +61,7 @@ export function connectSocket(userId) {
 }
 
 export function disconnectSocket(userId) {
-  const socket = getSocket(useConversationsStore.getState().userEmail);
+  const socket = getSocket();
   if (socket && socket.connected) {
     if (userId) {
       socket.emit('atendente_offline', userId);
@@ -73,7 +71,7 @@ export function disconnectSocket(userId) {
 }
 
 export function reconnectSocket(userId) {
-  const socket = getSocket(useConversationsStore.getState().userEmail);
+  const socket = getSocket();
   if (!socket.connected) {
     connectSocket(userId);
   }
