@@ -1,4 +1,3 @@
-// App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
@@ -26,6 +25,8 @@ export default function App() {
     conversations,
     notifiedConversations,
     markNotified,
+    userEmail,
+    userFilas,
   } = useConversationsStore();
 
   const [socketError, setSocketError] = useState(null);
@@ -61,98 +62,88 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        const { userEmail } = useConversationsStore.getState(); // <-- Aqui
-      connectSocket(userEmail);
-      const socket = getSocket();
-      socketRef.current = socket;
+    if (!userEmail) return; // Aguarda userEmail estar definido
 
-      socket.on('connect_error', () => {
-        setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
+    const socket = connectSocket(userEmail);
+    socketRef.current = socket;
+
+    socket.on('connect_error', () => {
+      setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
+    });
+
+    socket.on('connect', () => {
+      setSocketError(null);
+      useConversationsStore.getState().setSocketStatus('online');
+    });
+
+    socket.on('disconnect', () => {
+      useConversationsStore.getState().setSocketStatus('offline');
+    });
+
+    socket.on('new_message', async (message) => {
+      const {
+        selectedUserId,
+        mergeConversation,
+        getContactName,
+        notifiedConversations,
+        markNotified,
+        loadUnreadCounts,
+      } = useConversationsStore.getState();
+
+      const isFromMe = message.direction === 'outgoing';
+      const isActiveChat = message.user_id === selectedUserId;
+      const isWindowFocused = document.hasFocus();
+
+      mergeConversation(message.user_id, {
+        ticket_number: message.ticket_number || message.ticket,
+        timestamp: message.timestamp,
+        content: message.content,
+        channel: message.channel,
       });
 
-      socket.on('connect', () => {
-        setSocketError(null);
-        useConversationsStore.getState().setSocketStatus('online');
-      });
+      if (isFromMe) return;
 
-      socket.on('disconnect', () => {
-        useConversationsStore.getState().setSocketStatus('offline');
-      });
-
-        socket.on('new_message', async (message) => {
-          const {
-            selectedUserId,
-            mergeConversation,
-            getContactName,
-            notifiedConversations,
-            markNotified,
-            loadUnreadCounts,
-          } = useConversationsStore.getState();
-
-          const isFromMe = message.direction === 'outgoing';
-          const isActiveChat = message.user_id === selectedUserId;
-          const isWindowFocused = document.hasFocus();
-
-          mergeConversation(message.user_id, {
-            ticket_number: message.ticket_number || message.ticket,
-            timestamp: message.timestamp,
-            content: message.content,
-            channel: message.channel,
-          });
-
-          if (isFromMe) return;
-
-          // ✅ Marca como lida apenas se estiver com o chat aberto e aba ativa
-          if (isActiveChat && isWindowFocused) {
-            await apiPut(`/messages/read-status/${message.user_id}`, {
-              last_read: new Date().toISOString(),
-            });
-            return;
-          }
-
-          await loadUnreadCounts();
-
-          if (!notifiedConversations[message.user_id] && !isWindowFocused) {
-            const contactName = getContactName(message.user_id);
-            showNotification(message, contactName);
-            markNotified(message.user_id);
-          }
-
-          // ❌ Não tocar som se janela estiver inativa
-          if (isWindowFocused) {
-            try {
-              if (audioPlayer.current) {
-                audioPlayer.current.currentTime = 0;
-                await audioPlayer.current.play();
-              }
-            } catch (e) {
-              console.warn('Erro ao reproduzir som:', e);
-            }
-          }
+      if (isActiveChat && isWindowFocused) {
+        await apiPut(`/messages/read-status/${message.user_id}`, {
+          last_read: new Date().toISOString(),
         });
-
-        socket.on('disconnect', () => {
-  useConversationsStore.getState().setSocketStatus('offline');
-});
-
-        await Promise.all([
-          fetchConversations(),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
-        ]);
-      } catch (err) {
-        setSocketError('Erro ao inicializar a aplicação');
+        return;
       }
-    };
 
-    initialize();
-  }, [selectedUserId, isWindowActive]);
+      await loadUnreadCounts();
+
+      if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+        const contactName = getContactName(message.user_id);
+        showNotification(message, contactName);
+        markNotified(message.user_id);
+      }
+
+      if (isWindowFocused) {
+        try {
+          if (audioPlayer.current) {
+            audioPlayer.current.currentTime = 0;
+            await audioPlayer.current.play();
+          }
+        } catch (e) {
+          console.warn('Erro ao reproduzir som:', e);
+        }
+      }
+    });
+
+    Promise.all([
+      fetchConversations(),
+      loadLastReadTimes(),
+      loadUnreadCounts(),
+    ]).catch((err) => {
+      console.error('Erro durante a inicialização:', err);
+      setSocketError('Erro ao inicializar a aplicação');
+    });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmail]);
 
   const fetchConversations = async () => {
     try {
-      const { userEmail, userFilas } = useConversationsStore.getState();
       if (!userEmail || userFilas.length === 0) return;
 
       const params = new URLSearchParams({
@@ -214,8 +205,6 @@ export default function App() {
     : null;
 
   return (
-    <>
-
     <div className="app-container">
       <SocketDisconnectedModal />
 
@@ -231,6 +220,5 @@ export default function App() {
         <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </aside>
     </div>
-    </>
   );
 }
