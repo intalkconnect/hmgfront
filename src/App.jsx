@@ -1,8 +1,8 @@
 // src/components/ChatWindow/ChatWindow.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import { getSocket, connectSocket } from '../../services/socket';
-import { apiGet } from '../../services/apiClient';
-import useConversationsStore from '../../store/useConversationsStore';
+import { getSocket, connectSocket } from ./services/socket';
+import { apiGet } from './services/apiClient';
+import useConversationsStore from './store/useConversationsStore';
 
 import SendMessageForm from '../SendMessageForm/SendMessageForm';
 import MessageList from './MessageList';
