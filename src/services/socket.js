@@ -6,19 +6,21 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 let socket;
 let listenersAttached = false;
 
-export function getSocket() {
+export function getSocket(userEmail) {
   if (!socket) {
     if (!SOCKET_URL) {
       throw new Error('Socket URL is not defined.');
     }
 
-    const { userEmail } = useConversationsStore.getState();
+    if (!userEmail) {
+      throw new Error('userEmail must be provided to initialize the socket.');
+    }
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
       transports: ['websocket'],
       reconnectionAttempts: 5,
-      query: { email: userEmail }
+      query: { email: userEmail },
     });
   }
 
@@ -26,8 +28,8 @@ export function getSocket() {
 }
 
 export function connectSocket(userId) {
-  const socket = getSocket();
-  const { setSocketStatus } = useConversationsStore.getState();
+  const { userEmail, setSocketStatus } = useConversationsStore.getState();
+  const socket = getSocket(userEmail);
 
   if (!listenersAttached) {
     socket.on('connect', () => {
@@ -61,7 +63,7 @@ export function connectSocket(userId) {
 }
 
 export function disconnectSocket(userId) {
-  const socket = getSocket();
+  const socket = getSocket(useConversationsStore.getState().userEmail);
   if (socket && socket.connected) {
     if (userId) {
       socket.emit('atendente_offline', userId);
@@ -71,12 +73,10 @@ export function disconnectSocket(userId) {
 }
 
 export function reconnectSocket(userId) {
-  const socket = getSocket();
+  const socket = getSocket(useConversationsStore.getState().userEmail);
   if (!socket.connected) {
     connectSocket(userId);
   }
 }
 
-// Isso é necessário para não quebrar os imports existentes:
-// import { socket, connectSocket } from '../../services/socket';
 export { socket };
