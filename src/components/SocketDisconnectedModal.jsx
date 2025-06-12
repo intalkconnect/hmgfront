@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import './SocketDisconnectedModal.css';
 import { getSocket } from '../services/socket';
+import { apiPut } from '../services/apiClient';
 import useConversationsStore from '../store/useConversationsStore';
 
 export default function SocketDisconnectedModal() {
@@ -8,36 +9,52 @@ export default function SocketDisconnectedModal() {
   const setSocketStatus = useConversationsStore((s) => s.setSocketStatus);
   const userEmail = useConversationsStore((s) => s.userEmail);
 
+  const updateStatus = async (email, status) => {
+    try {
+      await apiPut(`/atendentes/status/${email}`, { status });
+      console.log(`[status] ${email} → ${status}`);
+    } catch (err) {
+      console.error('Erro ao atualizar status do atendente:', err);
+    }
+  };
+
   useEffect(() => {
+    if (!userEmail) return;
+
     const socket = getSocket();
 
-    const handleConnect = () => setSocketStatus('online');
-    const handleDisconnect = () => setSocketStatus('offline');
+    const handleConnect = () => {
+      setSocketStatus('online');
+      updateStatus(userEmail, 'online');
+    };
+
+    const handleDisconnect = () => {
+      setSocketStatus('offline');
+      updateStatus(userEmail, 'offline');
+    };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
 
-    // Check initial state
-  // Aguarda 3 segundos antes de marcar offline no load
-  const timeout = setTimeout(() => {
-    if (!socket.connected) {
-      setSocketStatus('offline');
-    }
-  }, 5000);
+    const timeout = setTimeout(() => {
+      if (!socket.connected) {
+        setSocketStatus('offline');
+        updateStatus(userEmail, 'offline');
+      }
+    }, 3000);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
+      clearTimeout(timeout);
     };
-  }, [setSocketStatus]);
+  }, [setSocketStatus, userEmail]);
 
   const reconectar = () => {
     const socket = getSocket();
     if (!socket.connected) {
       socket.connect();
-      if (userEmail) {
-        socket.emit('join_room', userEmail);
-      }
+      socket.emit('join_room', userEmail);
     }
   };
 
