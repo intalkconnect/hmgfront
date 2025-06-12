@@ -1,4 +1,3 @@
-// src/services/socket.js
 import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
@@ -7,7 +6,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 let socket;
 let listenersAttached = false;
 
-export function getSocket(userEmail) {
+export function getSocket() {
   if (!socket) {
     if (!SOCKET_URL) {
       throw new Error('Socket URL is not defined.');
@@ -26,7 +25,6 @@ export function getSocket(userEmail) {
 
 export function connectSocket(userId) {
   const socket = getSocket();
-
   const { setSocketStatus } = useConversationsStore.getState();
 
   if (!listenersAttached) {
@@ -76,3 +74,7 @@ export function reconnectSocket(userId) {
     connectSocket(userId);
   }
 }
+
+// Isso é necessário para não quebrar os imports existentes:
+// import { socket, connectSocket } from '../../services/socket';
+export { socket };
