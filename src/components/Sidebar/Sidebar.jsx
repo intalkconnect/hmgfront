@@ -172,16 +172,16 @@ export default function Sidebar() {
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-
+                  {showUnread && (
+                    <span className="unread-badge">{unreadCount}</span>
+                  )}
                 </div>
 
 
-<div className="chat-meta-row">
-  <span className="chat-ticket">#{conv.ticket_number || '000000'}</span>
-  <span className="chat-queue-badge">{conv.fila || 'Orçamento'}</span>
-  {showUnread && <span className="unread-badge-inline">{unreadCount}</span>}
+<div className="chat-meta-badges">
+  <span className="badge ticket">#{conv.ticket_number || '000000'}</span>
+  <span className="badge fila">{conv.fila || 'Orçamento'}</span>
 </div>
-
 
 <div className="chat-snippet">{getSnippet(conv.content)}</div>
               </div>
