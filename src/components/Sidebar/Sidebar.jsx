@@ -172,9 +172,7 @@ export default function Sidebar() {
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-                  {showUnread && (
-                    <span className="unread-badge">{unreadCount}</span>
-                  )}
+
                 </div>
 
 
@@ -194,6 +192,9 @@ export default function Sidebar() {
                     })
                   : '--:--'}
               </div>
+                                {showUnread && (
+                    <span className="unread-badge">{unreadCount}</span>
+                  )}
             </li>
           );
         })}
