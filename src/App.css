@@ -13,7 +13,7 @@
   --font-sans: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --font-size-base: 16px;
 
-  --sidebar-width: 260px;
+  --sidebar-width: 300px;
   --details-width: 300px;
   --border-radius: 10px;
   --gap: 1rem;
@@ -126,6 +126,27 @@ html, body, #root {
   position: sticky;
   bottom: 0;
 }
+
+.chat-list-item {
+  background: #fff;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--box-shadow-light);
+  transition: all 0.2s ease;
+}
+
+.chat-list-item:hover {
+  background-color: var(--color-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--box-shadow-medium);
+}
+
 
 /* ======================= DETAILS ========================= */
 .details-panel {
