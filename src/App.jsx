@@ -4,7 +4,7 @@ import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
-import useConversationsStore from '../store/useConversationsStore';
+import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import SocketDisconnectedModal from './components/SocketDisconnectedModal';
 import './App.css';
