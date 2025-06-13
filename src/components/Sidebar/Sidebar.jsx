@@ -193,7 +193,7 @@ export default function Sidebar() {
                   : '--:--'}
               </div>
                                 {showUnread && (
-                    <span className="unread-badge">{unreadCount}</span>
+                    <span className="unread-badge-center">{unreadCount}</span>
                   )}
             </li>
           );
