@@ -67,10 +67,13 @@ body {
   gap: 10px;
   align-items: center;
   transition: background 0.2s ease;
+   padding-top: 2px; /* dá espaço para ele “subir” */
 }
 
 .chat-list-item:hover {
   background: var(--color-secondary);
+    z-index: 2;           /* sobrepõe item acima se necessário */
+  position: relative;   /* importante para z-index funcionar */
 }
 
 /* CHAT CONTAINER */
