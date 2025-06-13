@@ -187,15 +187,14 @@
 }
 
 .chat-snippet {
+  margin-top: 6px; /* move para baixo */
   font-size: 0.85rem;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
 }
+
 
 .chat-snippet svg {
   flex-shrink: 0;
