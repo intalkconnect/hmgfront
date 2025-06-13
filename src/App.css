@@ -71,6 +71,22 @@ body {
 /* ===================================================================
   Layout principal (Grid System)
 =================================================================== */
+
+.app-layout {
+  gap: 1rem; /* espaçamento entre os blocos */
+  padding: 1rem; /* padding geral da tela */
+  background-color: var(--color-background);
+}
+
+.section-wrapper {
+  height: calc(100vh - 2rem); /* ajusta altura para padding */
+  background: var(--color-surface);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow-medium);
+  overflow: hidden;
+  display: flex;
+}
+
 .app-container {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr var(--details-width);
