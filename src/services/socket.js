@@ -1,99 +1,52 @@
+// src/services/socket.js
 import { io } from 'socket.io-client';
-import useConversationsStore from '../store/useConversationsStore';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'; // fallback URL
 
-let socket = null;
-let listenersAttached = false;
-let heartbeatInterval = null;
-let currentEmail = null;
+// Create socket instance only if not already created
+let socket;
 
 export function getSocket() {
-  const { userEmail } = useConversationsStore.getState();
-
-  // Recria socket se ainda não existir ou email tiver mudado
-  if (!socket || userEmail !== currentEmail) {
-    if (!SOCKET_URL || !userEmail) {
-      throw new Error('Socket URL or userEmail is not defined.');
+  if (!socket) {
+    if (!SOCKET_URL) {
+      throw new Error('Socket URL is not defined. Please set VITE_SOCKET_URL in your environment variables.');
     }
-
-    currentEmail = userEmail;
-
+    
     socket = io(SOCKET_URL, {
-      autoConnect: false,
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000,
-      query: { email: userEmail },
-      auth: { email: userEmail }
+      autoConnect: true,
+      reconnectionAttempts: 3,
+      transports: ['websocket']
     });
 
-    listenersAttached = false; // força reanexar listeners
+    // Add basic error logging
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+    });
+  }
+  return socket;
+}
+
+export function connectSocket(userId) {
+  const socket = getSocket();
+  
+  if (!socket.connected) {
+    console.log('[socket] Connecting to server at', SOCKET_URL);
+    socket.connect();
+  }
+
+  // Only add these listeners once
+  if (!socket.hasListeners) {
+    socket.on('connect', () => {
+      console.log('[socket] Connected with ID:', socket.id);
+      if (userId) {
+        socket.emit('join_room', userId);
+      }
+    });
+
+    socket.hasListeners = true; // Mark that we've added the listeners
   }
 
   return socket;
 }
 
-export function connectSocket(userEmail) {
-  const socket = getSocket();
-  const { setSocketStatus } = useConversationsStore.getState();
-
-  if (!listenersAttached) {
-    socket.on('connect', () => {
-      console.log('[socket] ✅ Connected:', socket.id);
-
-      if (userEmail) {
-        socket.emit('join_room', userEmail);
-        socket.emit('atendente_online', userEmail);
-      }
-
-      setSocketStatus('online');
-
-      heartbeatInterval = setInterval(() => {
-        if (socket.connected) {
-          socket.emit('heartbeat');
-        }
-      }, 25000);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.warn('[socket] ❌ Disconnected:', reason);
-      setSocketStatus('offline');
-      clearInterval(heartbeatInterval);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('[socket] Connection error:', err);
-      setSocketStatus('offline');
-    });
-
-    listenersAttached = true;
-  }
-
-  if (!socket.connected) {
-    console.log('[socket] Connecting to', SOCKET_URL);
-    socket.connect();
-  }
-
-  return () => {
-    clearInterval(heartbeatInterval);
-  };
-}
-
-export function disconnectSocket(userEmail) {
-  const socket = getSocket();
-  if (socket && socket.connected) {
-    if (userEmail) {
-      socket.emit('atendente_offline', userEmail);
-    }
-    clearInterval(heartbeatInterval);
-    socket.disconnect();
-  }
-}
-
-export function reconnectSocket(userEmail) {
-  const socket = getSocket();
-  if (!socket.connected) {
-    connectSocket(userEmail);
-  }
-}
+export { socket };
