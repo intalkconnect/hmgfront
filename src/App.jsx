@@ -77,8 +77,8 @@ export default function App() {
   // Seta info do usuário apenas uma vez
   useEffect(() => {
   setUserInfo({
-    email: 'dan_rodrigo@hotmail.com',
-    filas: ['Comercial', 'Suporte'],
+    userEmail: 'dan_rodrigo@hotmail.com',
+    userFilas: ['Comercial', 'Suporte'],
   });
   }, [setUserInfo]);
 
