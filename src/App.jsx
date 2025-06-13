@@ -202,7 +202,7 @@ export default function App() {
     ? conversations[selectedUserId] || null
     : null;
 
-return (
+
 return (
   <div className="app-layout">
     <div className="section-wrapper">
@@ -229,9 +229,6 @@ return (
       </div>
     </div>
   </div>
-);
-
-
 );
 
 }
