@@ -286,22 +286,21 @@
 /* ===================================================================
   Componente: Unread Badge
 =================================================================== */
-.unread-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.375rem;
+.unread-badge-center {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
   background-color: var(--unread-badge);
   color: white;
-  border-radius: 0.625rem;
-  font-size: 0.7rem;
-  font-weight: bold;
-  margin-left: 0.5rem;
-  line-height: 1;
-  animation: pulse 1.5s infinite;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px white;
+  z-index: 1;
 }
+
 
 .unread-dot {
   position: absolute;
