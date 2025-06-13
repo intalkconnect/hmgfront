@@ -13,8 +13,8 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-  const userEmail = useConversationsStore((s) => s.userEmail);
-  const userFilas = useConversationsStore((s) => s.userFilas);
+  const userEmail = useConversationsStore((s) => s.email);
+  const userFilas = useConversationsStore((s) => s.filas);
   const {
     selectedUserId,
     setSelectedUserId,
@@ -77,8 +77,8 @@ export default function App() {
   // Seta info do usuário apenas uma vez
   useEffect(() => {
     setUserInfo({
-      userEmail: 'dan_rodrigo@hotmail.com',
-      userFilas: ['Comercial', 'Suporte'],
+      email: 'dan_rodrigo@hotmail.com',
+      filas: ['Comercial', 'Suporte'],
     });
   }, [setUserInfo]);
 
