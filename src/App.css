@@ -128,30 +128,41 @@ html, body, #root {
 }
 
 .chat-list {
-  padding: 8px 12px; /* ou como preferir */
+  padding: 12px 8px; /* leve respiro nas laterais */
+  list-style: none;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .chat-list-item {
-  background: #fff;
+  width: 100%;
+  background: var(--item-bg);
   padding: 12px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  margin: 8px 0; /* Espaço acima e abaixo */
+  border: 1px solid var(--item-border);
+  border-radius: 0.625rem;
+  margin-bottom: 10px;
   cursor: pointer;
   display: flex;
   gap: 12px;
   align-items: center;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-light);
-  position: relative;
 }
 
 .chat-list-item:hover {
   background-color: var(--item-bg-hover);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-medium);
   z-index: 1;
 }
+
+.chat-list-item.active {
+  background: var(--item-bg-active);
+  border-color: var(--item-border-active);
+  box-shadow: var(--highlight);
+}
+
 
 .chat-list-item:first-child {
   margin-top: 12px;
