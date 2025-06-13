@@ -4,6 +4,14 @@ import { File, Mic } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
 
+const stringToColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `hsl(${hash % 360}, 70%, 50%)`;
+};
+
 export default function Sidebar() {
   const {
     conversations,
@@ -19,19 +27,18 @@ export default function Sidebar() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-const fetchSettingsAndFila = async () => {
-  const settings = await apiGet('/settings');
-  const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
-  if (distrib?.value) setDistribuicaoTickets(distrib.value);
+    const fetchSettingsAndFila = async () => {
+      const settings = await apiGet('/settings');
+      const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
+      if (distrib?.value) setDistribuicaoTickets(distrib.value);
 
-  // ✅ Armazena no Zustand
-  useConversationsStore.getState().setSettings(settings);
+      useConversationsStore.getState().setSettings(settings);
 
-  const filaAtivos = Object.values(conversations).filter(
-    (conv) => !conv.atendido
-  );
-  setFilaCount(filaAtivos.length);
-};
+      const filaAtivos = Object.values(conversations).filter(
+        (conv) => !conv.atendido
+      );
+      setFilaCount(filaAtivos.length);
+    };
 
     fetchSettingsAndFila();
   }, [conversations]);
@@ -143,18 +150,24 @@ const fetchSettingsAndFila = async () => {
               key={fullId}
               className={`chat-list-item ${isSelected ? 'active' : ''}`}
               onClick={() => setSelectedUserId(fullId)}
+              role="button"
+              tabIndex={0}
             >
-<div className="chat-avatar-initial">
-  <div className="avatar-circle">
-    {conv.name?.charAt(0).toUpperCase() || 'U'}
-    <img
-      src="/icons/whatsapp.png"
-      alt="whatsapp"
-      className="whatsapp-icon-overlay"
-    />
-  </div>
-</div>
-
+              <div className="chat-avatar-initial">
+                <div
+                  className="avatar-circle"
+                  style={{ backgroundColor: stringToColor(conv.name || 'U') }}
+                >
+                  {conv.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                {canalWhatsapp && (
+                  <img
+                    src="/icons/whatsapp.png"
+                    alt="whatsapp"
+                    className="whatsapp-icon-overlay"
+                  />
+                )}
+              </div>
 
               <div className="chat-details">
                 <div className="chat-title">
