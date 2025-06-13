@@ -26,10 +26,7 @@ export default function App() {
     markNotified,
   } = useConversationsStore();
 
-  const userEmail = useConversationsStore((s) => s.userEmail);
-  const userFilas = useConversationsStore((s) => s.userFilas);
-
-  // Handler de nova mensagem
+  // Handler isolado para facilitar cleanup
   const handleNewMessage = async (message) => {
     const {
       selectedUserId: activeId,
@@ -51,6 +48,7 @@ export default function App() {
     });
 
     if (isFromMe) return;
+
     if (isActiveChat) {
       await apiPut(`/messages/read-status/${message.user_id}`, {
         last_read: new Date().toISOString(),
@@ -59,6 +57,7 @@ export default function App() {
     }
 
     await loadUnreadCounts();
+
     if (!notifiedConversations[message.user_id]) {
       const contactName = getContactName(message.user_id);
       showNotification(message, contactName);
@@ -75,15 +74,15 @@ export default function App() {
     }
   };
 
-  // Define usuário e filas
+  // Seta info do usuário apenas uma vez
   useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
+  setUserInfo({
+    filas: ['Comercial', 'Suporte'],
+    email: 'dan_rodrigo@hotmail.com',
+  });
   }, [setUserInfo]);
 
-  // Inicializa player de som
+  // Inicializa player de som apenas uma vez
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -95,13 +94,17 @@ export default function App() {
     };
   }, []);
 
-  // Conecta socket após email
+  // Conecta socket apenas na montagem; limpa na desmontagem
   useEffect(() => {
-    if (!userEmail) return;
-    const cleanup = connectSocket();
+    const { userEmail } = useConversationsStore.getState();
+    const cleanupSocket = connectSocket(userEmail);
     const socket = getSocket();
     socketRef.current = socket;
+
+    // Listener de mensagens
     socket.on('new_message', handleNewMessage);
+
+    // Carrega dados iniciais
     (async () => {
       await Promise.all([
         fetchConversations(),
@@ -109,34 +112,27 @@ export default function App() {
         loadUnreadCounts(),
       ]);
     })();
+
     return () => {
       socket.off('new_message', handleNewMessage);
-      cleanup();
+      cleanupSocket();
     };
-  }, [userEmail]);
-
-  // Notifica offline ao fechar a aba
-  useEffect(() => {
-    if (!userEmail) return;
-    const notifyOffline = () => {
-      navigator.sendBeacon(
-        `/api/v1/atendentes/status/${encodeURIComponent(userEmail)}`,
-        JSON.stringify({ status: 'offline' })
-      );
-    };
-    window.addEventListener('beforeunload', notifyOffline);
-    return () => window.removeEventListener('beforeunload', notifyOffline);
-  }, [userEmail]);
+  }, []);
 
   const fetchConversations = async () => {
-    if (!userEmail || !userFilas?.length) return;
     try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
+
       const params = new URLSearchParams({
         assigned_to: userEmail,
         filas: userFilas.join(','),
       });
+
       const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => mergeConversation(conv.user_id, conv));
+      data.forEach((conv) => {
+        mergeConversation(conv.user_id, conv);
+      });
     } catch (err) {
       console.error('Error fetching /chats:', err);
     }
@@ -144,34 +140,46 @@ export default function App() {
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
-    const preview = (() => {
-      try {
-        const j = JSON.parse(message.content);
-        return j.text || j.caption || '[File]';
-      } catch {
-        return message.content.length > 50
-          ? message.content.slice(0, 47) + '...'
-          : message.content;
-      }
-    })();
+
     if (Notification.permission === 'granted') {
-      const n = new Notification(
-        `New message from ${contactName}`,
-        { body: preview, icon: '/icons/whatsapp.png' }
+      const notification = new Notification(
+        `New message from ${contactName || message.user_id}`,
+        {
+          body: getMessagePreview(message.content),
+          icon: '/icons/whatsapp.png',
+        }
       );
-      n.onclick = () => {
+
+      notification.onclick = () => {
         window.focus();
         setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((perm) => {
-        if (perm === 'granted') showNotification(message, contactName);
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          const name = getContactName(message.user_id);
+          showNotification(message, name);
+        }
       });
     }
   };
 
+  const getMessagePreview = (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.text) return parsed.text;
+      if (parsed.caption) return parsed.caption;
+      if (parsed.url) return '[File]';
+      return '[Message]';
+    } catch {
+      return content?.length > 50
+        ? content.substring(0, 47) + '...'
+        : content;
+    }
+  };
+
   const conversaSelecionada = selectedUserId
-    ? conversations[selectedUserId]
+    ? conversations[selectedUserId] || null
     : null;
 
   return (
