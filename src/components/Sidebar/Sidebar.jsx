@@ -144,15 +144,17 @@ const fetchSettingsAndFila = async () => {
               className={`chat-list-item ${isSelected ? 'active' : ''}`}
               onClick={() => setSelectedUserId(fullId)}
             >
-              <div className="chat-avatar">
-                {canalWhatsapp && (
-                  <img
-                    src="/icons/whatsapp.png"
-                    alt="whatsapp"
-                    className="avatar-img"
-                  />
-                )}
-              </div>
+<div className="chat-avatar-initial">
+  <div className="avatar-circle">
+    {conv.name?.charAt(0).toUpperCase() || 'U'}
+    <img
+      src="/icons/whatsapp.png"
+      alt="whatsapp"
+      className="whatsapp-icon-overlay"
+    />
+  </div>
+</div>
+
 
               <div className="chat-details">
                 <div className="chat-title">
