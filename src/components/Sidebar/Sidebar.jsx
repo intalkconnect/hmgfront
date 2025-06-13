@@ -188,7 +188,7 @@ export default function Sidebar() {
                   </span>
                 </div>
               </div>
-
+<div className="chat-snippet">{getSnippet(conv.content)}</div>
               <div className="chat-time">
                 {conv.timestamp
                   ? new Date(conv.timestamp).toLocaleTimeString([], {
@@ -198,7 +198,7 @@ export default function Sidebar() {
                   : '--:--'}
               </div>
 
-              <div className="chat-snippet">{getSnippet(conv.content)}</div>
+              
             </li>
           );
         })}
