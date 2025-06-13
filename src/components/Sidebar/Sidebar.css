@@ -141,6 +141,8 @@
   background: var(--item-bg-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-medium);
+  z-index: 2;           /* sobrepõe item acima se necessário */
+  position: relative;   /* importante para z-index funcionar */
 }
 
 .chat-list-item.active {
