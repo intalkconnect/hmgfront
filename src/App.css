@@ -127,25 +127,36 @@ html, body, #root {
   bottom: 0;
 }
 
+.chat-list {
+  padding: 8px 12px; /* ou como preferir */
+}
+
 .chat-list-item {
   background: #fff;
   padding: 12px 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  margin-bottom: 8px;
+  margin: 8px 0; /* Espaço acima e abaixo */
   cursor: pointer;
   display: flex;
-  align-items: center;
   gap: 12px;
-  box-shadow: var(--box-shadow-light);
+  align-items: center;
   transition: all 0.2s ease;
+  box-shadow: var(--shadow-light);
+  position: relative;
 }
 
 .chat-list-item:hover {
-  background-color: var(--color-secondary);
-  transform: translateY(-1px);
-  box-shadow: var(--box-shadow-medium);
+  background-color: var(--item-bg-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+  z-index: 1;
 }
+
+.chat-list-item:first-child {
+  margin-top: 12px;
+}
+
 
 
 /* ======================= DETAILS ========================= */
