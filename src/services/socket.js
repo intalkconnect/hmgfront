@@ -9,19 +9,20 @@ let heartbeatInterval;
 export function getSocket() {
   if (!socket) {
     // Debug: imprime todo o estado da store
-    console.log('[socket] Store state:', useConversationsStore.getState());
+    const state = useConversationsStore.getState();
+    console.log('[socket] Store state:', state);
 
-    // Pega o email correto do state (userEmail)
-    const { userEmail } = useConversationsStore.getState();
-    if (!userEmail) {
+    // Pega email, suportando tanto 'userEmail' quanto 'email'
+    const email = state.userEmail || state.email;
+    if (!email) {
       throw new Error('User email not set in store.');
     }
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
       transports: ['websocket'],
-      query: { email: userEmail },
-      auth:  { email: userEmail },
+      query: { email },
+      auth:  { email },
     });
   }
   return socket;
