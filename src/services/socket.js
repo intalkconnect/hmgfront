@@ -3,17 +3,21 @@ import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
-let socket;
+let socket = null;
 let listenersAttached = false;
-let heartbeatInterval;
+let heartbeatInterval = null;
+let currentEmail = null;
 
 export function getSocket() {
-  if (!socket) {
-    if (!SOCKET_URL) {
-      throw new Error('Socket URL is not defined.');
+  const { userEmail } = useConversationsStore.getState();
+
+  // Recria socket se ainda não existir ou email tiver mudado
+  if (!socket || userEmail !== currentEmail) {
+    if (!SOCKET_URL || !userEmail) {
+      throw new Error('Socket URL or userEmail is not defined.');
     }
 
-    const { userEmail } = useConversationsStore.getState();
+    currentEmail = userEmail;
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
@@ -23,25 +27,28 @@ export function getSocket() {
       query: { email: userEmail },
       auth: { email: userEmail }
     });
+
+    listenersAttached = false; // força reanexar listeners
   }
 
   return socket;
 }
 
-export function connectSocket(userId) {
+export function connectSocket(userEmail) {
   const socket = getSocket();
   const { setSocketStatus } = useConversationsStore.getState();
 
   if (!listenersAttached) {
     socket.on('connect', () => {
       console.log('[socket] ✅ Connected:', socket.id);
-      if (userId) {
-        socket.emit('join_room', userId);
-        socket.emit('atendente_online', userId);
+
+      if (userEmail) {
+        socket.emit('join_room', userEmail);
+        socket.emit('atendente_online', userEmail);
       }
+
       setSocketStatus('online');
-      
-      // Start heartbeat
+
       heartbeatInterval = setInterval(() => {
         if (socket.connected) {
           socket.emit('heartbeat');
@@ -73,22 +80,20 @@ export function connectSocket(userId) {
   };
 }
 
-export function disconnectSocket(userId) {
+export function disconnectSocket(userEmail) {
   const socket = getSocket();
   if (socket && socket.connected) {
-    if (userId) {
-      socket.emit('atendente_offline', userId);
+    if (userEmail) {
+      socket.emit('atendente_offline', userEmail);
     }
     clearInterval(heartbeatInterval);
     socket.disconnect();
   }
 }
 
-export function reconnectSocket(userId) {
+export function reconnectSocket(userEmail) {
   const socket = getSocket();
   if (!socket.connected) {
-    connectSocket(userId);
+    connectSocket(userEmail);
   }
 }
-
-export { socket };
