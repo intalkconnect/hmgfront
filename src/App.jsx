@@ -76,10 +76,10 @@ export default function App() {
 
   // Seta info do usuário apenas uma vez
   useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
+  setUserInfo({
+    userEmail: 'dan_rodrigo@hotmail.com',
+    userFilas: ['Comercial', 'Suporte'],
+  });
   }, [setUserInfo]);
 
   // Inicializa player de som apenas uma vez
