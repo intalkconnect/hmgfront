@@ -177,7 +177,7 @@ export default function Sidebar() {
                   )}
                 </div>
 
-                <div className="chat-snippet">{getSnippet(conv.content)}</div>
+                
 
                 <div className="chat-meta">
                   <span className="chat-ticket">
@@ -197,6 +197,8 @@ export default function Sidebar() {
                     })
                   : '--:--'}
               </div>
+
+              <div className="chat-snippet">{getSnippet(conv.content)}</div>
             </li>
           );
         })}
