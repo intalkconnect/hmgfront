@@ -212,6 +212,7 @@
 }
 
 .chat-queue-badge {
+  margin-top: 6px;
   background-color: var(--whatsapp-green);
   color: white;
   padding: 2px 8px;
