@@ -26,7 +26,9 @@ export default function App() {
     markNotified,
   } = useConversationsStore();
 
-  // Handler isolado para facilitar cleanup
+  const userEmail = useConversationsStore((s) => s.userEmail); // <--- necessário aqui
+
+  // Handler de nova mensagem
   const handleNewMessage = async (message) => {
     const {
       selectedUserId: activeId,
@@ -76,13 +78,13 @@ export default function App() {
 
   // Seta info do usuário apenas uma vez
   useEffect(() => {
-  setUserInfo({
-    filas: ['Comercial', 'Suporte'],
-    email: 'dan_rodrigo@hotmail.com',
-  });
+    setUserInfo({
+      filas: ['Comercial', 'Suporte'],
+      email: 'dan_rodrigo@hotmail.com',
+    });
   }, [setUserInfo]);
 
-  // Inicializa player de som apenas uma vez
+  // Inicializa player de som
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -94,17 +96,16 @@ export default function App() {
     };
   }, []);
 
-  // Conecta socket apenas na montagem; limpa na desmontagem
+  // Conecta socket APENAS quando userEmail estiver disponível
   useEffect(() => {
-    const { userEmail } = useConversationsStore.getState();
+    if (!userEmail) return;
+
     const cleanupSocket = connectSocket(userEmail);
     const socket = getSocket();
     socketRef.current = socket;
 
-    // Listener de mensagens
     socket.on('new_message', handleNewMessage);
 
-    // Carrega dados iniciais
     (async () => {
       await Promise.all([
         fetchConversations(),
@@ -117,7 +118,7 @@ export default function App() {
       socket.off('new_message', handleNewMessage);
       cleanupSocket();
     };
-  }, []);
+  }, [userEmail]); // <--- agora reativo ao email
 
   const fetchConversations = async () => {
     try {
