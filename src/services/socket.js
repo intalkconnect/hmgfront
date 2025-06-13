@@ -2,96 +2,61 @@ import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-
 let socket;
 let listenersAttached = false;
 let heartbeatInterval;
 
 export function getSocket() {
   if (!socket) {
-    if (!SOCKET_URL) {
-      throw new Error('Socket URL is not defined.');
+    // Debug: imprime todo o estado da store
+    console.log('[socket] Store state:', useConversationsStore.getState());
+
+    // Pega o email correto do state (userEmail)
+    const { userEmail } = useConversationsStore.getState();
+    if (!userEmail) {
+      throw new Error('User email not set in store.');
     }
-
-   const { userEmail } = useConversationsStore.getState();
-
-    console.log('[socket] Store state:', userEmail);
-
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
       transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000,
       query: { email: userEmail },
-      auth: { email: userEmail }
+      auth:  { email: userEmail },
     });
   }
-
   return socket;
 }
 
-export function connectSocket(userId) {
+export function connectSocket() {
   const socket = getSocket();
-  const { setSocketStatus } = useConversationsStore.getState();
-
   if (!listenersAttached) {
     socket.on('connect', () => {
       console.log('[socket] ✅ Connected:', socket.id);
-      if (userId) {
-        socket.emit('join_room', userId);
-        socket.emit('atendente_online', userId);
-      }
-      setSocketStatus('online');
-      
-      // Start heartbeat
       heartbeatInterval = setInterval(() => {
-        if (socket.connected) {
-          socket.emit('heartbeat');
-        }
+        if (socket.connected) socket.emit('heartbeat');
       }, 25000);
     });
 
     socket.on('disconnect', (reason) => {
       console.warn('[socket] ❌ Disconnected:', reason);
-      setSocketStatus('offline');
       clearInterval(heartbeatInterval);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('[socket] Connection error:', err);
-      setSocketStatus('offline');
     });
 
     listenersAttached = true;
   }
-
   if (!socket.connected) {
     console.log('[socket] Connecting to', SOCKET_URL);
     socket.connect();
   }
-
   return () => {
     clearInterval(heartbeatInterval);
   };
 }
 
-export function disconnectSocket(userId) {
+export function disconnectSocket() {
   const socket = getSocket();
-  if (socket && socket.connected) {
-    if (userId) {
-      socket.emit('atendente_offline', userId);
-    }
-    clearInterval(heartbeatInterval);
-    socket.disconnect();
-  }
-}
-
-export function reconnectSocket(userId) {
-  const socket = getSocket();
-  if (!socket.connected) {
-    connectSocket(userId);
-  }
+  clearInterval(heartbeatInterval);
+  if (socket.connected) socket.disconnect();
 }
 
 export { socket };
