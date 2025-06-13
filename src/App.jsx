@@ -203,33 +203,34 @@ export default function App() {
     : null;
 
 return (
-<div className="app-container">
-  {socketError && <div className="socket-error-banner">{socketError}</div>}
+return (
+  <div className="app-layout">
+    <div className="section-wrapper">
+      {socketError && <div className="socket-error-banner">{socketError}</div>}
 
-  <div className="section-wrapper">
-    <aside className="sidebar">
-      <Sidebar />
-    </aside>
-  </div>
+      <div className="app-container">
+        <aside className="sidebar">
+          <Sidebar />
+        </aside>
 
-  <div className="section-wrapper">
-    <main className="chat-container">
-      <ChatWindow
-        userIdSelecionado={selectedUserId}
-        conversaSelecionada={conversaSelecionada}
-      />
-    </main>
-  </div>
+        <main className="chat-container">
+          <ChatWindow
+            userIdSelecionado={selectedUserId}
+            conversaSelecionada={conversaSelecionada}
+          />
+        </main>
 
-  <div className="section-wrapper">
-    <aside className="details-panel">
-      <DetailsPanel
-        userIdSelecionado={selectedUserId}
-        conversaSelecionada={conversaSelecionada}
-      />
-    </aside>
+        <aside className="details-panel">
+          <DetailsPanel
+            userIdSelecionado={selectedUserId}
+            conversaSelecionada={conversaSelecionada}
+          />
+        </aside>
+      </div>
+    </div>
   </div>
-</div>
+);
+
 
 );
 
