@@ -4,7 +4,7 @@ import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
-import useConversationsStore from './store/useConversationsStore';
+import useConversationsStore from '../store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import SocketDisconnectedModal from './components/SocketDisconnectedModal';
 import './App.css';
@@ -26,7 +26,7 @@ export default function App() {
     markNotified,
   } = useConversationsStore();
 
-  // Define handler outside to allow proper cleanup
+  // Handler isolado para facilitar cleanup
   const handleNewMessage = async (message) => {
     const {
       selectedUserId: activeId,
@@ -74,7 +74,7 @@ export default function App() {
     }
   };
 
-  // Set user info once
+  // Seta info do usuário apenas uma vez
   useEffect(() => {
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
@@ -82,7 +82,7 @@ export default function App() {
     });
   }, [setUserInfo]);
 
-  // Initialize audio player once
+  // Inicializa player de som apenas uma vez
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -94,17 +94,17 @@ export default function App() {
     };
   }, []);
 
-  // Connect socket once on mount, cleanup on unmount
+  // Conecta socket apenas na montagem; limpa na desmontagem
   useEffect(() => {
     const { userEmail } = useConversationsStore.getState();
     const cleanupSocket = connectSocket(userEmail);
     const socket = getSocket();
     socketRef.current = socket;
 
-    // Listen for incoming messages
+    // Listener de mensagens
     socket.on('new_message', handleNewMessage);
 
-    // Fetch initial data
+    // Carrega dados iniciais
     (async () => {
       await Promise.all([
         fetchConversations(),
@@ -172,7 +172,9 @@ export default function App() {
       if (parsed.url) return '[File]';
       return '[Message]';
     } catch {
-      return content?.length > 50 ? content.substring(0, 47) + '...' : content;
+      return content?.length > 50
+        ? content.substring(0, 47) + '...'
+        : content;
     }
   };
 
