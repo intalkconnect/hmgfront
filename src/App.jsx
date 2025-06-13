@@ -78,7 +78,8 @@ export default function App() {
   useEffect(() => {
   setUserInfo({
     userEmail: 'dan_rodrigo@hotmail.com',
-    userFilas: ['Comercial', 'Suporte'],
+    filas: ['Comercial', 'Suporte'],
+    email: 'dan_rodrigo@hotmail.com',
   });
   }, [setUserInfo]);
 
