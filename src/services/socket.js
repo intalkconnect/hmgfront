@@ -1,48 +1,34 @@
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import useConversationsStore from '../store/useConversationsStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
-let socket;
-let listenersAttached = false;
-let heartbeatInterval;
+export default function useSocket(onMessageCallback) {
+  const socketRef = useRef(null);
+  const heartbeatRef = useRef(null);
+  const { userEmail, setSocketStatus } = useConversationsStore();
 
-export function getSocket() {
-  if (!socket) {
-    if (!SOCKET_URL) {
-      throw new Error('Socket URL is not defined.');
-    }
+  useEffect(() => {
+    if (!userEmail) return;
 
-    const { userEmail } = useConversationsStore.getState();
-
-    socket = io(SOCKET_URL, {
-      autoConnect: false,
+    // Criar nova instância do socket
+    const socket = io(SOCKET_URL, {
+      autoConnect: true,
       transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000,
       query: { email: userEmail },
       auth: { email: userEmail }
     });
-  }
 
-  return socket;
-}
+    socketRef.current = socket;
 
-export function connectSocket(userId) {
-  const socket = getSocket();
-  const { setSocketStatus } = useConversationsStore.getState();
-
-  if (!listenersAttached) {
+    // Eventos
     socket.on('connect', () => {
       console.log('[socket] ✅ Connected:', socket.id);
-      if (userId) {
-        socket.emit('join_room', userId);
-        socket.emit('atendente_online', userId);
-      }
       setSocketStatus('online');
-      
-      // Start heartbeat
-      heartbeatInterval = setInterval(() => {
+
+      // Heartbeat
+      heartbeatRef.current = setInterval(() => {
         if (socket.connected) {
           socket.emit('heartbeat');
         }
@@ -52,7 +38,7 @@ export function connectSocket(userId) {
     socket.on('disconnect', (reason) => {
       console.warn('[socket] ❌ Disconnected:', reason);
       setSocketStatus('offline');
-      clearInterval(heartbeatInterval);
+      clearInterval(heartbeatRef.current);
     });
 
     socket.on('connect_error', (err) => {
@@ -60,35 +46,16 @@ export function connectSocket(userId) {
       setSocketStatus('offline');
     });
 
-    listenersAttached = true;
-  }
-
-  if (!socket.connected) {
-    console.log('[socket] Connecting to', SOCKET_URL);
-    socket.connect();
-  }
-
-  return () => {
-    clearInterval(heartbeatInterval);
-  };
-}
-
-export function disconnectSocket(userId) {
-  const socket = getSocket();
-  if (socket && socket.connected) {
-    if (userId) {
-      socket.emit('atendente_offline', userId);
+    if (onMessageCallback) {
+      socket.on('new_message', onMessageCallback);
     }
-    clearInterval(heartbeatInterval);
-    socket.disconnect();
-  }
-}
 
-export function reconnectSocket(userId) {
-  const socket = getSocket();
-  if (!socket.connected) {
-    connectSocket(userId);
-  }
-}
+    return () => {
+      socket.off('new_message', onMessageCallback);
+      clearInterval(heartbeatRef.current);
+      socket.disconnect();
+    };
+  }, [userEmail]);
 
-export { socket };
+  return socketRef;
+}
