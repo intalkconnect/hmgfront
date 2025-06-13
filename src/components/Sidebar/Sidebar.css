@@ -29,7 +29,7 @@
   height: 100%;
   background-color: var(--sidebar-bg);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ===================================================================
