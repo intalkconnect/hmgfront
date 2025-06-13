@@ -58,7 +58,7 @@ body {
 
 .chat-list-item {
   background: #fff;
-  padding: 0px;
+  padding: 20px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   margin-bottom: 8px;
