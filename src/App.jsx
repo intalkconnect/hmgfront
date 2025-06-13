@@ -26,6 +26,55 @@ export default function App() {
     markNotified,
   } = useConversationsStore();
 
+  // Define handler outside to allow proper cleanup
+  const handleNewMessage = async (message) => {
+    const {
+      selectedUserId: activeId,
+      mergeConversation,
+      getContactName,
+      notifiedConversations,
+      markNotified,
+      loadUnreadCounts,
+    } = useConversationsStore.getState();
+
+    const isFromMe = message.direction === 'outgoing';
+    const isActiveChat = message.user_id === activeId;
+
+    mergeConversation(message.user_id, {
+      ticket_number: message.ticket_number || message.ticket,
+      timestamp: message.timestamp,
+      content: message.content,
+      channel: message.channel,
+    });
+
+    if (isFromMe) return;
+
+    if (isActiveChat) {
+      await apiPut(`/messages/read-status/${message.user_id}`, {
+        last_read: new Date().toISOString(),
+      });
+      return;
+    }
+
+    await loadUnreadCounts();
+
+    if (!notifiedConversations[message.user_id]) {
+      const contactName = getContactName(message.user_id);
+      showNotification(message, contactName);
+      markNotified(message.user_id);
+    }
+
+    try {
+      if (audioPlayer.current) {
+        audioPlayer.current.currentTime = 0;
+        await audioPlayer.current.play();
+      }
+    } catch (e) {
+      console.warn('Error playing sound:', e);
+    }
+  };
+
+  // Set user info once
   useEffect(() => {
     setUserInfo({
       email: 'dan_rodrigo@hotmail.com',
@@ -33,6 +82,7 @@ export default function App() {
     });
   }, [setUserInfo]);
 
+  // Initialize audio player once
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
@@ -44,82 +94,30 @@ export default function App() {
     };
   }, []);
 
+  // Connect socket once on mount, cleanup on unmount
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        const { userEmail } = useConversationsStore.getState();
-        const cleanup = connectSocket(userEmail);
-        const socket = getSocket();
-        socketRef.current = socket;
+    const { userEmail } = useConversationsStore.getState();
+    const cleanupSocket = connectSocket(userEmail);
+    const socket = getSocket();
+    socketRef.current = socket;
 
-        socket.on('new_message', async (message) => {
-          const {
-            selectedUserId,
-            mergeConversation,
-            getContactName,
-            notifiedConversations,
-            markNotified,
-            loadUnreadCounts,
-          } = useConversationsStore.getState();
+    // Listen for incoming messages
+    socket.on('new_message', handleNewMessage);
 
-          const isFromMe = message.direction === 'outgoing';
-          const isActiveChat = message.user_id === selectedUserId;
-
-          mergeConversation(message.user_id, {
-            ticket_number: message.ticket_number || message.ticket,
-            timestamp: message.timestamp,
-            content: message.content,
-            channel: message.channel,
-          });
-
-          if (isFromMe) return;
-
-          if (isActiveChat) {
-            await apiPut(`/messages/read-status/${message.user_id}`, {
-              last_read: new Date().toISOString(),
-            });
-            return;
-          }
-
-          await loadUnreadCounts();
-
-          if (!notifiedConversations[message.user_id]) {
-            const contactName = getContactName(message.user_id);
-            showNotification(message, contactName);
-            markNotified(message.user_id);
-          }
-
-          try {
-            if (audioPlayer.current) {
-              audioPlayer.current.currentTime = 0;
-              await audioPlayer.current.play();
-            }
-          } catch (e) {
-            console.warn('Error playing sound:', e);
-          }
-        });
-
-        await Promise.all([
-          fetchConversations(),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
-        ]);
-
-        return cleanup;
-      } catch (err) {
-        console.error('Initialization error:', err);
-      }
-    };
-
-    const cleanupPromise = initialize();
+    // Fetch initial data
+    (async () => {
+      await Promise.all([
+        fetchConversations(),
+        loadLastReadTimes(),
+        loadUnreadCounts(),
+      ]);
+    })();
 
     return () => {
-      cleanupPromise.then(cleanup => cleanup && cleanup());
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      socket.off('new_message', handleNewMessage);
+      cleanupSocket();
     };
-  }, [selectedUserId]);
+  }, []);
 
   const fetchConversations = async () => {
     try {
@@ -189,10 +187,16 @@ export default function App() {
         <Sidebar />
       </aside>
       <main className="chat-container">
-        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        <ChatWindow
+          userIdSelecionado={selectedUserId}
+          conversaSelecionada={conversaSelecionada}
+        />
       </main>
       <aside className="details-panel">
-        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        <DetailsPanel
+          userIdSelecionado={selectedUserId}
+          conversaSelecionada={conversaSelecionada}
+        />
       </aside>
     </div>
   );
