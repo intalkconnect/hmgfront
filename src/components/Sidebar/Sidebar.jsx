@@ -177,8 +177,6 @@ export default function Sidebar() {
                   )}
                 </div>
 
-                
-<div className="chat-snippet">{getSnippet(conv.content)}</div>
                 <div className="chat-meta">
                   <span className="chat-ticket">
                     #{conv.ticket_number || '000000'}
@@ -187,6 +185,8 @@ export default function Sidebar() {
                     {conv.fila || 'Orçamento'}
                   </span>
                 </div>
+
+                <div className="chat-snippet">{getSnippet(conv.content)}</div>
               </div>
 
               <div className="chat-time">
@@ -197,8 +197,6 @@ export default function Sidebar() {
                     })
                   : '--:--'}
               </div>
-
-              
             </li>
           );
         })}
