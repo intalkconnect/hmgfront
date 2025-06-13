@@ -17,7 +17,6 @@ export function getSocket() {
 
     console.log('[socket] Store state:', userEmail);
 
-    const { userEmail } = useConversationsStore.getState();
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
