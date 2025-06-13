@@ -156,7 +156,7 @@ export default function Sidebar() {
               <div className="chat-avatar-initial">
                 <div
                   className="avatar-circle"
-                  style={{ backgroundColor: stringToColor(conv.name || 'U') }}
+                  style={{ backgroundColor: stringToColor(conv.name || conv.user_id) }}
                 >
                   {conv.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
