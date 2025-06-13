@@ -177,13 +177,16 @@ export default function Sidebar() {
                   )}
                 </div>
 
+                <div className="chat-snippet">{getSnippet(conv.content)}</div>
 
-<div className="chat-meta-badges">
-  <span className="badge ticket">#{conv.ticket_number || '000000'}</span>
-  <span className="badge fila">{conv.fila || 'Orçamento'}</span>
-</div>
-
-<div className="chat-snippet">{getSnippet(conv.content)}</div>
+                <div className="chat-meta">
+                  <span className="chat-ticket">
+                    #{conv.ticket_number || '000000'}
+                  </span>
+                  <span className="chat-queue-badge">
+                    {conv.fila || 'Orçamento'}
+                  </span>
+                </div>
               </div>
 
               <div className="chat-time">
