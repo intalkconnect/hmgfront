@@ -52,8 +52,8 @@ body {
 }
 
 .sidebar .chat-list {
-  margin-top: 15px;
-  overflow-y: auto;
+  margin-top: 10px;
+  overflow-y: visible;
 }
 
 .chat-list-item {
