@@ -114,6 +114,7 @@
   Componente: Chat List
 =================================================================== */
 .chat-list {
+  padding-top: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
