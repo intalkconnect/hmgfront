@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
-import { connectSocket, getSocket } from './services/socket';
+import useSocket from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
@@ -99,7 +99,6 @@ export default function App() {
   useEffect(() => {
     if (!userEmail) return;
     const cleanup = connectSocket();
-    const socket = getSocket();
     socketRef.current = socket;
     socket.on('new_message', handleNewMessage);
     (async () => {
