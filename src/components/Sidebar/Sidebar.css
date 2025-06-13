@@ -187,7 +187,6 @@
 }
 
 .chat-snippet {
-  margin-top: 6px; /* aumenta o espaçamento entre badges e mensagem */
   font-size: 0.85rem;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -197,7 +196,6 @@
   align-items: center;
   gap: 0.375rem;
 }
-
 
 .chat-snippet svg {
   flex-shrink: 0;
@@ -211,16 +209,7 @@
   margin-top: 0.375rem;
 }
 
-.chat-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 4px;
-}
-
-
 .chat-queue-badge {
-  margin-top: 6px;
   background-color: var(--whatsapp-green);
   color: white;
   padding: 2px 8px;
@@ -239,32 +228,6 @@
   height: 40px;
   flex-shrink: 0;
 }
-.chat-meta-badges {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
-
-.badge {
-  padding: 2px 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 6px;
-  white-space: nowrap;
-  display: inline-block;
-}
-
-.badge.ticket {
-  background-color: #e8eaf6;
-  color: #3f51b5;
-}
-
-.badge.fila {
-  background-color: #dff5e3;
-  color: #2e7d32;
-}
-
 
 .avatar-circle {
   width: 100%;
@@ -295,34 +258,22 @@
 /* ===================================================================
   Componente: Unread Badge
 =================================================================== */
-.unread-badge-center {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  background-color: var(--unread-badge);
-  color: white;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  box-shadow: 0 0 0 2px white;
-  z-index: 1;
-}
-
-.unread-badge-inline {
-  background-color: var(--unread-badge);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 12px;
-  line-height: 1;
+.unread-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  background-color: var(--unread-badge);
+  color: white;
+  border-radius: 0.625rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+  line-height: 1;
+  animation: pulse 1.5s infinite;
 }
-
 
 .unread-dot {
   position: absolute;
