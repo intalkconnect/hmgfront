@@ -13,7 +13,10 @@ export function getSocket() {
       throw new Error('Socket URL is not defined.');
     }
 
-    const { userEmail } = useConversationsStore.getState();
+       const { email } = useConversationsStore.getState();
+    if (!email) {
+      throw new Error('User email not set in store.');
+    }
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
