@@ -202,21 +202,28 @@ export default function App() {
     ? conversations[selectedUserId] || null
     : null;
 
-  return (
-    <div className="app-container">
-      {socketError && <div className="socket-error-banner">{socketError}</div>}
+return (
+  <div className="app-container app-layout">
+    {socketError && <div className="socket-error-banner">{socketError}</div>}
 
+    <div className="section-wrapper">
       <aside className="sidebar">
         <Sidebar />
       </aside>
+    </div>
 
+    <div className="section-wrapper">
       <main className="chat-container">
         <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </main>
+    </div>
 
+    <div className="section-wrapper">
       <aside className="details-panel">
         <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
       </aside>
     </div>
-  );
+  </div>
+);
+
 }
