@@ -13,8 +13,6 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-  const userEmail = useConversationsStore((s) => s.email);
-  const userFilas = useConversationsStore((s) => s.filas);
   const {
     selectedUserId,
     setSelectedUserId,
@@ -50,6 +48,7 @@ export default function App() {
     });
 
     if (isFromMe) return;
+
     if (isActiveChat) {
       await apiPut(`/messages/read-status/${message.user_id}`, {
         last_read: new Date().toISOString(),
@@ -58,6 +57,7 @@ export default function App() {
     }
 
     await loadUnreadCounts();
+
     if (!notifiedConversations[message.user_id]) {
       const contactName = getContactName(message.user_id);
       showNotification(message, contactName);
@@ -76,10 +76,10 @@ export default function App() {
 
   // Seta info do usuário apenas uma vez
   useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
+  setUserInfo({
+    filas: ['Comercial', 'Suporte'],
+    email: 'dan_rodrigo@hotmail.com',
+  });
   }, [setUserInfo]);
 
   // Inicializa player de som apenas uma vez
@@ -94,16 +94,17 @@ export default function App() {
     };
   }, []);
 
-  // Conecta socket só quando userEmail estiver disponível
+  // Conecta socket apenas na montagem; limpa na desmontagem
   useEffect(() => {
-    if (!userEmail) return;
-
-    const cleanupSocket = connectSocket();
+    const { userEmail } = useConversationsStore.getState();
+    const cleanupSocket = connectSocket(userEmail);
     const socket = getSocket();
     socketRef.current = socket;
 
+    // Listener de mensagens
     socket.on('new_message', handleNewMessage);
 
+    // Carrega dados iniciais
     (async () => {
       await Promise.all([
         fetchConversations(),
@@ -116,17 +117,22 @@ export default function App() {
       socket.off('new_message', handleNewMessage);
       cleanupSocket();
     };
-  }, [userEmail]);
+  }, []);
 
   const fetchConversations = async () => {
     try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
       if (!userEmail || userFilas.length === 0) return;
+
       const params = new URLSearchParams({
         assigned_to: userEmail,
         filas: userFilas.join(','),
       });
+
       const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => mergeConversation(conv.user_id, conv));
+      data.forEach((conv) => {
+        mergeConversation(conv.user_id, conv);
+      });
     } catch (err) {
       console.error('Error fetching /chats:', err);
     }
@@ -134,18 +140,26 @@ export default function App() {
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
+
     if (Notification.permission === 'granted') {
       const notification = new Notification(
         `New message from ${contactName || message.user_id}`,
-        { body: getMessagePreview(message.content), icon: '/icons/whatsapp.png' }
+        {
+          body: getMessagePreview(message.content),
+          icon: '/icons/whatsapp.png',
+        }
       );
+
       notification.onclick = () => {
         window.focus();
         setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
       Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') showNotification(message, getContactName(message.user_id));
+        if (permission === 'granted') {
+          const name = getContactName(message.user_id);
+          showNotification(message, name);
+        }
       });
     }
   };
@@ -158,7 +172,9 @@ export default function App() {
       if (parsed.url) return '[File]';
       return '[Message]';
     } catch {
-      return content?.length > 50 ? content.substring(0, 47) + '...' : content;
+      return content?.length > 50
+        ? content.substring(0, 47) + '...'
+        : content;
     }
   };
 
@@ -173,10 +189,16 @@ export default function App() {
         <Sidebar />
       </aside>
       <main className="chat-container">
-        <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        <ChatWindow
+          userIdSelecionado={selectedUserId}
+          conversaSelecionada={conversaSelecionada}
+        />
       </main>
       <aside className="details-panel">
-        <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        <DetailsPanel
+          userIdSelecionado={selectedUserId}
+          conversaSelecionada={conversaSelecionada}
+        />
       </aside>
     </div>
   );
