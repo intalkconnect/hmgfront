@@ -13,7 +13,9 @@ export function getSocket() {
       throw new Error('Socket URL is not defined.');
     }
 
-    console.log('[socket] Store state:', useConversationsStore.getState());
+    const userEmail = useConversationsStore((s) => s.userEmail);
+
+    console.log('[socket] Store state:', userEmail);
 
     const { userEmail } = useConversationsStore.getState();
 
