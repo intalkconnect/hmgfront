@@ -116,7 +116,7 @@
 .chat-list {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 1rem;
+  padding: 0;
   flex: 1;
   overflow-y: auto;
 }
@@ -124,7 +124,7 @@
 .chat-list-item {
   position: relative;
   background: var(--item-bg);
-  padding: 0.875rem;
+  padding: 20;
   border: 1px solid var(--item-border);
   border-radius: 0.625rem;
   margin-bottom: 0.625rem;
