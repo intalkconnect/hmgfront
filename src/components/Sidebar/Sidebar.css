@@ -228,6 +228,32 @@
   height: 40px;
   flex-shrink: 0;
 }
+.chat-meta-badges {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.badge.ticket {
+  background-color: #e8eaf6;
+  color: #3f51b5;
+}
+
+.badge.fila {
+  background-color: #dff5e3;
+  color: #2e7d32;
+}
+
 
 .avatar-circle {
   width: 100%;
