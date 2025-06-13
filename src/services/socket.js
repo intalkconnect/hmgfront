@@ -20,8 +20,8 @@ export function getSocket() {
       transports: ['websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 5000,
-      query: { email: userEmail },
-      auth: { email: userEmail }
+      query: { email: email  },
+      auth: { email: email }
     });
   }
 
