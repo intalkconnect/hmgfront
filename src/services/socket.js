@@ -13,17 +13,17 @@ export function getSocket() {
       throw new Error('Socket URL is not defined.');
     }
 
-console.log(useConversationsStore)
+    const { userEmail } = useConversationsStore.getState();
 
-  //   socket = io(SOCKET_URL, {
-  //     autoConnect: false,
-  //     transports: ['websocket'],
-  //     reconnectionAttempts: 5,
-  //     reconnectionDelay: 5000,
-  //     query: { email: email  },
-  //     auth: { email: email }
-  //   });
-  // }
+    socket = io(SOCKET_URL, {
+      autoConnect: false,
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000,
+      query: { email: userEmail },
+      auth: { email: userEmail }
+    });
+  }
 
   return socket;
 }
