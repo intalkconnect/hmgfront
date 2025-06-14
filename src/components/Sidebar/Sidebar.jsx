@@ -26,31 +26,32 @@ export default function Sidebar() {
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-useEffect(() => {
-  const fetchSettingsAndFila = async () => {
-    const settings = await apiGet('/settings');
-    const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
-    if (distrib?.value) setDistribuicaoTickets(distrib.value);
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const settings = await apiGet('/settings');
+      const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
+      if (distrib?.value) setDistribuicaoTickets(distrib.value);
+      useConversationsStore.getState().setSettings(settings);
+    };
 
-    useConversationsStore.getState().setSettings(settings);
+    const fetchFilaCount = async () => {
+      if (!userFilas || userFilas.length === 0) return;
 
-    const filaAtivos = Object.values(conversations).filter(
-      (conv) =>
-        conv?.status === 'open' &&
-        (!conv?.assigned_to || conv.assigned_to === null) &&
-        userFilas.includes(conv?.fila)
-    );
+      const params = new URLSearchParams({ filas: userFilas.join(',') });
+      try {
+        const data = await apiGet(`/chats/fila?${params.toString()}`);
+        setFilaCount(data.length);
+      } catch (err) {
+        console.error('Erro ao buscar fila:', err);
+      }
+    };
 
-    setFilaCount(filaAtivos.length);
-  };
-
-  fetchSettingsAndFila();
-}, [conversations, userFilas]);
-
+    fetchSettings();
+    fetchFilaCount();
+  }, [userFilas]);
 
   const getSnippet = (rawContent) => {
     if (!rawContent) return '';
-
     if (typeof rawContent === 'string' && /^\d+$/.test(rawContent)) return rawContent;
 
     if (
@@ -61,30 +62,12 @@ useEffect(() => {
         const parsed = JSON.parse(rawContent);
         if (parsed.url) {
           const url = parsed.url.toLowerCase();
-          if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav')) {
-            return (
-              <span className="chat-icon-snippet">
-                <Mic size={18} /> Áudio
-              </span>
-            );
-          }
-          if (url.match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)) {
-            return (
-              <span className="chat-icon-snippet">
-                <File size={18} /> Imagem
-              </span>
-            );
-          }
-          return (
-            <span className="chat-icon-snippet">
-              <File size={18} /> Arquivo
-            </span>
-          );
+          if (url.match(/\.(ogg|mp3|wav)$/)) return <span className="chat-icon-snippet"><Mic size={18} /> Áudio</span>;
+          if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/)) return <span className="chat-icon-snippet"><File size={18} /> Imagem</span>;
+          return <span className="chat-icon-snippet"><File size={18} /> Arquivo</span>;
         }
         return parsed.text || parsed.caption || '';
-      } catch {
-        // fallback
-      }
+      } catch { /* silent fail */ }
     }
 
     const contentStr = String(rawContent);
@@ -177,9 +160,7 @@ useEffect(() => {
               <div className="chat-details">
                 <div className="chat-title">
                   {conv.name || fullId}
-                  {showUnread && (
-                    <span className="unread-dot"></span>
-                  )}
+                  {showUnread && <span className="unread-dot"></span>}
                 </div>
 
                 <div className="chat-meta">
