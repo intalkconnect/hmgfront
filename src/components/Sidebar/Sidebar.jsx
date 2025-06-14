@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiGet } from '../../services/apiClient';
+import { apiGet, apiPut } from '../../services/apiClient';
 import { File, Mic } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
@@ -92,6 +92,27 @@ export default function Sidebar() {
     );
   });
 
+  const puxarProximoTicket = async () => {
+  try {
+    const res = await apiPut('/chats/fila/atribuir-proximo', {
+      email: userEmail,
+      filas: userFilas,
+    });
+
+    if (res && res.user_id) {
+      // Atualiza store com novo ticket atribuído
+      useConversationsStore.getState().mergeConversation(res.user_id, res);
+      setSelectedUserId(res.user_id);
+    } else {
+      alert('Nenhum cliente disponível na fila');
+    }
+  } catch (err) {
+    console.error('Erro ao puxar próximo cliente:', err);
+    alert('Erro ao puxar próximo cliente');
+  }
+};
+
+
   return (
     <div className="sidebar-container">
       <div className="sidebar-search">
@@ -114,7 +135,7 @@ export default function Sidebar() {
             </span>
             <button
               className="botao-proximo"
-              onClick={() => console.log('Puxar próximo cliente')}
+              onClick={puxarProximoTicket}
               disabled={filaCount === 0}
             >
               Próximo
