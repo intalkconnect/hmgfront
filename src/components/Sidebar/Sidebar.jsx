@@ -20,35 +20,55 @@ export default function Sidebar() {
     userFilas,
     selectedUserId,
     setSelectedUserId,
+    mergeConversation,
+    setSettings,
   } = useConversationsStore();
 
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchSettings = async () => {
+  const fetchSettingsAndFila = async () => {
+    try {
       const settings = await apiGet('/settings');
       const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
       if (distrib?.value) setDistribuicaoTickets(distrib.value);
-      useConversationsStore.getState().setSettings(settings);
-    };
+      setSettings(settings);
 
-    const fetchFilaCount = async () => {
       if (!userFilas || userFilas.length === 0) return;
 
       const params = new URLSearchParams({ filas: userFilas.join(',') });
-      try {
-        const data = await apiGet(`/chats/fila?${params.toString()}`);
-        setFilaCount(data.length);
-      } catch (err) {
-        console.error('Erro ao buscar fila:', err);
-      }
-    };
+      const data = await apiGet(`/chats/fila?${params.toString()}`);
+      setFilaCount(data.length);
+    } catch (err) {
+      console.error('Erro ao buscar configurações/fila:', err);
+    }
+  };
 
-    fetchSettings();
-    fetchFilaCount();
-  }, [userFilas]);
+  useEffect(() => {
+    fetchSettingsAndFila();
+  }, [userFilas, conversations]);
+
+  const puxarProximoTicket = async () => {
+    try {
+      const res = await apiPut('/chats/fila/proximo', {
+        email: userEmail,
+        filas: userFilas,
+      });
+
+      await fetchSettingsAndFila(); // Atualiza contagem da fila
+
+      if (res && res.user_id) {
+        mergeConversation(res.user_id, res);
+        setSelectedUserId(res.user_id);
+      } else {
+        alert('Nenhum cliente disponível na fila');
+      }
+    } catch (err) {
+      console.error('Erro ao puxar próximo cliente:', err);
+      alert('Erro ao puxar próximo cliente');
+    }
+  };
 
   const getSnippet = (rawContent) => {
     if (!rawContent) return '';
@@ -67,7 +87,7 @@ export default function Sidebar() {
           return <span className="chat-icon-snippet"><File size={18} /> Arquivo</span>;
         }
         return parsed.text || parsed.caption || '';
-      } catch { /* silent fail */ }
+      } catch {}
     }
 
     const contentStr = String(rawContent);
@@ -91,27 +111,6 @@ export default function Sidebar() {
       conv.content?.toLowerCase().includes(searchLower)
     );
   });
-
-  const puxarProximoTicket = async () => {
-  try {
-    const res = await apiPut('/chats/fila/proximo', {
-      email: userEmail,
-      filas: userFilas,
-    });
-
-    if (res && res.user_id) {
-      // Atualiza store com novo ticket atribuído
-      useConversationsStore.getState().mergeConversation(res.user_id, res);
-      setSelectedUserId(res.user_id);
-    } else {
-      alert('Nenhum cliente disponível na fila');
-    }
-  } catch (err) {
-    console.error('Erro ao puxar próximo cliente:', err);
-    alert('Erro ao puxar próximo cliente');
-  }
-};
-
 
   return (
     <div className="sidebar-container">
@@ -142,7 +141,7 @@ export default function Sidebar() {
             </button>
           </>
         ) : (
-          'Auto'
+          'Distribuição: Automática'
         )}
       </div>
 
