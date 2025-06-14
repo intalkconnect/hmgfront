@@ -26,22 +26,25 @@ export default function Sidebar() {
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchSettingsAndFila = async () => {
-      const settings = await apiGet('/settings');
-      const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
-      if (distrib?.value) setDistribuicaoTickets(distrib.value);
+useEffect(() => {
+  const fetchSettingsAndFila = async () => {
+    const settings = await apiGet('/settings');
+    const distrib = settings.find((s) => s.key === 'distribuicao_tickets');
+    if (distrib?.value) setDistribuicaoTickets(distrib.value);
 
-      useConversationsStore.getState().setSettings(settings);
+    useConversationsStore.getState().setSettings(settings);
 
-      const filaAtivos = Object.values(conversations).filter(
-        (conv) => !conv.atendido
-      );
-      setFilaCount(filaAtivos.length);
-    };
+    const filaAtivos = Object.values(conversations).filter(
+      (conv) =>
+        conv.status === 'open' &&
+        !conv.assigned_to &&
+        userFilas.includes(conv.fila)
+    );
+    setFilaCount(filaAtivos.length);
+  };
 
-    fetchSettingsAndFila();
-  }, [conversations]);
+  fetchSettingsAndFila();
+}, [conversations, userFilas]);
 
   const getSnippet = (rawContent) => {
     if (!rawContent) return '';
