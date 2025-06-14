@@ -94,7 +94,7 @@ export default function Sidebar() {
 
   const puxarProximoTicket = async () => {
   try {
-    const res = await apiPut('/chats/fila/atribuir-proximo', {
+    const res = await apiPut('/chats/fila/proximo', {
       email: userEmail,
       filas: userFilas,
     });
