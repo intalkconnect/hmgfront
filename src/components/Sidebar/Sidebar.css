@@ -221,16 +221,16 @@
 }
 
 .chat-queue-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: inline-block;
   font-size: 0.75rem;
   font-weight: 500;
-  padding: 0.25rem 0.6rem;
-  border-radius: 1rem;
-  line-height: 1;
-  white-space: nowrap;
-  transition: background-color 0.2s ease;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 165, 0, 0.15); /* exemplo laranja claro com transparência */
+  color: #e86f00; /* texto laranja escuro */
+  border: 1px solid rgba(255, 165, 0, 0.25); /* borda leve */
+  font-family: "Segoe UI", sans-serif;
+  line-height: 1.1;
 }
 
 .chat-avatar-initial {
