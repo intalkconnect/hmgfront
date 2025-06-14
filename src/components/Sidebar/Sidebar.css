@@ -287,15 +287,16 @@
 
 
 .unread-dot {
+  content: "";
   position: absolute;
-  right: 0.875rem;
-  top: 0.875rem;
-  width: 0.75rem;
-  height: 0.75rem;
+  bottom: 1rem; /* Alinha com a linha da fila */
+  right: 1rem;  /* Encosta na borda direita */
+  width: 10px;
+  height: 10px;
   background-color: var(--unread-badge);
   border-radius: 50%;
-  border: 2px solid var(--sidebar-bg);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 0 0 2px white;
+  z-index: 1;
 }
 
 /* ===================================================================
