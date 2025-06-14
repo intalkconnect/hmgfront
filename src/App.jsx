@@ -75,56 +75,59 @@ export default function App() {
         });
 
         socket.on('new_message', async (message) => {
-          const {
-            selectedUserId,
-            mergeConversation,
-            getContactName,
-            notifiedConversations,
-            markNotified,
-            loadUnreadCounts,
-          } = useConversationsStore.getState();
+  const {
+    selectedUserId,
+    mergeConversation,
+    getContactName,
+    notifiedConversations,
+    markNotified,
+    loadUnreadCounts,
+    userEmail, // adiciona aqui
+  } = useConversationsStore.getState();
 
-          const isFromMe = message.direction === 'outgoing';
-          const isActiveChat = message.user_id === selectedUserId;
-          const isWindowFocused = document.hasFocus();
+  const isFromMe = message.direction === 'outgoing';
+  const isActiveChat = message.user_id === selectedUserId;
+  const isWindowFocused = document.hasFocus();
 
-          mergeConversation(message.user_id, {
-            ticket_number: message.ticket_number || message.ticket,
-            timestamp: message.timestamp,
-            content: message.content,
-            channel: message.channel,
-          });
+  // ⛔️ Ignora se a mensagem não for atribuída ao usuário atual
+  if (message.assigned_to !== userEmail) return;
 
-          if (isFromMe) return;
+  mergeConversation(message.user_id, {
+    ticket_number: message.ticket_number || message.ticket,
+    timestamp: message.timestamp,
+    content: message.content,
+    channel: message.channel,
+  });
 
-          // ✅ Marca como lida apenas se estiver com o chat aberto e aba ativa
-          if (isActiveChat && isWindowFocused) {
-            await apiPut(`/messages/read-status/${message.user_id}`, {
-              last_read: new Date().toISOString(),
-            });
-            return;
-          }
+  if (isFromMe) return;
 
-          await loadUnreadCounts();
+  if (isActiveChat && isWindowFocused) {
+    await apiPut(`/messages/read-status/${message.user_id}`, {
+      last_read: new Date().toISOString(),
+    });
+    return;
+  }
 
-          if (!notifiedConversations[message.user_id] && !isWindowFocused) {
-            const contactName = getContactName(message.user_id);
-            showNotification(message, contactName);
-            markNotified(message.user_id);
-          }
+  await loadUnreadCounts();
 
-          // ❌ Não tocar som se janela estiver inativa
-          if (isWindowFocused) {
-            try {
-              if (audioPlayer.current) {
-                audioPlayer.current.currentTime = 0;
-                await audioPlayer.current.play();
-              }
-            } catch (e) {
-              console.warn('Erro ao reproduzir som:', e);
-            }
-          }
-        });
+  if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+    const contactName = getContactName(message.user_id);
+    showNotification(message, contactName);
+    markNotified(message.user_id);
+  }
+
+  if (isWindowFocused) {
+    try {
+      if (audioPlayer.current) {
+        audioPlayer.current.currentTime = 0;
+        await audioPlayer.current.play();
+      }
+    } catch (e) {
+      console.warn('Erro ao reproduzir som:', e);
+    }
+  }
+});
+
 
         await Promise.all([
           fetchConversations(),
