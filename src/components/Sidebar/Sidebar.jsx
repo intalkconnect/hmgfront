@@ -34,18 +34,19 @@ useEffect(() => {
 
     useConversationsStore.getState().setSettings(settings);
 
-const filaAtivos = Object.values(conversations).filter(
-  (conv) =>
-    conv.status === 'open' &&
-    (conv.assigned_to === null || conv.assigned_to === undefined) && // ou: conv.assigned_to == null
-    userFilas.includes(conv.fila)
-);
-setFilaCount(filaAtivos.length);
+    const filaAtivos = Object.values(conversations).filter(
+      (conv) =>
+        conv?.status === 'open' &&
+        (!conv?.assigned_to || conv.assigned_to === null) &&
+        userFilas.includes(conv?.fila)
+    );
 
+    setFilaCount(filaAtivos.length);
   };
 
   fetchSettingsAndFila();
 }, [conversations, userFilas]);
+
 
   const getSnippet = (rawContent) => {
     if (!rawContent) return '';
