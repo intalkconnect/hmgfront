@@ -142,24 +142,24 @@ export default function App() {
     initialize();
   }, [selectedUserId, isWindowActive]);
 
- const fetchFilaCount = async () => {
-  try {
-    const { userFilas } = useConversationsStore.getState();
-    if (!userFilas || userFilas.length === 0) return;
+  const fetchConversations = async () => {
+    try {
+      const { userEmail, userFilas } = useConversationsStore.getState();
+      if (!userEmail || userFilas.length === 0) return;
 
-    const params = new URLSearchParams({
-      filas: userFilas.join(',')
-    });
+      const params = new URLSearchParams({
+        assigned_to: userEmail,
+        filas: userFilas.join(','),
+      });
 
-    const data = await apiGet(`/chats/fila?${params.toString()}`);
-
-    // Atualize o contador no estado, se necessário
-    setFilaCount(data.length);
-  } catch (err) {
-    console.error('Erro ao buscar fila de tickets:', err);
-  }
-};
-
+      const data = await apiGet(`/chats?${params.toString()}`);
+      data.forEach((conv) => {
+        mergeConversation(conv.user_id, conv);
+      });
+    } catch (err) {
+      console.error('Erro ao buscar /chats:', err);
+    }
+  };
 
   const showNotification = (message, contactName) => {
     if (isWindowActive) return;
