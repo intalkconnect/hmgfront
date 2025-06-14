@@ -187,7 +187,7 @@ export default function Sidebar() {
                   <span className="chat-ticket">
                     #{conv.ticket_number || '000000'}
                   </span>
-                  <span className="chat-queue-badge">
+                  <span className="chat-queue-badge" style={{ backgroundColor: conv.fila_color}}>
                     {conv.fila || 'Orçamento'}
                   </span>
                 </div>
