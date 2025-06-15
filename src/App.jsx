@@ -32,27 +32,30 @@ export default function App() {
   const [isWindowActive, setIsWindowActive] = useState(true);
 
 useEffect(() => {
-  const token = new URLSearchParams(window.location.search).get('token');
-  if (!token) return;
+  let token = new URLSearchParams(window.location.search).get('token');
+
+  if (token) {
+    localStorage.setItem('token', token);
+    // Limpa a URL após salvar
+    window.history.replaceState({}, document.title, '/');
+  } else {
+    token = localStorage.getItem('token');
+  }
+
+  if (!token) {
+    console.warn("Nenhum token JWT encontrado");
+    return;
+  }
 
   try {
     const decoded = jwtDecode(token);
     const userEmail = decoded.email;
-    console.log("Token decodificado:", decoded);
-    localStorage.setItem('token', token);
 
     const fetchUserData = async () => {
       try {
         const data = await apiGet(`/atendentes/${userEmail}`);
-        console.log("Dados do usuário recebidos:", data);
-
         if (data && data.email) {
-          setUserInfo({
-            email: data.email,
-            filas: data.filas || [],
-          });
-        } else {
-          console.error("Dados de usuário inválidos:", data);
+          setUserInfo({ email: data.email, filas: data.filas || [] });
         }
       } catch (err) {
         console.error("Erro ao buscar dados do usuário:", err);
@@ -60,11 +63,12 @@ useEffect(() => {
     };
 
     fetchUserData();
-    window.history.replaceState({}, document.title, '/');
   } catch (err) {
     console.error("Erro ao decodificar token JWT:", err);
+    localStorage.removeItem('token'); // limpa token corrompido
   }
 }, [setUserInfo]);
+
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
