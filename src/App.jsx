@@ -44,7 +44,7 @@ export default function App() {
         const decoded = jwtDecode(token);
     const userEmail = decoded.email;
 
-            const data = await apiGet(/atendentes/${userEmail});
+            const data = apiGet(/atendentes/${userEmail});
         if (data && data.email) {
           setUserInfo({ email: data.email, filas: data.filas || [] });
 
