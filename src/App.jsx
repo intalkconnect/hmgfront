@@ -1,5 +1,5 @@
-// App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
+import jwtDecode from 'jwt-decode';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -13,160 +13,173 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-  const {
-    selectedUserId,
-    setSelectedUserId,
-    setUserInfo,
-    mergeConversation,
-    resetUnread,
-    loadUnreadCounts,
-    loadLastReadTimes,
-    getContactName,
-    conversations,
-    notifiedConversations,
-    markNotified,
-  } = useConversationsStore();
-
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
+  // Zustand selectors (granulares)
+  const selectedUserId       = useConversationsStore(s => s.selectedUserId);
+  const setSelectedUserId    = useConversationsStore(s => s.setSelectedUserId);
+  const setUserInfo          = useConversationsStore(s => s.setUserInfo);
+  const mergeConversation    = useConversationsStore(s => s.mergeConversation);
+  const resetUnread          = useConversationsStore(s => s.resetUnread);
+  const loadUnreadCounts     = useConversationsStore(s => s.loadUnreadCounts);
+  const loadLastReadTimes    = useConversationsStore(s => s.loadLastReadTimes);
+  const getContactName       = useConversationsStore(s => s.getContactName);
+  const conversations        = useConversationsStore(s => s.conversations);
+  const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
+  const markNotified         = useConversationsStore(s => s.markNotified);
+  const userEmail            = useConversationsStore(s => s.userEmail);
+  const userFilas            = useConversationsStore(s => s.userFilas);
+
+  // 1) Decodifica JWT e busca dados do atendente
   useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
+    let token = new URLSearchParams(window.location.search).get('token');
+    if (token) {
+      localStorage.setItem('token', token);
+      window.history.replaceState({}, document.title, '/');
+    } else {
+      token = localStorage.getItem('token');
+    }
+    if (!token) return;
+
+    try {
+      const { email } = jwtDecode(token);
+      // define email inicialmente, depois busca filas na API
+      setUserInfo({ email, filas: [] });
+
+      (async () => {
+        try {
+          const data = await apiGet(`/atendentes/${encodeURIComponent(email)}`);
+          if (data?.email) {
+            setUserInfo({ email: data.email, filas: data.filas || [] });
+          }
+        } catch (err) {
+          console.error('Erro ao buscar dados do atendente:', err);
+        }
+      })();
+    } catch (err) {
+      console.error('Token inválido:', err);
+      localStorage.removeItem('token');
+    }
   }, [setUserInfo]);
 
+  // 2) Inicializa som de notificações
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
     return () => {
-      if (audioPlayer.current) {
-        audioPlayer.current.pause();
-        audioPlayer.current = null;
-      }
+      audioPlayer.current?.pause();
+      audioPlayer.current = null;
     };
   }, []);
 
+  // 3) Monitora foco/blur para controle de notificações
   useEffect(() => {
-    const handleFocus = () => setIsWindowActive(true);
-    const handleBlur = () => setIsWindowActive(false);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
+    const onFocus = () => setIsWindowActive(true);
+    const onBlur  = () => setIsWindowActive(false);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur',  onBlur);
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur',  onBlur);
     };
   }, []);
 
+  // 4) Conecta socket e registra listener de mensagens (só no mount)
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        connectSocket();
-        const socket = getSocket();
-        socketRef.current = socket;
+    connectSocket();
+    const socket = getSocket();
+    socketRef.current = socket;
 
-        socket.on('connect_error', () => {
-          setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
-        });
-
-        socket.on('connect', () => {
-          setSocketError(null);
-        });
-
-        socket.on('new_message', async (message) => {
-  const {
-    selectedUserId,
-    mergeConversation,
-    getContactName,
-    notifiedConversations,
-    markNotified,
-    loadUnreadCounts,
-    userEmail, // adiciona aqui
-  } = useConversationsStore.getState();
-
-  const isFromMe = message.direction === 'outgoing';
-  const isActiveChat = message.user_id === selectedUserId;
-  const isWindowFocused = document.hasFocus();
-
-  // ⛔️ Ignora se a mensagem não for atribuída ao usuário atual
-  if (message.assigned_to !== userEmail) return;
-
-  mergeConversation(message.user_id, {
-    ticket_number: message.ticket_number || message.ticket,
-    timestamp: message.timestamp,
-    content: message.content,
-    channel: message.channel,
-  });
-
-  if (isFromMe) return;
-
-  if (isActiveChat && isWindowFocused) {
-    await apiPut(`/messages/read-status/${message.user_id}`, {
-      last_read: new Date().toISOString(),
+    socket.on('connect_error', () => {
+      setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
     });
-    return;
-  }
+    socket.on('connect', () => setSocketError(null));
+    socket.on('new_message', handleNewMessage);
 
-  await loadUnreadCounts();
+    return () => {
+      socket.off('connect_error');
+      socket.off('connect');
+      socket.off('new_message', handleNewMessage);
+    };
+  }, []);
 
-  if (!notifiedConversations[message.user_id] && !isWindowFocused) {
-    const contactName = getContactName(message.user_id);
-    showNotification(message, contactName);
-    markNotified(message.user_id);
-  }
+  // 5) Quando email/filas chegarem, carrega conversas e status
+  useEffect(() => {
+    if (!userEmail || userFilas.length === 0) return;
 
-  if (isWindowFocused) {
-    try {
-      if (audioPlayer.current) {
-        audioPlayer.current.currentTime = 0;
-        await audioPlayer.current.play();
-      }
-    } catch (e) {
-      console.warn('Erro ao reproduzir som:', e);
-    }
-  }
-});
-
-
+    (async () => {
+      try {
         await Promise.all([
           fetchConversations(),
           loadLastReadTimes(),
-          loadUnreadCounts(),
+          loadUnreadCounts()
         ]);
       } catch (err) {
-        setSocketError('Erro ao inicializar a aplicação');
+        console.error('Erro ao inicializar dados:', err);
       }
-    };
+    })();
+  }, [userEmail, userFilas]);
 
-    initialize();
-  }, [selectedUserId, isWindowActive]);
+  // Handler de nova mensagem
+  const handleNewMessage = async (message) => {
+    const isFromMe      = message.direction === 'outgoing';
+    const isActiveChat  = message.user_id === selectedUserId;
+    const isWindowFocused = isWindowActive;
 
+    if (message.assigned_to !== userEmail) return;
+
+    mergeConversation(message.user_id, {
+      ticket_number: message.ticket_number || message.ticket,
+      timestamp: message.timestamp,
+      content: message.content,
+      channel: message.channel,
+    });
+
+    if (isFromMe) return;
+
+    if (isActiveChat && isWindowFocused) {
+      await apiPut(`/messages/read-status/${message.user_id}`, {
+        last_read: new Date().toISOString(),
+      });
+    } else {
+      await loadUnreadCounts();
+      if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+        const contactName = getContactName(message.user_id);
+        showNotification(message, contactName);
+        markNotified(message.user_id);
+      }
+    }
+
+    if (isWindowFocused) {
+      try {
+        audioPlayer.current.currentTime = 0;
+        await audioPlayer.current.play();
+      } catch (e) {
+        console.warn('Erro ao reproduzir som:', e);
+      }
+    }
+  };
+
+  // Busca todas as conversas atribuídas ao atendente
   const fetchConversations = async () => {
     try {
-      const { userEmail, userFilas } = useConversationsStore.getState();
-      if (!userEmail || userFilas.length === 0) return;
-
       const params = new URLSearchParams({
         assigned_to: userEmail,
         filas: userFilas.join(','),
       });
-
       const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => {
-        mergeConversation(conv.user_id, conv);
-      });
+      data.forEach(conv => mergeConversation(conv.user_id, conv));
     } catch (err) {
       console.error('Erro ao buscar /chats:', err);
     }
   };
 
+  // Exibe notificações do browser
   const showNotification = (message, contactName) => {
-    if (isWindowActive) return;
-    if (!('Notification' in window)) return;
-
+    if (isWindowActive || !('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      const notification = new Notification(
+      const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
         {
           body: getMessagePreview(message.content),
@@ -174,55 +187,40 @@ export default function App() {
           vibrate: [200, 100, 200],
         }
       );
-
-      notification.onclick = () => {
+      notif.onclick = () => {
         window.focus();
         setSelectedUserId(message.user_id);
       };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          const name = getContactName(message.user_id);
-          showNotification(message, name);
-        }
-      });
+      Notification.requestPermission().then(p => p === 'granted' && showNotification(message, contactName));
     }
   };
 
-  const getMessagePreview = (content) => {
+  // Gera preview de mensagem
+  const getMessagePreview = content => {
     try {
       const parsed = JSON.parse(content);
-      if (parsed.text) return parsed.text;
-      if (parsed.caption) return parsed.caption;
-      if (parsed.url) return '[Arquivo]';
-      return '[Mensagem]';
+      return parsed.text || parsed.caption || '[Arquivo]';
     } catch {
-      return content?.length > 50 ? content.substring(0, 47) + '...' : content;
+      return content.length > 50 ? content.slice(0, 47) + '...' : content;
     }
   };
 
-  const conversaSelecionada = selectedUserId
-    ? conversations[selectedUserId] || null
-    : null;
+  const conversaSelecionada = selectedUserId ? conversations[selectedUserId] : null;
 
-
-return (
-  <div className="app-layout">
-    <div className="section-wrapper">
+  return (
+    <div className="app-layout">
       {socketError && <div className="socket-error-banner">{socketError}</div>}
-
-      <div className="app-container">
+      <div className="app-container section-wrapper">
         <aside className="sidebar">
           <Sidebar />
         </aside>
-
         <main className="chat-container">
           <ChatWindow
             userIdSelecionado={selectedUserId}
             conversaSelecionada={conversaSelecionada}
           />
         </main>
-
         <aside className="details-panel">
           <DetailsPanel
             userIdSelecionado={selectedUserId}
@@ -231,7 +229,5 @@ return (
         </aside>
       </div>
     </div>
-  </div>
-);
-
+  );
 }
