@@ -13,16 +13,15 @@ const stringToColor = (str) => {
 };
 
 export default function Sidebar() {
-  const {
-    conversations,
-    unreadCounts,
-    userEmail,
-    userFilas,
-    selectedUserId,
-    setSelectedUserId,
-    mergeConversation,
-    setSettings,
-  } = useConversationsStore();
+const conversations = useConversationsStore(state => state.conversations);
+const unreadCounts = useConversationsStore(state => state.unreadCounts);
+const userEmail = useConversationsStore(state => state.userEmail);
+const userFilas = useConversationsStore(state => state.userFilas);
+const selectedUserId = useConversationsStore(state => state.selectedUserId);
+const setSelectedUserId = useConversationsStore(state => state.setSelectedUserId);
+const mergeConversation = useConversationsStore(state => state.mergeConversation);
+const setSettings = useConversationsStore(state => state.setSettings);
+
 
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
