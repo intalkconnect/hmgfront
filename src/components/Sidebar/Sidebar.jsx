@@ -45,9 +45,12 @@ export default function Sidebar() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (userEmail && userFilas && userFilas.length > 0) {
     fetchSettingsAndFila();
-  }, [userFilas, conversations]);
+  }
+}, [userEmail, userFilas]);
+
 
   const puxarProximoTicket = async () => {
     try {
