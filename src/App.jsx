@@ -45,8 +45,8 @@ useEffect(() => {
     // Chamada de API para buscar filas do usuário
     const fetchUserData = async () => {
       try {
-        const res = await apiGet(`/atendentes/${userEmail}`);
-        const data = await res.json();
+const data = await apiGet(`/atendentes/${userEmail}`);
+
 
         console.log("Dados do usuário recebidos:", data);
 
