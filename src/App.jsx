@@ -1,5 +1,6 @@
 // App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
+import jwt_decode from 'jwt-decode';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -30,12 +31,47 @@ export default function App() {
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  useEffect(() => {
-    setUserInfo({
-      email: 'dan_rodrigo@hotmail.com',
-      filas: ['Comercial', 'Suporte'],
-    });
-  }, [setUserInfo]);
+useEffect(() => {
+  const token = new URLSearchParams(window.location.search).get('token');
+  if (!token) return;
+
+  try {
+    const decoded = jwt_decode(token);
+    const userEmail = decoded.email;
+    console.log("Token decodificado:", decoded);
+
+    localStorage.setItem('token', token);
+
+    // Chamada de API para buscar filas do usuário
+    const fetchUserData = async () => {
+      try {
+        const res = await apiGet(`/atendentes/${userEmail}`);
+        const data = await res.json();
+
+        console.log("Dados do usuário recebidos:", data);
+
+        if (res.ok) {
+          setUserInfo({
+            email: data.email,
+            filas: data.filas || [],
+          });
+        } else {
+          console.error("Erro ao buscar dados do usuário:", data.message);
+        }
+      } catch (err) {
+        console.error("Erro na requisição de user-info:", err);
+      }
+    };
+
+    fetchUserData();
+
+    // limpa o token da URL
+    window.history.replaceState({}, document.title, '/');
+  } catch (err) {
+    console.error("Erro ao decodificar token JWT:", err);
+  }
+}, [setUserInfo]);
+
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
