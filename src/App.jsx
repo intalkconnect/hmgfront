@@ -1,6 +1,6 @@
 // App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
