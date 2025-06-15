@@ -65,7 +65,7 @@ export default function App() {
     setUserInfo({ email, filas: [] });
     (async () => {
       try {
-        const data = await apiGet(`/atendentes/${encodeURIComponent(email)}`);
+        const data = await apiGet(`/atendentes/${email}`);
         if (data?.email) {
           setUserInfo({ email: data.email, filas: data.filas || [] });
         }
@@ -106,7 +106,7 @@ export default function App() {
       if (userEmail) {
         try {
           await apiPut(
-            `/atendentes/${encodeURIComponent(userEmail)}/status`,
+            `/atendentes/${userEmail}/status`,
             { connected }
           );
         } catch (err) {
