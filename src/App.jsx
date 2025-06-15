@@ -14,19 +14,22 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-  const {
-    selectedUserId,
-    setSelectedUserId,
-    setUserInfo,
-    mergeConversation,
-    resetUnread,
-    loadUnreadCounts,
-    loadLastReadTimes,
-    getContactName,
-    conversations,
-    notifiedConversations,
-    markNotified,
-  } = useConversationsStore();
+const selectedUserId       = useConversationsStore(s => s.selectedUserId);
+const setSelectedUserId    = useConversationsStore(s => s.setSelectedUserId);
+const setUserInfo          = useConversationsStore(s => s.setUserInfo);
+const mergeConversation    = useConversationsStore(s => s.mergeConversation);
+const resetUnread          = useConversationsStore(s => s.resetUnread);
+const loadUnreadCounts     = useConversationsStore(s => s.loadUnreadCounts);
+const loadLastReadTimes    = useConversationsStore(s => s.loadLastReadTimes);
+const getContactName       = useConversationsStore(s => s.getContactName);
+const conversations        = useConversationsStore(s => s.conversations);
+const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
+const markNotified         = useConversationsStore(s => s.markNotified);
+
+// agora seus dois “novos”:
+const userEmail            = useConversationsStore(s => s.userEmail);
+const userFilas            = useConversationsStore(s => s.userFilas);
+
 
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
