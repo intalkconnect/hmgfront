@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import jwtDecode from 'jwt-decode';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -9,6 +8,23 @@ import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import './App.css';
 
+// Helper para decodificar JWT sem dependências externas
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return {};
+  }
+};
+
 export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
@@ -16,7 +32,7 @@ export default function App() {
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  // Zustand selectors (granulares)
+  // Zustand selectors
   const selectedUserId       = useConversationsStore(s => s.selectedUserId);
   const setSelectedUserId    = useConversationsStore(s => s.setSelectedUserId);
   const setUserInfo          = useConversationsStore(s => s.setUserInfo);
@@ -42,25 +58,21 @@ export default function App() {
     }
     if (!token) return;
 
-    try {
-      const { email } = jwtDecode(token);
-      // define email inicialmente, depois busca filas na API
-      setUserInfo({ email, filas: [] });
+    const { email } = parseJwt(token);
+    if (!email) return;
 
-      (async () => {
-        try {
-          const data = await apiGet(`/atendentes/${encodeURIComponent(email)}`);
-          if (data?.email) {
-            setUserInfo({ email: data.email, filas: data.filas || [] });
-          }
-        } catch (err) {
-          console.error('Erro ao buscar dados do atendente:', err);
+    setUserInfo({ email, filas: [] });
+
+    (async () => {
+      try {
+        const data = await apiGet(`/atendentes/${encodeURIComponent(email)}`);
+        if (data?.email) {
+          setUserInfo({ email: data.email, filas: data.filas || [] });
         }
-      })();
-    } catch (err) {
-      console.error('Token inválido:', err);
-      localStorage.removeItem('token');
-    }
+      } catch (err) {
+        console.error('Erro ao buscar dados do atendente:', err);
+      }
+    })();
   }, [setUserInfo]);
 
   // 2) Inicializa som de notificações
@@ -123,8 +135,8 @@ export default function App() {
 
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
-    const isFromMe      = message.direction === 'outgoing';
-    const isActiveChat  = message.user_id === selectedUserId;
+    const isFromMe       = message.direction === 'outgoing';
+    const isActiveChat   = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
     if (message.assigned_to !== userEmail) return;
@@ -224,7 +236,7 @@ export default function App() {
         <aside className="details-panel">
           <DetailsPanel
             userIdSelecionado={selectedUserId}
-            conversaSelecionada={conversaSelecionada}
+          conversaSelecionada={conversaSelecionada}
           />
         </aside>
       </div>
