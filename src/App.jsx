@@ -100,24 +100,8 @@ export default function App() {
     const socket = getSocket();
     socketRef.current = socket;
 
-    const updateStatus = async (connected) => {
-      setIsConnected(connected);
-      setSocketError(connected ? null : 'Conexão perdida. Reconectando...');
-      if (userEmail) {
-        try {
-          await apiPut(
-            `/atendentes/${userEmail}/status`,
-            { connected }
-          );
-        } catch (err) {
-          console.error('Falha ao atualizar status no servidor:', err);
-        }
-      }
-    };
-
     // Conexão estabelecida
     socket.on('connect', async () => {
-      updateStatus(true);
       if (userEmail && userFilas.length) {
         const sessionId = socket.id;
         // envia sessão via API
@@ -134,9 +118,6 @@ export default function App() {
       }
     });
 
-    // Desconexão ou erro
-    socket.on('disconnect', () => updateStatus(false));
-    socket.on('connect_error', () => updateStatus(false));
 
     // Nova mensagem
     socket.on('new_message', handleNewMessage);
