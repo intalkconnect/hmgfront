@@ -39,39 +39,32 @@ useEffect(() => {
     const decoded = jwtDecode(token);
     const userEmail = decoded.email;
     console.log("Token decodificado:", decoded);
-
     localStorage.setItem('token', token);
 
-    // Chamada de API para buscar filas do usuário
     const fetchUserData = async () => {
       try {
-const data = await apiGet(`/atendentes/${userEmail}`);
-
-
+        const data = await apiGet(`/atendentes/${userEmail}`);
         console.log("Dados do usuário recebidos:", data);
 
-        if (res.ok) {
+        if (data && data.email) {
           setUserInfo({
             email: data.email,
             filas: data.filas || [],
           });
         } else {
-          console.error("Erro ao buscar dados do usuário:", data.message);
+          console.error("Dados de usuário inválidos:", data);
         }
       } catch (err) {
-        console.error("Erro na requisição de user-info:", err);
+        console.error("Erro ao buscar dados do usuário:", err);
       }
     };
 
     fetchUserData();
-
-    // limpa o token da URL
     window.history.replaceState({}, document.title, '/');
   } catch (err) {
     console.error("Erro ao decodificar token JWT:", err);
   }
 }, [setUserInfo]);
-
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
