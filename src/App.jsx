@@ -36,7 +36,7 @@ useEffect(() => {
   if (!token) return;
 
   try {
-    const decoded = jwt_decode(token);
+    const decoded = jwtDecode(token);
     const userEmail = decoded.email;
     console.log("Token decodificado:", decoded);
 
