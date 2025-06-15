@@ -100,30 +100,35 @@ export default function App() {
     const socket = getSocket();
     socketRef.current = socket;
 
-    const updateStatus = async (connected) => { = async (connected) => {
+    // Função para atualizar status de conexão
+    const updateStatus = async (connected) => {
       setIsConnected(connected);
       setSocketError(connected ? null : 'Conexão perdida. Reconectando...');
       if (userEmail) {
         try {
-          await apiPut(`/atendentes/${encodeURIComponent(userEmail)}/status`, { connected });
+          await apiPut(
+            `/atendentes/${encodeURIComponent(userEmail)}/status`,
+            { connected }
+          );
         } catch (err) {
           console.error('Falha ao atualizar status no servidor:', err);
         }
       }
     };
 
+    // Ao conectar, atualiza status e identifica usuário e salas
     socket.on('connect', () => {
       updateStatus(true);
-      // envia email e sala(s) após conexão
       if (userEmail && userFilas && userFilas.length) {
         socket.emit('identify', { email: userEmail, rooms: userFilas });
       }
     });
-      // re-identifica após reconexão
-      if (userEmail) socket.emit('identify', { email: userEmail });
-    });
+
+    // Ao desconectar ou erro na conexão
     socket.on('disconnect', () => updateStatus(false));
     socket.on('connect_error', () => updateStatus(false));
+
+    // Recebe novas mensagens
     socket.on('new_message', handleNewMessage);
 
     return () => {
@@ -132,7 +137,7 @@ export default function App() {
       socket.off('connect_error');
       socket.off('new_message', handleNewMessage);
     };
-  }, [userEmail]);
+  }, [userEmail, userFilas]);
 
   // 5) Quando email/filas chegarem, carrega conversas e status
   useEffect(() => {
