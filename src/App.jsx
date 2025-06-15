@@ -1,7 +1,6 @@
 // App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
-import { jwtDecode } from 'jwt-decode';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
@@ -32,22 +31,10 @@ export default function App() {
   const [isWindowActive, setIsWindowActive] = useState(true);
 
   useEffect(() => {
-     let token = new URLSearchParams(window.location.search).get('token');
-    
-  if (token) {
-    localStorage.setItem('token', token);
-    // Limpa a URL após salvar
-    window.history.replaceState({}, document.title, '/');
-  } else {
-    token = localStorage.getItem('token');
-  }
-        const decoded = jwtDecode(token);
-    const userEmail = decoded.email;
-
-            const data = apiGet(/atendentes/${userEmail});
-        if (data && data.email) {
-          setUserInfo({ email: data.email, filas: data.filas || [] });
-
+    setUserInfo({
+      email: 'dan_rodrigo@hotmail.com',
+      filas: ['Comercial', 'Suporte'],
+    });
   }, [setUserInfo]);
 
   useEffect(() => {
