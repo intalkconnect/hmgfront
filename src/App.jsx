@@ -1,7 +1,7 @@
 // App.jsx atualizado com correção de contagem de não lidas
 import React, { useEffect, useRef, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import { apiGet, apiPut } from './services/apiClient';
+import { jwtDecode } from 'jwt-decode';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
@@ -14,29 +14,26 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-const selectedUserId       = useConversationsStore(s => s.selectedUserId);
-const setSelectedUserId    = useConversationsStore(s => s.setSelectedUserId);
-const setUserInfo          = useConversationsStore(s => s.setUserInfo);
-const mergeConversation    = useConversationsStore(s => s.mergeConversation);
-const resetUnread          = useConversationsStore(s => s.resetUnread);
-const loadUnreadCounts     = useConversationsStore(s => s.loadUnreadCounts);
-const loadLastReadTimes    = useConversationsStore(s => s.loadLastReadTimes);
-const getContactName       = useConversationsStore(s => s.getContactName);
-const conversations        = useConversationsStore(s => s.conversations);
-const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
-const markNotified         = useConversationsStore(s => s.markNotified);
-
-// agora seus dois “novos”:
-const userEmail            = useConversationsStore(s => s.userEmail);
-const userFilas            = useConversationsStore(s => s.userFilas);
-
+  const {
+    selectedUserId,
+    setSelectedUserId,
+    setUserInfo,
+    mergeConversation,
+    resetUnread,
+    loadUnreadCounts,
+    loadLastReadTimes,
+    getContactName,
+    conversations,
+    notifiedConversations,
+    markNotified,
+  } = useConversationsStore();
 
   const [socketError, setSocketError] = useState(null);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-useEffect(() => {
-  let token = new URLSearchParams(window.location.search).get('token');
-
+  useEffect(() => {
+     let token = new URLSearchParams(window.location.search).get('token');
+    
   if (token) {
     localStorage.setItem('token', token);
     // Limpa a URL após salvar
@@ -44,34 +41,14 @@ useEffect(() => {
   } else {
     token = localStorage.getItem('token');
   }
-
-  if (!token) {
-    console.warn("Nenhum token JWT encontrado");
-    return;
-  }
-
-  try {
-    const decoded = jwtDecode(token);
+        const decoded = jwtDecode(token);
     const userEmail = decoded.email;
 
-    const fetchUserData = async () => {
-      try {
-        const data = await apiGet(`/atendentes/${userEmail}`);
+            const data = await apiGet(/atendentes/${userEmail});
         if (data && data.email) {
           setUserInfo({ email: data.email, filas: data.filas || [] });
-        }
-      } catch (err) {
-        console.error("Erro ao buscar dados do usuário:", err);
-      }
-    };
 
-    fetchUserData();
-  } catch (err) {
-    console.error("Erro ao decodificar token JWT:", err);
-    localStorage.removeItem('token'); // limpa token corrompido
-  }
-}, [setUserInfo]);
-
+  }, [setUserInfo]);
 
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
