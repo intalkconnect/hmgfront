@@ -30,23 +30,22 @@ export default function App() {
   const socketRef = useRef(null);
 
   const [socketError, setSocketError] = useState(null);
-  const [isConnected, setIsConnected] = useState(true);
   const [isWindowActive, setIsWindowActive] = useState(true);
 
   // Zustand selectors
-  const selectedUserId        = useConversationsStore(s => s.selectedUserId);
-  const setSelectedUserId     = useConversationsStore(s => s.setSelectedUserId);
-  const setUserInfo           = useConversationsStore(s => s.setUserInfo);
-  const mergeConversation     = useConversationsStore(s => s.mergeConversation);
-  const resetUnread           = useConversationsStore(s => s.resetUnread);
-  const loadUnreadCounts      = useConversationsStore(s => s.loadUnreadCounts);
-  const loadLastReadTimes     = useConversationsStore(s => s.loadLastReadTimes);
-  const getContactName        = useConversationsStore(s => s.getContactName);
-  const conversations         = useConversationsStore(s => s.conversations);
+  const selectedUserId       = useConversationsStore(s => s.selectedUserId);
+  const setSelectedUserId    = useConversationsStore(s => s.setSelectedUserId);
+  const setUserInfo          = useConversationsStore(s => s.setUserInfo);
+  const mergeConversation    = useConversationsStore(s => s.mergeConversation);
+  const resetUnread          = useConversationsStore(s => s.resetUnread);
+  const loadUnreadCounts     = useConversationsStore(s => s.loadUnreadCounts);
+  const loadLastReadTimes    = useConversationsStore(s => s.loadLastReadTimes);
+  const getContactName       = useConversationsStore(s => s.getContactName);
+  const conversations        = useConversationsStore(s => s.conversations);
   const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
-  const markNotified          = useConversationsStore(s => s.markNotified);
-  const userEmail             = useConversationsStore(s => s.userEmail);
-  const userFilas             = useConversationsStore(s => s.userFilas);
+  const markNotified         = useConversationsStore(s => s.markNotified);
+  const userEmail            = useConversationsStore(s => s.userEmail);
+  const userFilas            = useConversationsStore(s => s.userFilas);
 
   // 1) Decodifica JWT e busca dados do atendente
   useEffect(() => {
@@ -63,9 +62,10 @@ export default function App() {
     if (!email) return;
 
     setUserInfo({ email, filas: [] });
+
     (async () => {
       try {
-        const data = await apiGet(`/atendentes/${email}`);
+        const data = await apiGet(`/atendentes/${encodeURIComponent(email)}`);
         if (data?.email) {
           setUserInfo({ email: data.email, filas: data.filas || [] });
         }
@@ -79,7 +79,10 @@ export default function App() {
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
-    return () => audioPlayer.current?.pause();
+    return () => {
+      audioPlayer.current?.pause();
+      audioPlayer.current = null;
+    };
   }, []);
 
   // 3) Monitora foco/blur para controle de notificações
@@ -94,54 +97,34 @@ export default function App() {
     };
   }, []);
 
-  // 4) Conecta socket e registra listeners
+  // 4) Conecta socket e registra listener de mensagens (só no mount)
   useEffect(() => {
     connectSocket();
     const socket = getSocket();
     socketRef.current = socket;
 
-    // Função para atualizar status de conexão
-    const updateStatus = async (connected) => {
-      setIsConnected(connected);
-      setSocketError(connected ? null : 'Conexão perdida. Reconectando...');
-      if (userEmail) {
-        try {
-          await apiPut(
-            `/atendentes/${userEmail}/status`,
-            { connected }
-          );
-        } catch (err) {
-          console.error('Falha ao atualizar status no servidor:', err);
-        }
-      }
-    };
+        // informa o email e a(s) sala(s) ao socket após conectar
+    if (userEmail && userFilas) {
+      socket.emit('identify', { email: userEmail, rooms: userFilas });
+    }
 
-    // Ao conectar, atualiza status e identifica usuário e salas
-    socket.on('connect', () => {
-      updateStatus(true);
-      if (userEmail && userFilas && userFilas.length) {
-        socket.emit('identify', { email: userEmail, rooms: userFilas });
-      }
+    socket.on('connect_error', () => {
+      setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
     });
-
-    // Ao desconectar ou erro na conexão
-    socket.on('disconnect', () => updateStatus(false));
-    socket.on('connect_error', () => updateStatus(false));
-
-    // Recebe novas mensagens
+    socket.on('connect', () => setSocketError(null));
     socket.on('new_message', handleNewMessage);
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
       socket.off('connect_error');
+      socket.off('connect');
       socket.off('new_message', handleNewMessage);
     };
-  }, [userEmail, userFilas]);
+  }, []);
 
   // 5) Quando email/filas chegarem, carrega conversas e status
   useEffect(() => {
     if (!userEmail || userFilas.length === 0) return;
+
     (async () => {
       try {
         await Promise.all([
@@ -157,21 +140,25 @@ export default function App() {
 
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
-    const isFromMe        = message.direction === 'outgoing';
-    const isActiveChat    = message.user_id === selectedUserId;
+    const isFromMe       = message.direction === 'outgoing';
+    const isActiveChat   = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
     if (message.assigned_to !== userEmail) return;
+
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
       timestamp: message.timestamp,
       content: message.content,
       channel: message.channel,
     });
+
     if (isFromMe) return;
 
     if (isActiveChat && isWindowFocused) {
-      await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
+      await apiPut(`/messages/read-status/${message.user_id}`, {
+        last_read: new Date().toISOString(),
+      });
     } else {
       await loadUnreadCounts();
       if (!notifiedConversations[message.user_id] && !isWindowFocused) {
@@ -181,19 +168,24 @@ export default function App() {
       }
     }
 
-    if (isWindowActive) {
+    if (isWindowFocused) {
       try {
         audioPlayer.current.currentTime = 0;
         await audioPlayer.current.play();
-      } catch {}
+      } catch (e) {
+        console.warn('Erro ao reproduzir som:', e);
+      }
     }
   };
 
   // Busca todas as conversas atribuídas ao atendente
   const fetchConversations = async () => {
     try {
-      const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
-      const data = await apiGet(`/chats?${params}`);
+      const params = new URLSearchParams({
+        assigned_to: userEmail,
+        filas: userFilas.join(','),
+      });
+      const data = await apiGet(`/chats?${params.toString()}`);
       data.forEach(conv => mergeConversation(conv.user_id, conv));
     } catch (err) {
       console.error('Erro ao buscar /chats:', err);
@@ -204,21 +196,31 @@ export default function App() {
   const showNotification = (message, contactName) => {
     if (isWindowActive || !('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      const notif = new Notification(`Nova mensagem de ${contactName || message.user_id}`, {
-        body: getMessagePreview(message.content),
-        icon: '/icons/whatsapp.png',
-        vibrate: [200,100,200]
-      });
-      notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
+      const notif = new Notification(
+        `Nova mensagem de ${contactName || message.user_id}`,
+        {
+          body: getMessagePreview(message.content),
+          icon: '/icons/whatsapp.png',
+          vibrate: [200, 100, 200],
+        }
+      );
+      notif.onclick = () => {
+        window.focus();
+        setSelectedUserId(message.user_id);
+      };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => p==='granted' && showNotification(message, contactName));
+      Notification.requestPermission().then(p => p === 'granted' && showNotification(message, contactName));
     }
   };
 
   // Gera preview de mensagem
   const getMessagePreview = content => {
-    try { const parsed = JSON.parse(content); return parsed.text||parsed.caption||'[Arquivo]'; }
-    catch { return content.length>50 ? content.slice(0,47)+'...' : content; }
+    try {
+      const parsed = JSON.parse(content);
+      return parsed.text || parsed.caption || '[Arquivo]';
+    } catch {
+      return content.length > 50 ? content.slice(0, 47) + '...' : content;
+    }
   };
 
   const conversaSelecionada = selectedUserId ? conversations[selectedUserId] : null;
@@ -226,16 +228,21 @@ export default function App() {
   return (
     <div className="app-layout">
       {socketError && <div className="socket-error-banner">{socketError}</div>}
-      <div className="status-indicator">
-        Status: {isConnected ? 'Online' : 'Offline'}
-      </div>
       <div className="app-container section-wrapper">
-        <aside className="sidebar"><Sidebar /></aside>
+        <aside className="sidebar">
+          <Sidebar />
+        </aside>
         <main className="chat-container">
-          <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+          <ChatWindow
+            userIdSelecionado={selectedUserId}
+            conversaSelecionada={conversaSelecionada}
+          />
         </main>
         <aside className="details-panel">
-          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+          <DetailsPanel
+            userIdSelecionado={selectedUserId}
+          conversaSelecionada={conversaSelecionada}
+          />
         </aside>
       </div>
     </div>
