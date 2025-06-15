@@ -103,6 +103,11 @@ export default function App() {
     const socket = getSocket();
     socketRef.current = socket;
 
+        // informa o email e a(s) sala(s) ao socket após conectar
+    if (userEmail && userFilas) {
+      socket.emit('identify', { email: userEmail, rooms: userFilas });
+    }
+
     socket.on('connect_error', () => {
       setSocketError('Falha na conexão com o servidor. Tentando reconectar...');
     });
