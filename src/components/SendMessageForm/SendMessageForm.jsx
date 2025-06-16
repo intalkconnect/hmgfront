@@ -79,7 +79,7 @@ export default function SendMessageForm({
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiGet('/quick_replies');
+        const data = await apiGet('/quickReplies');
         setHasQuickReplies(data.length > 0);
       } catch (err) {
         console.error('Erro ao checar quick replies:', err);
