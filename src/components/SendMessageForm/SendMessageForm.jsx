@@ -186,16 +186,16 @@ export default function SendMessageForm({
 
         {/* Botões */}
         <div className="send-button-group">
-          {hasQuickReplies && (
+{/*           {hasQuickReplies && (
             <button
               type="button"
               className="btn-attachment"
               onClick={() => setShowQuickReplies((v) => !v)}
               title="Respostas Rápidas"
             >
-              <Slash size={24} color="#555" />
+              /
             </button>
-          )}
+          )} */}
 
           <button
             type="button"
