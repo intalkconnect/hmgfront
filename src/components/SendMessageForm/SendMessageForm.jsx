@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Smile, Paperclip, Image, List } from 'lucide-react';
+import { Smile, Paperclip, Image, Slash } from 'lucide-react';
 import './SendMessageForm.css';
 
 import TextMessage     from '../ChatWindow/messageTypes/TextMessage';
@@ -140,7 +140,7 @@ export default function SendMessageForm({
     const value = e.target.value;
     setText(value);
     setShowQuickReplies(
-      hasQuickReplies && value.trim().startsWith('#') && value.trim().length === 1
+      hasQuickReplies && value.trim().startsWith('/') && value.trim().length === 1
     );
   };
 
@@ -162,7 +162,7 @@ export default function SendMessageForm({
       <form className="send-message-form" onSubmit={(e) => e.preventDefault()}>
         {/* Campo de mensagem + ícone hash */}
         <div className="message-input-wrapper">
-          {hasQuickReplies && <span className="quick-reply-hash">#</span>}
+          {hasQuickReplies && <span className="quick-reply-hash">/</span>}
 
           <AutoResizingTextarea
             ref={textareaRef}
@@ -193,7 +193,7 @@ export default function SendMessageForm({
               onClick={() => setShowQuickReplies((v) => !v)}
               title="Respostas Rápidas"
             >
-              <List size={24} color="#555" />
+              <Slash size={24} color="#555" />
             </button>
           )}
 
