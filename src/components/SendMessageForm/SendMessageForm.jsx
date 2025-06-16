@@ -18,6 +18,8 @@ import FilePreview from './FilePreview';
 import AutoResizingTextarea from './AutoResizingTextarea';
 import EmojiPicker from './EmojiPicker';
 import UploadFileModal from './UploadFileModal';
+import QuickReplies from './QuickReplies';
+
 
 export default function SendMessageForm({ userIdSelecionado, onMessageAdded, replyTo, setReplyTo }) {
   const [text, setText] = useState('');
@@ -29,6 +31,9 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const quickReplyRef = useRef(null);
+
 
   const { isSending, sendMessage } = useSendMessage();
   const {
@@ -75,6 +80,7 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
       setText('');
       setFile(null);
       setReplyTo(null);
+      setShowQuickReplies(false);
     } else {
       startRecording();
     }
@@ -154,6 +160,14 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
     }
   };
 
+const handleQuickReplySelect = (reply) => {
+  setText(reply.content);
+  setShowQuickReplies(false);
+  textareaRef.current?.focus();
+};
+
+
+
   return (
     <>
       <form className="send-message-form" onSubmit={(e) => e.preventDefault()} style={{ position: 'relative' }}>
@@ -182,7 +196,12 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
               : 'Escreva uma mensagem...'
           }
           value={text}
-          onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+  const value = e.target.value;
+  setText(value);
+  setShowQuickReplies(value.trim().startsWith('#') && value.trim().length === 1);
+}}
+
           onSubmit={handleSend}
           disabled={isSending || isRecording}
           rows={1}
@@ -262,6 +281,26 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
           </div>
         )}
       </form>
+      {showQuickReplies && (
+  <div
+    ref={quickReplyRef}
+    style={{
+      position: 'absolute',
+      bottom: '60px',
+      left: 0,
+      zIndex: 1000,
+      maxHeight: '200px',
+      overflowY: 'auto',
+      background: '#fff',
+      border: '1px solid #ccc',
+      borderRadius: '6px',
+      padding: '8px',
+    }}
+  >
+    <QuickReplies onSelect={handleQuickReplySelect} />
+  </div>
+)}
+
 
       {fileToConfirm && (
         <UploadFileModal
