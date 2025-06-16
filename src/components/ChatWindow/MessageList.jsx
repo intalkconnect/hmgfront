@@ -39,13 +39,7 @@ const MessageList = forwardRef(
     return (
       <div
         ref={containerRef}
-        style={{
-          flex: 1,                   // ocupa todo espaço vertical disponível
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',         // scroll aparece aqui, não em outro lugar
-          padding: '0 8px',          // opcional: gap lateral igual ao que tinha antes
-        }}
+        className="chat-scroll-container"
       >
 {messages.map((msg, index) => {
   const replyToMessage = messages.find(m => m.whatsapp_message_id === msg.reply_to);
