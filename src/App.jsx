@@ -4,6 +4,7 @@ import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/ChatWindow/ChatWindow';
 import DetailsPanel from './components/DetailsPanel/DetailsPanel';
+import SocketDisconnectedModal from './components/SocketDisconnectedModal';
 import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import './App.css';
@@ -29,16 +30,11 @@ export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
 
-  const [socketError, setSocketError] = useState(null);
-  const [isConnected, setIsConnected] = useState(true);
-  const [isWindowActive, setIsWindowActive] = useState(true);
-
   // Zustand selectors
   const selectedUserId        = useConversationsStore(s => s.selectedUserId);
   const setSelectedUserId     = useConversationsStore(s => s.setSelectedUserId);
   const setUserInfo           = useConversationsStore(s => s.setUserInfo);
   const mergeConversation     = useConversationsStore(s => s.mergeConversation);
-  const resetUnread           = useConversationsStore(s => s.resetUnread);
   const loadUnreadCounts      = useConversationsStore(s => s.loadUnreadCounts);
   const loadLastReadTimes     = useConversationsStore(s => s.loadLastReadTimes);
   const getContactName        = useConversationsStore(s => s.getContactName);
@@ -47,6 +43,10 @@ export default function App() {
   const markNotified          = useConversationsStore(s => s.markNotified);
   const userEmail             = useConversationsStore(s => s.userEmail);
   const userFilas             = useConversationsStore(s => s.userFilas);
+  const socketStatus          = useConversationsStore(s => s.socketStatus);
+  const setSocketStatus       = useConversationsStore(s => s.setSocketStatus);
+
+  const [isWindowActive, setIsWindowActive] = useState(true);
 
   // 1) Decodifica JWT e busca dados do atendente
   useEffect(() => {
@@ -85,12 +85,12 @@ export default function App() {
   // 3) Monitora foco/blur para controle de notificações
   useEffect(() => {
     const onFocus = () => setIsWindowActive(true);
-    const onBlur  = () => setIsWindowActive(false);
+    const onBlur = () => setIsWindowActive(false);
     window.addEventListener('focus', onFocus);
-    window.addEventListener('blur',  onBlur);
+    window.addEventListener('blur', onBlur);
     return () => {
       window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur',  onBlur);
+      window.removeEventListener('blur', onBlur);
     };
   }, []);
 
@@ -102,14 +102,12 @@ export default function App() {
 
     // Conexão estabelecida
     socket.on('connect', async () => {
+      setSocketStatus('online');
       if (userEmail && userFilas.length) {
         const sessionId = socket.id;
         // envia sessão via API
         try {
-          await apiPut(
-            `/atendentes/session/${userEmail}`,
-            { session: sessionId }
-          );
+          await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
         } catch (err) {
           console.error('Erro ao informar sessão ao servidor:', err);
         }
@@ -118,6 +116,10 @@ export default function App() {
       }
     });
 
+    // Desconexão
+    socket.on('disconnect', () => {
+      setSocketStatus('offline');
+    });
 
     // Nova mensagem
     socket.on('new_message', handleNewMessage);
@@ -125,10 +127,9 @@ export default function App() {
     return () => {
       socket.off('connect');
       socket.off('disconnect');
-      socket.off('connect_error');
       socket.off('new_message', handleNewMessage);
     };
-  }, [userEmail, userFilas]);
+  }, [userEmail, userFilas, setSocketStatus]);
 
   // 5) Quando email/filas chegarem, carrega conversas e status
   useEffect(() => {
@@ -138,18 +139,18 @@ export default function App() {
         await Promise.all([
           fetchConversations(),
           loadLastReadTimes(),
-          loadUnreadCounts()
+          loadUnreadCounts(),
         ]);
       } catch (err) {
         console.error('Erro ao inicializar dados:', err);
       }
     })();
-  }, [userEmail, userFilas]);
+  }, [userEmail, userFilas, loadLastReadTimes, loadUnreadCounts]);
 
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
-    const isFromMe        = message.direction === 'outgoing';
-    const isActiveChat    = message.user_id === selectedUserId;
+    const isFromMe = message.direction === 'outgoing';
+    const isActiveChat = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
     if (message.assigned_to !== userEmail) return;
@@ -162,10 +163,9 @@ export default function App() {
     if (isFromMe) return;
 
     if (isActiveChat && isWindowFocused) {
-      await apiPut(
-        `/messages/read-status/${message.user_id}`,
-        { last_read: new Date().toISOString() }
-      );
+      await apiPut(`/messages/read-status/${message.user_id}`, {
+        last_read: new Date().toISOString(),
+      });
     } else {
       await loadUnreadCounts();
       if (!notifiedConversations[message.user_id] && !isWindowFocused) {
@@ -188,7 +188,7 @@ export default function App() {
     try {
       const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
       const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach(conv => mergeConversation(conv.user_id, conv));
+      data.forEach((conv) => mergeConversation(conv.user_id, conv));
     } catch (err) {
       console.error('Erro ao buscar /chats:', err);
     }
@@ -200,34 +200,42 @@ export default function App() {
     if (Notification.permission === 'granted') {
       const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
-        { body: getMessagePreview(message.content), icon: '/icons/whatsapp.png', vibrate: [200,100,200] }
+        { body: getMessagePreview(message.content), icon: '/icons/whatsapp.png', vibrate: [200, 100, 200] }
       );
       notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => p==='granted' && showNotification(message, contactName));
+      Notification.requestPermission().then((p) => p === 'granted' && showNotification(message, contactName));
     }
   };
 
   // Gera preview de mensagem
-  const getMessagePreview = content => {
-    try { const parsed = JSON.parse(content); return parsed.text||parsed.caption||'[Arquivo]'; }
-    catch { return content.length>50 ? content.slice(0,47)+'...' : content; }
+  const getMessagePreview = (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      return parsed.text || parsed.caption || '[Arquivo]';
+    } catch {
+      return content.length > 50 ? content.slice(0, 47) + '...' : content;
+    }
   };
 
   const conversaSelecionada = selectedUserId ? conversations[selectedUserId] : null;
 
   return (
-    <div className="app-layout">
-      {socketError && <div className="socket-error-banner">{socketError}</div>}
-      <div className="app-container section-wrapper">
-        <aside className="sidebar"><Sidebar /></aside>
-        <main className="chat-container">
-          <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-        </main>
-        <aside className="details-panel">
-          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-        </aside>
+    <>
+      <SocketDisconnectedModal />
+      <div className="app-layout">
+        <div className="app-container section-wrapper">
+          <aside className="sidebar">
+            <Sidebar />
+          </aside>
+          <main className="chat-container">
+            <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+          </main>
+          <aside className="details-panel">
+            <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
