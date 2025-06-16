@@ -217,4 +217,49 @@
   cursor: pointer;
 }
 
+/* wrapper do campo de mensagem: posiciona o # */
+.message-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ícone # dentro do input */
+.quick-reply-hash {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: bold;
+  color: #888;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* afasta o texto do # */
+.send-message-textarea {
+  padding-left: 24px !important;
+}
+
+/* container do dropdown (posicionado logo acima do form) */
+.quick-replies-container {
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* botão QR que fica na barra de botões */
+.btn-attachment .qr-btn {
+  font-size: 18px;
+  font-weight: bold;
+  color: #555;
+}
 
