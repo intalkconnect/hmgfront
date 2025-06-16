@@ -1,40 +1,61 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Smile, Paperclip, Image } from 'lucide-react';
+import { Smile, Paperclip, Image, List } from 'lucide-react';
 import './SendMessageForm.css';
 
-import TextMessage from '../ChatWindow/messageTypes/TextMessage';
-import ImageMessage from '../ChatWindow/messageTypes/ImageMessage';
+import TextMessage     from '../ChatWindow/messageTypes/TextMessage';
+import ImageMessage    from '../ChatWindow/messageTypes/ImageMessage';
 import DocumentMessage from '../ChatWindow/messageTypes/DocumentMessage';
-import AudioMessage from '../ChatWindow/messageTypes/AudioMessage';
-import ListMessage from '../ChatWindow/messageTypes/ListMessage';
-import UnknownMessage from '../ChatWindow/messageTypes/UnknownMessage';
+import AudioMessage    from '../ChatWindow/messageTypes/AudioMessage';
+import ListMessage     from '../ChatWindow/messageTypes/ListMessage';
 
-import { useSendMessage } from '../../hooks/useSendMessage';
+import { useSendMessage }   from '../../hooks/useSendMessage';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
-import { useClickOutside } from '../../hooks/useClickOutside';
-import FilePreview from './FilePreview';
+import { useClickOutside }  from '../../hooks/useClickOutside';
+import { apiGet }           from '../../services/apiClient';
+
+import FilePreview          from './FilePreview';
 import AutoResizingTextarea from './AutoResizingTextarea';
-import EmojiPicker from './EmojiPicker';
-import UploadFileModal from './UploadFileModal';
-import QuickReplies from './QuickReplies';
+import EmojiPicker          from './EmojiPicker';
+import UploadFileModal      from './UploadFileModal';
+import QuickReplies         from './QuickReplies';
 
-
-export default function SendMessageForm({ userIdSelecionado, onMessageAdded, replyTo, setReplyTo }) {
-  const [text, setText] = useState('');
-  const [file, setFile] = useState(null);
+/**
+ * Formulário de envio de mensagens com:
+ *  - Emojis
+ *  - Anexos
+ *  - Áudio push‑to‑talk
+ *  - Respostas rápidas (#) / botão hash
+ */
+export default function SendMessageForm({
+  userIdSelecionado,
+  onMessageAdded,
+  replyTo,
+  setReplyTo,
+}) {
+  /* ------------------------------------------------------------------ */
+  /*  Estados principais                                                */
+  /* ------------------------------------------------------------------ */
+  const [text, setText]                 = useState('');
+  const [file, setFile]                 = useState(null);
   const [fileToConfirm, setFileToConfirm] = useState(null);
-  const [showEmoji, setShowEmoji] = useState(false);
-
-  const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const imageInputRef = useRef(null);
-  const emojiPickerRef = useRef(null);
+  const [showEmoji, setShowEmoji]       = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
-  const quickReplyRef = useRef(null);
+  const [hasQuickReplies, setHasQuickReplies]   = useState(false);
 
+  /* ------------------------------------------------------------------ */
+  /*  Refs                                                              */
+  /* ------------------------------------------------------------------ */
+  const textareaRef    = useRef(null);
+  const fileInputRef   = useRef(null);
+  const imageInputRef  = useRef(null);
+  const emojiPickerRef = useRef(null);
+  const quickReplyRef  = useRef(null);
 
+  /* ------------------------------------------------------------------ */
+  /*  Hooks personalizados                                               */
+  /* ------------------------------------------------------------------ */
   const { isSending, sendMessage } = useSendMessage();
   const {
     isRecording,
@@ -44,47 +65,59 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
     clearRecordedFile,
   } = useAudioRecorder();
 
-  // agora – fecha tanto o picker de emoji quanto o de quick replies
-useClickOutside(
-  [emojiPickerRef, quickReplyRef],
-  () => {
+  /* ------------------------------------------------------------------ */
+  /*  Detecta clique fora para fechar menus                              */
+  /* ------------------------------------------------------------------ */
+  useClickOutside([emojiPickerRef, quickReplyRef], () => {
     setShowEmoji(false);
     setShowQuickReplies(false);
-  }
-);
+  });
 
-
+  /* ------------------------------------------------------------------ */
+  /*  Verifica se existem respostas rápidas                              */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
-    setText('');
-    setFile(null);
-    setReplyTo(null);
+    (async () => {
+      try {
+        const data = await apiGet('/quick_replies');
+        setHasQuickReplies(data.length > 0);
+      } catch (err) {
+        console.error('Erro ao checar quick replies:', err);
+      }
+    })();
+  }, []);
+
+  /* ------------------------------------------------------------------ */
+  /*  Reset ao trocar de usuário                                         */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    setText(''); setFile(null); setReplyTo(null);
   }, [userIdSelecionado]);
 
-  useEffect(() => {
-    if (replyTo) {
-      console.log('🔁 Mensagem sendo respondida (ID):', replyTo.whatsapp_message_id);
-    }
-  }, [replyTo]);
-
+  /* ------------------------------------------------------------------ */
+  /*  Atualiza file ao terminar gravação                                */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (recordedFile) setFile(recordedFile);
   }, [recordedFile]);
 
+  /* ------------------------------------------------------------------ */
+  /*  Manipuladores                                                      */
+  /* ------------------------------------------------------------------ */
   const handleSend = (e) => {
     e.preventDefault();
     if (isRecording) return stopRecording();
 
     if (text.trim() || file) {
-      const payload = {
-        text,
-        file,
-        userId: userIdSelecionado,
-        replyTo: replyTo?.whatsapp_message_id || null,
-      };
-
-      console.log('📦 Payload sendo enviado:', payload);
-
-      sendMessage(payload, onMessageAdded);
+      sendMessage(
+        {
+          text,
+          file,
+          userId: userIdSelecionado,
+          replyTo: replyTo?.whatsapp_message_id || null,
+        },
+        onMessageAdded
+      );
       setText('');
       setFile(null);
       setReplyTo(null);
@@ -94,134 +127,80 @@ useClickOutside(
     }
   };
 
+  const handleQuickReplySelect = (qr) => {
+    setText(qr.content);
+    setShowQuickReplies(false);
+    textareaRef.current?.focus();
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  onChange do textarea                                               */
+  /* ------------------------------------------------------------------ */
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    setText(value);
+    setShowQuickReplies(
+      hasQuickReplies && value.trim().startsWith('#') && value.trim().length === 1
+    );
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  Remove arquivo                                                     */
+  /* ------------------------------------------------------------------ */
   const handleRemoveFile = () => {
     setFile(null);
     clearRecordedFile();
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (imageInputRef.current) imageInputRef.current.value = '';
+    fileInputRef.current.value = '';
+    imageInputRef.current.value = '';
   };
 
-  const handleFileSelect = (e) => {
-    const selected = e.target.files[0];
-    if (selected) setFileToConfirm(selected);
-  };
-
-  const handleImageSelect = (e) => {
-    const selected = e.target.files[0];
-    if (selected) setFileToConfirm(selected);
-  };
-
-  const handleSelectEmoji = (emoji) => {
-    if (typeof emoji === 'string') {
-      setText((prev) => prev + emoji);
-    }
-  };
-
-  const renderReplyContent = (msg) => {
-    if (!msg || !msg.content) return '[mensagem]';
-
-    if (typeof msg.content === 'string' && !msg.content.trim().startsWith('{')) {
-      return <TextMessage content={msg.content} />;
-    }
-
-    try {
-      const parsed = typeof msg.content === 'string'
-        ? JSON.parse(msg.content)
-        : msg.content;
-
-      const url = parsed.url?.toLowerCase?.() || '';
-      const filename = parsed.filename?.toLowerCase?.() || '';
-      const extension = filename.split('.').pop();
-
-      if ((parsed.type === 'list' || parsed.type === 'buttons') && parsed.action?.sections) {
-        return <ListMessage listData={parsed} small />;
-      }
-
-      if (parsed.voice || /\.(ogg|mp3|wav|webm)$/i.test(url)) {
-        return <AudioMessage url={parsed.url} small />;
-      }
-
-      if (/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(url)) {
-        return <ImageMessage url={parsed.url} caption={parsed.caption} small />;
-      }
-
-      const docExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
-      if (filename && docExts.includes(extension)) {
-        return (
-          <DocumentMessage
-            filename={filename}
-            url={parsed.url}
-            caption={parsed.caption}
-            small
-          />
-        );
-      }
-
-      if (parsed.text || parsed.caption) {
-        return <TextMessage content={parsed.text || parsed.caption} />;
-      }
-
-      return <TextMessage content="[mensagem]" />;
-    } catch (err) {
-      console.error('❌ Erro ao parsear msg.content:', err);
-      return <TextMessage content={msg.content} />;
-    }
-  };
-
-const handleQuickReplySelect = (reply) => {
-  setText(reply.content);
-  setShowQuickReplies(false);
-  textareaRef.current?.focus();
-};
-
-
-
+  /* ------------------------------------------------------------------ */
+  /*  JSX                                                                */
+  /* ------------------------------------------------------------------ */
   return (
     <>
-      <form className="send-message-form" onSubmit={(e) => e.preventDefault()} style={{ position: 'relative' }}>
-        {replyTo && (
-          <div className="reply-preview">
-            <div className="reply-content">
-              <strong>{replyTo.sender || 'Você'}</strong>
-              <div className="reply-text">
-                {renderReplyContent(replyTo)}
-              </div>
-            </div>
-            <button className="reply-close-btn" onClick={() => setReplyTo(null)}>×</button>
-          </div>
-        )}
+      <form className="send-message-form" onSubmit={(e) => e.preventDefault()}>
+        {/* Campo de mensagem + ícone hash */}
+        <div className="message-input-wrapper">
+          {hasQuickReplies && <span className="quick-reply-hash">#</span>}
 
-        <AutoResizingTextarea
-          ref={textareaRef}
-          className="send-message-textarea"
-          placeholder={
-            file
-              ? file.type.startsWith('audio/')
-                ? 'Gravação pronta (aperte enviar) ou digite legenda...'
-                : 'Digite uma legenda para o anexo...'
-              : isRecording
-              ? 'Gravando áudio...'
-              : 'Escreva uma mensagem...'
-          }
-          value={text}
-            onChange={(e) => {
-  const value = e.target.value;
-  setText(value);
-  setShowQuickReplies(value.trim().startsWith('#') && value.trim().length === 1);
-}}
+          <AutoResizingTextarea
+            ref={textareaRef}
+            className="send-message-textarea"
+            placeholder={
+              file
+                ? file.type.startsWith('audio/')
+                  ? 'Gravação pronta...'
+                  : 'Digite legenda...'
+                : isRecording
+                ? 'Gravando áudio...'
+                : 'Escreva uma mensagem...'
+            }
+            value={text}
+            onChange={handleTextChange}
+            onSubmit={handleSend}
+            disabled={isSending || isRecording}
+            rows={1}
+          />
+        </div>
 
-          onSubmit={handleSend}
-          disabled={isSending || isRecording}
-          rows={1}
-        />
-
+        {/* Botões */}
         <div className="send-button-group">
+          {hasQuickReplies && (
+            <button
+              type="button"
+              className="btn-attachment"
+              onClick={() => setShowQuickReplies((v) => !v)}
+              title="Respostas Rápidas"
+            >
+              <List size={24} color="#555" />
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-attachment"
-            onClick={() => setShowEmoji((prev) => !prev)}
-            disabled={isSending || isRecording}
-            title="Emoji"
+            onClick={() => setShowEmoji((v) => !v)}
           >
             <Smile size={24} color="#555" />
           </button>
@@ -229,9 +208,7 @@ const handleQuickReplySelect = (reply) => {
           <button
             type="button"
             className="btn-attachment"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSending || isRecording}
-            title="Anexar arquivo"
+            onClick={() => fileInputRef.current.click()}
           >
             <Paperclip size={24} color="#555" />
           </button>
@@ -239,16 +216,13 @@ const handleQuickReplySelect = (reply) => {
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
-            accept=".txt,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf"
-            onChange={handleFileSelect}
+            onChange={(e) => setFileToConfirm(e.target.files[0])}
           />
 
           <button
             type="button"
             className="btn-attachment"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={isSending || isRecording}
-            title="Anexar imagem"
+            onClick={() => imageInputRef.current.click()}
           >
             <Image size={24} color="#555" />
           </button>
@@ -257,7 +231,7 @@ const handleQuickReplySelect = (reply) => {
             ref={imageInputRef}
             style={{ display: 'none' }}
             accept="image/*"
-            onChange={handleImageSelect}
+            onChange={(e) => setFileToConfirm(e.target.files[0])}
           />
 
           <FilePreview
@@ -274,55 +248,52 @@ const handleQuickReplySelect = (reply) => {
             disabled={isSending}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fff">
-              <path d={
-                isRecording ? "M6 6h12v12H6z"
-                  : text.trim() || file ? "M2.01 21l20.99-9L2.01 3v7l15 2-15 2z"
-                  : "M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2z"
-              } />
+              <path
+                d={
+                  isRecording
+                    ? 'M6 6h12v12H6z'
+                    : text.trim() || file
+                    ? 'M2.01 21l20.99-9L2.01 3v7l15 2-15 2z'
+                    : 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2z'
+                }
+              />
             </svg>
           </button>
         </div>
 
+        {/* Emoji-picker */}
         {showEmoji && (
-          <div ref={emojiPickerRef} style={{ position: 'absolute', bottom: '50px', left: 0, zIndex: 1000 }}>
-            <EmojiPicker onSelect={handleSelectEmoji} />
+          <div ref={emojiPickerRef} className="emoji-picker-wrapper">
+            <EmojiPicker onSelect={(emoji) => setText((p) => p + emoji)} />
           </div>
         )}
       </form>
-{showQuickReplies && (
-  <div
-    ref={quickReplyRef}
-    style={{
-      position: 'absolute',
-      bottom: '60px',
-      left: 0,
-      zIndex: 1000,
-      maxHeight: '200px',
-      overflowY: 'auto',
-      background: '#fff',
-      border: '1px solid #ccc',
-      borderRadius: '6px',
-      padding: '8px',
-    }}
-  >
-    <QuickReplies
-      onSelect={handleQuickReplySelect}
-      onClose={() => setShowQuickReplies(false)}
-    />
-  </div>
-)}
 
+      {/* Quick Replies dropdown */}
+      {showQuickReplies && (
+        <div ref={quickReplyRef} className="quick-replies-container">
+          <QuickReplies
+            onSelect={handleQuickReplySelect}
+            onClose={() => setShowQuickReplies(false)}
+          />
+        </div>
+      )}
+
+      {/* Modal confirmação upload */}
       {fileToConfirm && (
         <UploadFileModal
           file={fileToConfirm}
           onClose={() => setFileToConfirm(null)}
           onSubmit={async (file, caption) => {
-            await sendMessage({
-              text: caption,
-              file,
-              userId: userIdSelecionado,
-              replyTo: replyTo?.whatsapp_message_id || null,
-            }, onMessageAdded);
+            await sendMessage(
+              {
+                text: caption,
+                file,
+                userId: userIdSelecionado,
+                replyTo: replyTo?.whatsapp_message_id || null,
+              },
+              onMessageAdded
+            );
             setFileToConfirm(null);
           }}
         />
