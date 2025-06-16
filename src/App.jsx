@@ -219,7 +219,6 @@ export default function App() {
   return (
     <div className="app-layout">
       {socketError && <div className="socket-error-banner">{socketError}</div>}
-      <div className="status-indicator">Status: {isConnected ? 'Online' : 'Offline'}</div>
       <div className="app-container section-wrapper">
         <aside className="sidebar"><Sidebar /></aside>
         <main className="chat-container">
