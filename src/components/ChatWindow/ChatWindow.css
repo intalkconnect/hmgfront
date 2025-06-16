@@ -1,5 +1,5 @@
 /* ===================================================================
-   LAYOUT WRAPPERS (ADICIONADOS PARA SCROLL FUNCIONAR)
+   WRAPPERS PARA FLEX E SCROLL FUNCIONAR
 =================================================================== */
 .app-container,
 .section-wrapper,
@@ -8,6 +8,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 
 /* ===================================================================
@@ -18,6 +19,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   background-color: var(--color-background);
   position: relative;
 }
@@ -157,10 +159,11 @@
   z-index: 10;
 }
 
-
 /* ===================================================================
    4. MEDIA ATTACHMENTS
 =================================================================== */
+/* ... mantém o restante da sua definição existente ... */
+================================================================= */
 
 /* 4.1 Images */
 .image-container {
