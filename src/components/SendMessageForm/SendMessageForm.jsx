@@ -291,21 +291,15 @@ const handleQuickReplySelect = (reply) => {
       </form>
       {showQuickReplies && (
   <div
-    ref={quickReplyRef}
-    style={{
-      position: 'absolute',
-      bottom: '60px',
-      left: 0,
-      zIndex: 1000,
-      maxHeight: '200px',
-      overflowY: 'auto',
-      background: '#fff',
-      border: '1px solid #ccc',
-      borderRadius: '6px',
-      padding: '8px',
-    }}
+    style={{ position: 'absolute', bottom: '60px', left: 0, zIndex: 1000 }}
   >
-    <QuickReplies onSelect={handleQuickReplySelect} />
+    <QuickReplies
+      onSelect={handleQuickReplySelect}
+      onClose={() => setShowQuickReplies(false)}
+    />
+  </div>
+)}
+
   </div>
 )}
 
