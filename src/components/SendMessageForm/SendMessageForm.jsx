@@ -44,7 +44,15 @@ export default function SendMessageForm({ userIdSelecionado, onMessageAdded, rep
     clearRecordedFile,
   } = useAudioRecorder();
 
-  useClickOutside([emojiPickerRef], () => setShowEmoji(false));
+  // agora – fecha tanto o picker de emoji quanto o de quick replies
+useClickOutside(
+  [emojiPickerRef, quickReplyRef],
+  () => {
+    setShowEmoji(false);
+    setShowQuickReplies(false);
+  }
+);
+
 
   useEffect(() => {
     setText('');
