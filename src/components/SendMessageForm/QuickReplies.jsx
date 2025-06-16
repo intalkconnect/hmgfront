@@ -11,7 +11,7 @@ const QuickReplies = forwardRef(({ onSelect }, ref) => {
     // carrega respostas rápidas do backend
     (async () => {
       try {
-        const data = await apiGet('/quick_replies');
+        const data = await apiGet('/quickReplies');
         setQuickReplies(data);
       } catch (e) {
         console.error('Erro ao carregar quick replies:', e);
