@@ -128,4 +128,20 @@ body {
   box-shadow: var(--box-shadow-light);
   margin-bottom: 12px;
 }
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-wrapper,
+.app-container,
+.section-wrapper,
+.chat-container,
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
 
