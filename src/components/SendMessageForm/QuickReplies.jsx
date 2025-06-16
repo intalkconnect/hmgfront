@@ -2,38 +2,48 @@ import React, { useState, useEffect, forwardRef } from 'react';
 import { apiGet } from '../../services/apiClient';
 import './QuickReplies.css';
 
-// Componente responsável por exibir respostas rápidas
+// Componente busca e exibe respostas rápidas com filtro por texto digitado
 const QuickReplies = forwardRef(({ onSelect }, ref) => {
   const [quickReplies, setQuickReplies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchQuickReplies = async () => {
+    // carrega respostas rápidas do backend
+    (async () => {
       try {
         const data = await apiGet('/quick_replies');
         setQuickReplies(data);
-      } catch (err) {
-        console.error('Erro ao carregar respostas rápidas:', err);
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error('Erro ao carregar quick replies:', e);
       }
-    };
-
-    fetchQuickReplies();
+    })();
   }, []);
 
-  if (loading) return null;
-  if (quickReplies.length === 0) return null;
+  const filteredReplies = quickReplies.filter(qr => {
+    const term = searchTerm.toLowerCase();
+    return (
+      qr.title.toLowerCase().includes(term) ||
+      qr.content.toLowerCase().includes(term)
+    );
+  });
 
   return (
-    <div ref={ref} className="quick-replies-dropdown">
+    <div className="quick-replies-wrapper" ref={ref}>
+      <input
+        type="text"
+        className="quick-replies-search"
+        placeholder="Buscar resposta rápida..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
       <ul className="quick-replies-list">
-        {quickReplies.map(({ id, title, content }) => (
-          <li key={id} onClick={() => onSelect({ title, content })}>
-            <strong>{title}</strong>
-            <div className="quick-reply-preview">{content}</div>
+        {filteredReplies.map((qr) => (
+          <li key={qr.id} onClick={() => onSelect(qr)}>
+            <strong>{qr.title}</strong>
+            <p>{qr.content}</p>
           </li>
         ))}
+        {filteredReplies.length === 0 && <li className="no-results">Nenhum resultado encontrado</li>}
       </ul>
     </div>
   );
