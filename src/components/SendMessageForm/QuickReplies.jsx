@@ -19,7 +19,7 @@ const QuickReplies = forwardRef(({ onSelect, onClose }, ref) => {
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiGet('/quick_replies');
+        const data = await apiGet('/quickReplies');
         setQuickReplies(data);
       } catch (err) {
         console.error('Erro ao carregar quick replies:', err);
