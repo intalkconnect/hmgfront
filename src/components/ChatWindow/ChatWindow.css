@@ -1,7 +1,18 @@
 /* ===================================================================
+   LAYOUT WRAPPERS (ADICIONADOS PARA SCROLL FUNCIONAR)
+=================================================================== */
+.app-container,
+.section-wrapper,
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ===================================================================
    CHAT WINDOW - MAIN STRUCTURE
 =================================================================== */
-
 .chat-window {
   display: flex;
   flex-direction: column;
@@ -14,7 +25,6 @@
 /* ===================================================================
    1. EMPTY STATE (no conversation selected)
 =================================================================== */
-
 .chat-window.placeholder {
   display: flex;
   align-items: center;
@@ -56,7 +66,6 @@
 /* ===================================================================
    2. LOADING STATE
 =================================================================== */
-
 .chat-window.loading {
   display: flex;
   align-items: center;
@@ -147,6 +156,7 @@
   border-top: 1px solid var(--color-border);
   z-index: 10;
 }
+
 
 /* ===================================================================
    4. MEDIA ATTACHMENTS
