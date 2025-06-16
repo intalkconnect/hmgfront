@@ -289,9 +289,21 @@ const handleQuickReplySelect = (reply) => {
           </div>
         )}
       </form>
-      {showQuickReplies && (
+{showQuickReplies && (
   <div
-    style={{ position: 'absolute', bottom: '60px', left: 0, zIndex: 1000 }}
+    ref={quickReplyRef}
+    style={{
+      position: 'absolute',
+      bottom: '60px',
+      left: 0,
+      zIndex: 1000,
+      maxHeight: '200px',
+      overflowY: 'auto',
+      background: '#fff',
+      border: '1px solid #ccc',
+      borderRadius: '6px',
+      padding: '8px',
+    }}
   >
     <QuickReplies
       onSelect={handleQuickReplySelect}
@@ -299,10 +311,6 @@ const handleQuickReplySelect = (reply) => {
     />
   </div>
 )}
-
-  </div>
-)}
-
 
       {fileToConfirm && (
         <UploadFileModal
