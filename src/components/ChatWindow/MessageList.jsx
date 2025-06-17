@@ -43,17 +43,26 @@ const MessageList = forwardRef(
       >
 {messages.map((msg, index) => {
   const replyToMessage = messages.find(m => m.whatsapp_message_id === msg.reply_to);
+  const prevMsg = messages[index - 1];
+  const isNewTicket = !prevMsg || msg.ticket_number !== prevMsg.ticket_number;
 
   return (
-    <MessageRow
-      key={msg.id || index}
-      msg={{ ...msg, replyTo: replyToMessage }} // injeta o conteúdo da mensagem original
-      onImageClick={onImageClick}
-      onPdfClick={onPdfClick}
-      onReply={onReply}
-    />
+    <React.Fragment key={msg.id || index}>
+      {isNewTicket && (
+        <div className="ticket-divider">
+          Ticket #{msg.ticket_number}
+        </div>
+      )}
+      <MessageRow
+        msg={{ ...msg, replyTo: replyToMessage }}
+        onImageClick={onImageClick}
+        onPdfClick={onPdfClick}
+        onReply={onReply}
+      />
+    </React.Fragment>
   );
 })}
+
 
       </div>
     );
