@@ -149,6 +149,7 @@ export default function App() {
 
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
+    console.log('📥 Mensagem recebida via socket:', message);
     const isFromMe = message.direction === 'outgoing';
     const isActiveChat = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
