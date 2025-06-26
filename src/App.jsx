@@ -168,6 +168,7 @@ export default function App() {
         last_read: new Date().toISOString(),
       });
     } else {
+      incrementUnread(message.user_id, message.timestamp);
       await loadUnreadCounts();
       if (!notifiedConversations[message.user_id] && !isWindowFocused) {
         const contactName = getContactName(message.user_id);
