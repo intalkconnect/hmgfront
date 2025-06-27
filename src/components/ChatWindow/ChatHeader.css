@@ -42,17 +42,33 @@
   margin-top: 2px;
 }
 
+/* Estilo para caixa do ticket */
 .ticket-box {
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: #f1f3f5;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
+}
+
+/* Estilo para o texto do ticket */
+.ticket-text {
+  font-weight: 600;
   color: #333;
 }
+
+/* Badge da fila com estilo herdado do Sidebar */
+.chat-queue-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 8px;
+  color: #fff;
+  font-family: "Segoe UI", sans-serif;
+  line-height: 1.1;
+}
+
 
 .ticket-icon {
   color: var(--color-icon-muted);
