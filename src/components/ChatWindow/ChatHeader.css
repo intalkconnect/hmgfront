@@ -96,8 +96,8 @@
 }
 
 .btn-finalizar:hover {
-  background-color: var(--color-success-dark);
-  color: white;
+  background-color: #148f50; /* tom de verde escuro visível */
+  color: white !important;   /* mantém o texto branco */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
