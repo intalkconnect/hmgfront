@@ -65,7 +65,7 @@ export default function App() {
     setUserInfo({ email, filas: [] });
     (async () => {
       try {
-        const data = await apiGet(/atendentes/${email});
+        const data = await apiGet(`/atendentes/${email}`);
         if (data?.email) {
           setUserInfo({ email: data.email, filas: data.filas || [] });
         }
@@ -121,7 +121,7 @@ export default function App() {
           setSocketStatus('online');
           const sessionId = socket.id;
           try {
-            await apiPut(/atendentes/session/${userEmail}, { session: sessionId });
+            await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
           } catch (err) {
             console.error('Erro ao informar sessão ao servidor:', err);
           }
@@ -162,7 +162,7 @@ export default function App() {
 
     if (isActiveChat && isWindowFocused) {
       // Marca como lida no backend e atualiza contagens
-      await apiPut(/messages/read-status/${message.user_id}, { last_read: new Date().toISOString() });
+      await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
       await loadUnreadCounts();
     } else {
       // Incrementa badge e atualiza contagens imediatamente
@@ -186,7 +186,7 @@ export default function App() {
   const fetchConversations = async () => {
     try {
       const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
-      const data = await apiGet(/chats?${params.toString()});
+      const data = await apiGet(`/chats?${params.toString()}`);
       data.forEach(conv => mergeConversation(conv.user_id, conv));
     } catch (err) {
       console.error('Erro ao buscar /chats:', err);
@@ -198,7 +198,7 @@ export default function App() {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
       const notif = new Notification(
-        Nova mensagem de ${contactName || message.user_id},
+        `Nova mensagem de ${contactName || message.user_id}`,
         {
           body:    message.content.length > 50 ? message.content.slice(0, 47) + '...' : message.content,
           icon:    '/icons/whatsapp.png',
