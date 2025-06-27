@@ -1,7 +1,4 @@
-/* ============================================================
-   CHAT HEADER - NOVA ESTRUTURA
-============================================================ */
-
+/* ChatHeader.css */
 .chat-header {
   display: flex;
   justify-content: space-between;
@@ -13,91 +10,49 @@
   top: 0;
   z-index: 10;
   gap: 16px;
-  flex-wrap: wrap;
 }
 
 .chat-header-left {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
   min-width: 0;
+}
+
+.chat-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cliente-nome {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-default);
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* NOVO BLOCO DE DETALHES */
-.cliente-detalhes-novo {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 2px;
-}
-
-/* Estilo para caixa do ticket */
-.ticket-box {
-  background: #f5f5f5;
-  padding: 4px 8px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Estilo para o texto do ticket */
-.ticket-text {
-  font-weight: 600;
-  color: #333;
-}
-
-/* Badge da fila com estilo herdado do Sidebar */
-.chat-queue-badge {
-  font-size: 0.75rem;
+.ticket-numero {
+  font-size: 0.95rem;
   font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 8px;
-  color: #fff;
-  font-family: "Segoe UI", sans-serif;
-  line-height: 1.1;
+  color: var(--color-primary);
+  background-color: var(--color-primary-bg);
+  padding: 2px 8px;
+  border-radius: 6px;
 }
-
-
-.ticket-icon {
-  color: var(--color-icon-muted);
-}
-
-.fila-tag {
-  background-color: var(--whatsapp-green);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  text-transform: capitalize;
-}
-
-/* ============================================================
-   BOTÕES DE AÇÃO (Transferir / Finalizar)
-============================================================ */
 
 .chat-header-right {
   display: flex;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .chat-header-right button {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   border: none;
@@ -105,8 +60,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  min-width: max-content;
+  transition: all 0.2s;
 }
 
 .btn-transferir {
@@ -129,42 +83,22 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* ============================================================
-   RESPONSIVO
-============================================================ */
-
 @media (max-width: 768px) {
   .chat-header {
     flex-direction: column;
-    align-items: stretch;
     gap: 12px;
   }
 
+  .chat-header-title {
+    justify-content: center;
+  }
+
   .chat-header-right {
+    width: 100%;
     justify-content: flex-end;
   }
 
   .chat-header-right button {
     flex: 1;
-  }
-}
-
-@media (max-width: 480px) {
-  .cliente-nome {
-    font-size: 1rem;
-  }
-
-  .ticket-box {
-    font-size: 0.8rem;
-  }
-
-  .fila-tag {
-    font-size: 0.75rem;
-    padding: 3px 8px;
-  }
-
-  .chat-header-right button {
-    font-size: 0.8rem;
-    padding: 6px 8px;
   }
 }
