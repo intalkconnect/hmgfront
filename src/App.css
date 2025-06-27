@@ -41,7 +41,7 @@ html, body, #root {
   font-family: var(--font-sans);
   background: var(--color-background);
   color: var(--color-text-default);
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* ======================= LAYOUT PRINCIPAL ========================= */
