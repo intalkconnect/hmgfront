@@ -22,8 +22,10 @@
 .chat-header-title {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .cliente-nome {
