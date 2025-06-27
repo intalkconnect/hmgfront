@@ -36,38 +36,37 @@ export default function ChatHeader({ userIdSelecionado }) {
   return (
     <>
       <div className="chat-header">
-        <div className="chat-header-left">
-          <div className="cliente-nome">{name}</div>
-          <div className="cliente-detalhes">
-            <div className="detalhe-item">
-              <Clipboard size={16} className="detalhe-icon" />
-              <span className="detalhe-texto">Ticket: #{ticket_number}</span>
-            </div>
-            <div className="detalhe-item">
-              <Folder size={16} className="detalhe-icon" />
-              <span className="detalhe-texto">Fila: {fila}</span>
-            </div>
-          </div>
-        </div>
+  <div className="chat-header-left">
+    <div className="cliente-nome">{name}</div>
 
-        <div className="chat-header-right">
-          <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
-            <Share2 size={14} />
-            <span>Transferir</span>
-          </button>
-          <button className="btn-finalizar" onClick={finalizarAtendimento}>
-            <CheckCircle size={14} />
-            <span>Finalizar</span>
-          </button>
-        </div>
+    <div className="cliente-detalhes-novo">
+      <div className="ticket-box">
+        <Clipboard size={16} className="ticket-icon" />
+        <span className="ticket-text">#{ticket_number}</span>
       </div>
+      <span className="fila-tag">{fila}</span>
+    </div>
+  </div>
 
-      {showTransferModal && (
-        <TransferModal
-          userId={userIdSelecionado}
-          onClose={() => setShowTransferModal(false)}
-        />
-      )}
+  <div className="chat-header-right">
+    <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
+      <Share2 size={14} />
+      <span>Transferir</span>
+    </button>
+    <button className="btn-finalizar" onClick={finalizarAtendimento}>
+      <CheckCircle size={14} />
+      <span>Finalizar</span>
+    </button>
+  </div>
+
+  {showTransferModal && (
+    <TransferModal
+      userId={user_id}
+      onClose={() => setShowTransferModal(false)}
+    />
+  )}
+</div>
+
     </>
   );
 }
