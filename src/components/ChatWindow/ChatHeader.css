@@ -15,27 +15,24 @@
 .chat-header-left {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
   min-width: 0;
 }
 
-.chat-header-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.cliente-nome {
+.chat-header-nome {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-default);
-  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.chat-header-ticket {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .ticket-numero {
@@ -43,7 +40,7 @@
   font-weight: 500;
   color: var(--color-primary);
   background-color: var(--color-primary-bg);
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
 }
 
@@ -62,7 +59,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-transferir {
@@ -73,15 +70,18 @@
 
 .btn-transferir:hover {
   background-color: var(--color-surface-variant-hover);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .btn-finalizar {
   background-color: var(--color-success);
   color: white;
+  border: none;
 }
 
 .btn-finalizar:hover {
   background-color: var(--color-success-dark);
+  color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -91,8 +91,13 @@
     gap: 12px;
   }
 
-  .chat-header-title {
-    justify-content: center;
+  .chat-header-left {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chat-header-ticket {
+    margin: 0 auto;
   }
 
   .chat-header-right {
