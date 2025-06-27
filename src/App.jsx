@@ -28,6 +28,7 @@ const parseJwt = (token) => {
 export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
+  const isWindowActiveRef = useRef(true);
 
   const selectedUserId        = useConversationsStore(s => s.selectedUserId);
   const setSelectedUserId     = useConversationsStore(s => s.setSelectedUserId);
@@ -79,8 +80,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onFocus = () => setIsWindowActive(true);
-    const onBlur = () => setIsWindowActive(false);
+    const onFocus = () => {
+      isWindowActiveRef.current = true;
+      setIsWindowActive(true);
+    };
+    const onBlur = () => {
+      isWindowActiveRef.current = false;
+      setIsWindowActive(false);
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
 
@@ -95,11 +102,14 @@ export default function App() {
   }, []);
 
   const handleNewMessage = useCallback(async (message) => {
-    if (message.assigned_to !== userEmail) return;
+    if (!message || !message.content || message.assigned_to !== userEmail) {
+      console.warn('[Notificação] Mensagem ignorada: dados incompletos ou não atribuída a este atendente.');
+      return;
+    }
 
     const isFromMe         = message.direction === 'outgoing';
     const isActiveChat     = message.user_id === selectedUserId;
-    const isWindowFocused  = isWindowActive;
+    const isWindowFocused  = isWindowActiveRef.current;
 
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
@@ -120,15 +130,19 @@ export default function App() {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
         try {
-          audioPlayer.current.currentTime = 0;
-          await audioPlayer.current.play();
+          const player = audioPlayer.current;
+          if (player) {
+            await player.pause();
+            player.currentTime = 0;
+            await player.play();
+          }
         } catch (err) {
           console.error('Erro ao tocar som de notificação:', err);
         }
         markNotified(message.user_id);
       }
     }
-  }, [userEmail, selectedUserId, isWindowActive, mergeConversation, incrementUnread, loadUnreadCounts, getContactName, markNotified, notifiedConversations]);
+  }, [userEmail, selectedUserId, mergeConversation, incrementUnread, loadUnreadCounts, getContactName, markNotified, notifiedConversations]);
 
   useEffect(() => {
     if (!userEmail || !userFilas.length) return;
@@ -169,7 +183,7 @@ export default function App() {
       const socket = getSocket();
       socket.off('connect');
       socket.off('disconnect');
-      socket.off('new_message', handleNewMessage);
+      socket.off('new_message');
     };
   }, [userEmail, userFilas, handleNewMessage, loadUnreadCounts, loadLastReadTimes]);
 
@@ -184,8 +198,26 @@ export default function App() {
   };
 
   const showNotification = (message, contactName) => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!('Notification' in window)) {
+      console.warn('[Notificação] API Notification não está disponível.');
+      return;
+    }
+
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          showNotification(message, contactName);
+        } else {
+          console.warn('[Notificação] Permissão negada.');
+        }
+      });
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      console.warn('[Notificação] Permissão não concedida.');
+      return;
+    }
 
     let body;
     try {
