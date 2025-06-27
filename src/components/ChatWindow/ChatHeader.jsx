@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Clipboard, Folder, Share2, CheckCircle } from 'lucide-react';
+import {
+  Clipboard, Share2, CheckCircle
+} from 'lucide-react';
 import './ChatHeader.css';
 import useConversationsStore from '../../store/useConversationsStore';
 import { apiPut } from '../../services/apiClient';
@@ -17,6 +19,8 @@ export default function ChatHeader({ userIdSelecionado }) {
     name = 'Cliente',
     ticket_number = '000000',
     fila = 'Indefinida',
+    fila_color = '#ccc',
+    user_id = userIdSelecionado,
   } = clienteAtivo;
 
   const finalizarAtendimento = async () => {
@@ -24,8 +28,8 @@ export default function ChatHeader({ userIdSelecionado }) {
     if (!confirm) return;
 
     try {
-      await apiPut(`/tickets/${userIdSelecionado}`, { status: 'closed' });
-      mergeConversation(userIdSelecionado, { status: 'closed' });
+      await apiPut(`/tickets/${user_id}`, { status: 'closed' });
+      mergeConversation(user_id, { status: 'closed' });
       setSelectedUserId(null);
     } catch (err) {
       console.error('Erro ao finalizar ticket:', err);
@@ -36,37 +40,39 @@ export default function ChatHeader({ userIdSelecionado }) {
   return (
     <>
       <div className="chat-header">
-  <div className="chat-header-left">
-    <div className="cliente-nome">{name}</div>
+        <div className="chat-header-left">
+          <div className="cliente-nome">{name}</div>
 
-    <div className="cliente-detalhes-novo">
-      <div className="ticket-box">
-        <Clipboard size={16} className="ticket-icon" />
-        <span className="ticket-text">#{ticket_number}</span>
+          <div className="cliente-detalhes">
+            <div className="ticket-box">
+              <Clipboard size={16} className="detalhe-icon" />
+              <span className="ticket-text">#{ticket_number}</span>
+            </div>
+
+            <div className="chat-queue-badge" style={{ backgroundColor: fila_color }}>
+              {fila}
+            </div>
+          </div>
+        </div>
+
+        <div className="chat-header-right">
+          <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
+            <Share2 size={14} />
+            <span>Transferir</span>
+          </button>
+          <button className="btn-finalizar" onClick={finalizarAtendimento}>
+            <CheckCircle size={14} />
+            <span>Finalizar</span>
+          </button>
+        </div>
       </div>
-      <span className="fila-tag">{fila}</span>
-    </div>
-  </div>
 
-  <div className="chat-header-right">
-    <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
-      <Share2 size={14} />
-      <span>Transferir</span>
-    </button>
-    <button className="btn-finalizar" onClick={finalizarAtendimento}>
-      <CheckCircle size={14} />
-      <span>Finalizar</span>
-    </button>
-  </div>
-
-  {showTransferModal && (
-    <TransferModal
-      userId={user_id}
-      onClose={() => setShowTransferModal(false)}
-    />
-  )}
-</div>
-
+      {showTransferModal && (
+        <TransferModal
+          userId={user_id}
+          onClose={() => setShowTransferModal(false)}
+        />
+      )}
     </>
   );
 }
