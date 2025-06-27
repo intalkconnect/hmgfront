@@ -1,11 +1,10 @@
+// ChatHeader.jsx
 import React, { useState } from 'react';
-import {
-  Clipboard, Share2, CheckCircle
-} from 'lucide-react';
-import './ChatHeader.css';
+import { Share2, CheckCircle } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import { apiPut } from '../../services/apiClient';
 import TransferModal from './modals/TransferModal';
+import './ChatHeader.css';
 
 export default function ChatHeader({ userIdSelecionado }) {
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -18,8 +17,6 @@ export default function ChatHeader({ userIdSelecionado }) {
   const {
     name = 'Cliente',
     ticket_number = '000000',
-    fila = 'Indefinida',
-    fila_color = '#ccc',
     user_id = userIdSelecionado,
   } = clienteAtivo;
 
@@ -41,20 +38,11 @@ export default function ChatHeader({ userIdSelecionado }) {
     <>
       <div className="chat-header">
         <div className="chat-header-left">
-          <div className="cliente-nome">{name}</div>
-
-          <div className="cliente-detalhes">
-            <div className="ticket-box">
-              <Clipboard size={16} className="detalhe-icon" />
-              <span className="ticket-text">#{ticket_number}</span>
-            </div>
-
-            <div className="chat-queue-badge" style={{ backgroundColor: fila_color }}>
-              {fila}
-            </div>
+          <div className="chat-header-title">
+            <span className="cliente-nome">{name}</span>
+            <span className="ticket-numero">#{ticket_number}</span>
           </div>
         </div>
-
         <div className="chat-header-right">
           <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
             <Share2 size={14} />
