@@ -15,8 +15,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  overflow: hidden;
+  gap: 12px;
+  min-width: 0;
 }
 
 .chat-header-nome {
@@ -48,7 +48,6 @@
   justify-content: flex-end;
 }
 
-
 .chat-header-right button {
   display: flex;
   align-items: center;
@@ -60,6 +59,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: max-content;
 }
 
 .btn-transferir {
@@ -87,22 +87,20 @@
 
 @media (max-width: 768px) {
   .chat-header {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .chat-header-left {
-    flex-direction: column;
-    align-items: center;
+    justify-content: center;
   }
 
   .chat-header-ticket {
-    margin: 0 auto;
+    justify-content: center;
   }
 
   .chat-header-right {
-    width: 100%;
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .chat-header-right button {
