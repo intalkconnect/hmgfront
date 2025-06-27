@@ -95,41 +95,50 @@ export default function App() {
   }, []);
 
   // 4) Conecta socket e registra listeners
-  useEffect(() => {
-    connectSocket();
-    const socket = getSocket();
-    socketRef.current = socket;
+  // NOVO useEffect que carrega dados e só depois conecta socket
+useEffect(() => {
+  if (!userEmail || userFilas.length === 0) return;
 
-    // Conexão estabelecida
-    socket.on('connect', async () => {
-      setSocketStatus('online');
-      if (userEmail && userFilas.length) {
+  (async () => {
+    try {
+      await Promise.all([
+        fetchConversations(),
+        loadLastReadTimes(),
+        loadUnreadCounts()
+      ]);
+
+      // Só conecta o socket depois que os dados estão carregados
+      connectSocket();
+      const socket = getSocket();
+      socketRef.current = socket;
+
+      socket.on('connect', async () => {
+        setSocketStatus('online');
         const sessionId = socket.id;
-        // envia sessão via API
         try {
           await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
         } catch (err) {
           console.error('Erro ao informar sessão ao servidor:', err);
         }
-        // identifica no socket
         socket.emit('identify', { email: userEmail, rooms: userFilas });
-      }
-    });
+      });
 
-    // Desconexão
-    socket.on('disconnect', () => {
-      setSocketStatus('offline');
-    });
+      socket.on('disconnect', () => setSocketStatus('offline'));
 
-    // Nova mensagem
-    socket.on('new_message', handleNewMessage);
+      socket.on('new_message', handleNewMessage);
+    } catch (err) {
+      console.error('Erro ao carregar dados ou conectar socket:', err);
+    }
+  })();
 
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('new_message', handleNewMessage);
-    };
-  }, [userEmail, userFilas, setSocketStatus]);
+  return () => {
+    const socket = getSocket();
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('new_message', handleNewMessage);
+  };
+}, [userEmail, userFilas]);
+
 
   // 5) Quando email/filas chegarem, carrega conversas e status
   useEffect(() => {
@@ -170,7 +179,7 @@ export default function App() {
     } else {
       incrementUnread(message.user_id, message.timestamp);
       await loadUnreadCounts();
-      if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+      if (!notifiedConversations[message.user_id]) {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
         markNotified(message.user_id);
@@ -198,7 +207,7 @@ export default function App() {
 
   // Exibe notificações do browser
   const showNotification = (message, contactName) => {
-    if (isWindowActive || !('Notification' in window)) return;
+    if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
       const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
