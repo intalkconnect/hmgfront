@@ -182,7 +182,7 @@ export default function App() {
     }
   };
 
-  // Busca conversas
+  // Busca conversas no início
   const fetchConversations = async () => {
     try {
       const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
