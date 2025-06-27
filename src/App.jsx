@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { apiGet, apiPut } from './services/apiClient';
 import { connectSocket, getSocket } from './services/socket';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -9,7 +9,7 @@ import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import './App.css';
 
-// Helper para decodificar JWT sem dependências externas
+// Decode JWT helper
 const parseJwt = (token) => {
   try {
     const base64Url = token.split('.')[1];
@@ -39,16 +39,16 @@ export default function App() {
   const loadLastReadTimes     = useConversationsStore(s => s.loadLastReadTimes);
   const incrementUnread       = useConversationsStore(s => s.incrementUnread);
   const getContactName        = useConversationsStore(s => s.getContactName);
-  const conversations         = useConversationsStore(s => s.conversations);
-  const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
   const markNotified          = useConversationsStore(s => s.markNotified);
+  const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
   const userEmail             = useConversationsStore(s => s.userEmail);
   const userFilas             = useConversationsStore(s => s.userFilas);
   const setSocketStatus       = useConversationsStore(s => s.setSocketStatus);
+  const conversations         = useConversationsStore(s => s.conversations);
 
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  // 1) Decodifica JWT e busca dados do atendente
+  // 1) Parse token and load attendant info
   useEffect(() => {
     let token = new URLSearchParams(window.location.search).get('token');
     if (token) {
@@ -66,32 +66,29 @@ export default function App() {
     (async () => {
       try {
         const data = await apiGet(`/atendentes/${email}`);
-        if (data?.email) {
-          setUserInfo({ email: data.email, filas: data.filas || [] });
-        }
+        if (data?.email) setUserInfo({ email: data.email, filas: data.filas || [] });
       } catch (err) {
-        console.error('Erro ao buscar dados do atendente:', err);
+        console.error('Erro ao buscar atendente:', err);
       }
     })();
   }, [setUserInfo]);
 
-  // 2) Inicializa som de notificações
+  // 2) Setup notification sound
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
     return () => audioPlayer.current?.pause();
   }, []);
 
-  // 3) Monitora foco/blur e solicita permissão de notificação
+  // 3) Track window focus and request notifications
   useEffect(() => {
     const onFocus = () => setIsWindowActive(true);
     const onBlur = () => setIsWindowActive(false);
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
 
-    // Solicita permissão de notificação ao iniciar
     if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then(p => console.log('🔔 Permissão de notificação:', p));
+      Notification.requestPermission();
     }
 
     return () => {
@@ -100,14 +97,15 @@ export default function App() {
     };
   }, []);
 
-  // 4) Carrega dados e conecta socket
+  // 4) Load initial data then connect socket
   useEffect(() => {
     if (!userEmail || !userFilas.length) return;
     let mounted = true;
     (async () => {
       try {
         await Promise.all([
-          fetchConversations(),
+          apiGet(`/chats?${new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') }).toString()}`)
+            .then(data => data.forEach(conv => mergeConversation(conv.user_id, conv))),
           loadLastReadTimes(),
           loadUnreadCounts(),
         ]);
@@ -122,8 +120,8 @@ export default function App() {
           const sessionId = socket.id;
           try {
             await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
-          } catch (err) {
-            console.error('Erro ao informar sessão ao servidor:', err);
+          } catch (e) {
+            console.error('Erro informar sessão:', e);
           }
           socket.emit('identify', { email: userEmail, rooms: userFilas });
         });
@@ -131,7 +129,7 @@ export default function App() {
         socket.on('disconnect', () => setSocketStatus('offline'));
         socket.on('new_message', handleNewMessage);
       } catch (err) {
-        console.error('Erro na inicialização:', err);
+        console.error('Erro initializing data/socket:', err);
       }
     })();
 
@@ -145,53 +143,34 @@ export default function App() {
   }, [userEmail, userFilas]);
 
   // Handler de nova mensagem
-  const handleNewMessage = async (message) => {
+  const handleNewMessage = useCallback(async (message) => {
     if (message.assigned_to !== userEmail) return;
-    const isFromMe       = message.direction === 'outgoing';
-    const isActiveChat   = message.user_id === selectedUserId;
-    const isWindowFocused = isWindowActive;
+    const isFromMe = message.direction === 'outgoing';
+    const isActiveChat = message.user_id === selectedUserId;
 
-    // Atualiza conversa no store
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
-      timestamp:     message.timestamp,
-      content:       message.content,
-      channel:       message.channel,
+      timestamp: message.timestamp,
+      content: message.content,
+      channel: message.channel,
     });
     if (isFromMe) return;
 
-    if (isActiveChat && isWindowFocused) {
-      // Marca como lida no backend e atualiza contagens
+    if (isActiveChat && isWindowActive) {
       await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
       await loadUnreadCounts();
     } else {
-      // Incrementa badge e atualiza contagens imediatamente
       incrementUnread(message.user_id, message.timestamp);
       await loadUnreadCounts();
 
-      // Notificação visual e sonora apenas com aba inativa
-      if (!isWindowFocused && !notifiedConversations[message.user_id]) {
+      if (!isWindowActive && !notifiedConversations[message.user_id]) {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
-        try {
-          audioPlayer.current.currentTime = 0;
-          await audioPlayer.current.play();
-        } catch {}
+        try { audioPlayer.current.currentTime = 0; await audioPlayer.current.play(); } catch {}
         markNotified(message.user_id);
       }
     }
-  };
-
-  // Busca conversas
-  const fetchConversations = async () => {
-    try {
-      const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
-      const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach(conv => mergeConversation(conv.user_id, conv));
-    } catch (err) {
-      console.error('Erro ao buscar /chats:', err);
-    }
-  };
+  }, [userEmail, selectedUserId, isWindowActive, notifiedConversations]);
 
   // Notificação visual
   const showNotification = (message, contactName) => {
@@ -200,33 +179,24 @@ export default function App() {
       const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
         {
-          body:    message.content.length > 50 ? message.content.slice(0, 47) + '...' : message.content,
-          icon:    '/icons/whatsapp.png',
-          vibrate: [200, 100, 200],
+          body: message.content.length > 50 ? `${message.content.slice(0,47)}...` : message.content,
+          icon: '/icons/whatsapp.png',
+          vibrate: [200,100,200],
         }
       );
-      notif.onclick = () => {
-        window.focus();
-        setSelectedUserId(message.user_id);
-      };
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => p === 'granted' && showNotification(message, contactName));
+      notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
     }
   };
 
-  const conversaSelecionada = selectedUserId ? conversations[selectedUserId] : null;
+  const conversaSelecionada = conversations[selectedUserId] || null;
 
   return (
     <>
       <SocketDisconnectedModal />
       <div className="app-layout">
-        <div className="app-container section-wrapper">
-          <aside className="sidebar"><Sidebar/></aside>
-          <main className="chat-container">
-            <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-          </main>
-          <aside className="details-panel"><DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} /></aside>
-        </div>
+        <aside className="sidebar"><Sidebar/></aside>
+        <main className="chat-container"><ChatWindow userIdSelecionado={selectedUserId} /></main>
+        <aside className="details-panel"><DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada}/></aside>
       </div>
     </>
   );
