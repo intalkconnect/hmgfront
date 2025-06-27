@@ -39,12 +39,12 @@ export default function App() {
   const loadLastReadTimes     = useConversationsStore(s => s.loadLastReadTimes);
   const incrementUnread       = useConversationsStore(s => s.incrementUnread);
   const getContactName        = useConversationsStore(s => s.getContactName);
-  const conversations         = useConversationsStore(s => s.conversations);
   const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
   const markNotified          = useConversationsStore(s => s.markNotified);
   const userEmail             = useConversationsStore(s => s.userEmail);
   const userFilas             = useConversationsStore(s => s.userFilas);
   const setSocketStatus       = useConversationsStore(s => s.setSocketStatus);
+  const conversations         = useConversationsStore(s => s.conversations);
 
   const [isWindowActive, setIsWindowActive] = useState(true);
 
@@ -70,7 +70,7 @@ export default function App() {
           setUserInfo({ email: data.email, filas: data.filas || [] });
         }
       } catch (err) {
-        console.error('Erro ao buscar dados do atendente:', err);
+        console.error('Erro ao buscar atendente:', err);
       }
     })();
   }, [setUserInfo]);
@@ -88,12 +88,9 @@ export default function App() {
     const onBlur = () => setIsWindowActive(false);
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
-
-    // Solicita permissão de notificação ao iniciar
     if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then(p => console.log('🔔 Permissão de notificação:', p));
+      Notification.requestPermission();
     }
-
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onBlur);
@@ -119,11 +116,10 @@ export default function App() {
 
         socket.on('connect', async () => {
           setSocketStatus('online');
-          const sessionId = socket.id;
           try {
-            await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
-          } catch (err) {
-            console.error('Erro ao informar sessão ao servidor:', err);
+            await apiPut(`/atendentes/session/${userEmail}`, { session: socket.id });
+          } catch (e) {
+            console.error('Erro informar sessão:', e);
           }
           socket.emit('identify', { email: userEmail, rooms: userFilas });
         });
@@ -131,7 +127,7 @@ export default function App() {
         socket.on('disconnect', () => setSocketStatus('offline'));
         socket.on('new_message', handleNewMessage);
       } catch (err) {
-        console.error('Erro na inicialização:', err);
+        console.error('Erro inicializando:', err);
       }
     })();
 
@@ -144,14 +140,13 @@ export default function App() {
     };
   }, [userEmail, userFilas]);
 
-  // Handler de nova mensagem
+  // 5) Handler de nova mensagem
   const handleNewMessage = async (message) => {
     if (message.assigned_to !== userEmail) return;
     const isFromMe       = message.direction === 'outgoing';
     const isActiveChat   = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
-    // Atualiza conversa no store
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
       timestamp:     message.timestamp,
@@ -161,28 +156,21 @@ export default function App() {
     if (isFromMe) return;
 
     if (isActiveChat && isWindowFocused) {
-      // Marca como lida no backend e atualiza contagens
       await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
       await loadUnreadCounts();
     } else {
-      // Incrementa badge e atualiza contagens imediatamente
       incrementUnread(message.user_id, message.timestamp);
       await loadUnreadCounts();
-
-      // Notificação visual e sonora apenas com aba inativa
       if (!isWindowFocused && !notifiedConversations[message.user_id]) {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
-        try {
-          audioPlayer.current.currentTime = 0;
-          await audioPlayer.current.play();
-        } catch {}
+        try { audioPlayer.current.currentTime = 0; await audioPlayer.current.play(); } catch {}
         markNotified(message.user_id);
       }
     }
   };
 
-  // Busca conversas
+  // Função para buscar conversas
   const fetchConversations = async () => {
     try {
       const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
@@ -193,25 +181,21 @@ export default function App() {
     }
   };
 
-  // Notificação visual
+  // 6) Exibe notificação do browser
   const showNotification = (message, contactName) => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-      const notif = new Notification(
-        `Nova mensagem de ${contactName || message.user_id}`,
-        {
-          body:    message.content.length > 50 ? message.content.slice(0, 47) + '...' : message.content,
-          icon:    '/icons/whatsapp.png',
-          vibrate: [200, 100, 200],
-        }
-      );
-      notif.onclick = () => {
-        window.focus();
-        setSelectedUserId(message.user_id);
-      };
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => p === 'granted' && showNotification(message, contactName));
-    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const notif = new Notification(
+      `Nova mensagem de ${contactName || message.user_id}`,
+      {
+        body:    message.content.length > 50 ? message.content.slice(0, 47) + '...' : message.content,
+        icon:    '/icons/whatsapp.png',
+        vibrate: [200, 100, 200],
+      }
+    );
+    notif.onclick = () => {
+      window.focus();
+      setSelectedUserId(message.user_id);
+    };
   };
 
   const conversaSelecionada = selectedUserId ? conversations[selectedUserId] : null;
@@ -220,13 +204,13 @@ export default function App() {
     <>
       <SocketDisconnectedModal />
       <div className="app-layout">
-        <div className="app-container section-wrapper">
-          <aside className="sidebar"><Sidebar/></aside>
-          <main className="chat-container">
-            <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-          </main>
-          <aside className="details-panel"><DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} /></aside>
-        </div>
+        <aside className="sidebar"><Sidebar/></aside>
+        <main className="chat-container">
+          <ChatWindow userIdSelecionado={selectedUserId} />
+        </main>
+        <aside className="details-panel">
+          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        </aside>
       </div>
     </>
   );
