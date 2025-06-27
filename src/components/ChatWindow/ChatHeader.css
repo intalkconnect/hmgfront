@@ -19,10 +19,24 @@
   min-width: 0;
 }
 
+.nome-e-telefone {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .chat-header-nome {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header-phone {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
