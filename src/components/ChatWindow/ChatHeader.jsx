@@ -1,4 +1,3 @@
-// ChatHeader.jsx
 import React, { useState } from 'react';
 import { Share2, CheckCircle } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
@@ -38,11 +37,13 @@ export default function ChatHeader({ userIdSelecionado }) {
     <>
       <div className="chat-header">
         <div className="chat-header-left">
-          <div className="chat-header-title">
-            <span className="cliente-nome">{name}</span>
-            <span className="ticket-numero">#{ticket_number}</span>
-          </div>
+          <span className="chat-header-nome">{name}</span>
         </div>
+
+        <div className="chat-header-center">
+          <span className="ticket-numero">#{ticket_number}</span>
+        </div>
+
         <div className="chat-header-right">
           <button className="btn-transferir" onClick={() => setShowTransferModal(true)}>
             <Share2 size={14} />
