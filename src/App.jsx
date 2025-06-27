@@ -37,13 +37,13 @@ export default function App() {
   const mergeConversation     = useConversationsStore(s => s.mergeConversation);
   const loadUnreadCounts      = useConversationsStore(s => s.loadUnreadCounts);
   const loadLastReadTimes     = useConversationsStore(s => s.loadLastReadTimes);
+  const incrementUnread       = useConversationsStore(s => s.incrementUnread);
   const getContactName        = useConversationsStore(s => s.getContactName);
   const conversations         = useConversationsStore(s => s.conversations);
   const notifiedConversations = useConversationsStore(s => s.notifiedConversations);
   const markNotified          = useConversationsStore(s => s.markNotified);
   const userEmail             = useConversationsStore(s => s.userEmail);
   const userFilas             = useConversationsStore(s => s.userFilas);
-  const socketStatus          = useConversationsStore(s => s.socketStatus);
   const setSocketStatus       = useConversationsStore(s => s.setSocketStatus);
 
   const [isWindowActive, setIsWindowActive] = useState(true);
@@ -82,58 +82,27 @@ export default function App() {
     return () => audioPlayer.current?.pause();
   }, []);
 
-  // 3) Monitora foco/blur para controle de notificações
+  // 3) Monitora foco/blur e solicita permissão de notificação
   useEffect(() => {
     const onFocus = () => setIsWindowActive(true);
     const onBlur = () => setIsWindowActive(false);
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
+
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission().then(p => console.log('🔔 Permissão:', p));
+    }
+
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('blur', onBlur);
     };
   }, []);
 
-  // 4) Conecta socket e registra listeners
+  // 4) Carrega dados e conecta socket
   useEffect(() => {
-    connectSocket();
-    const socket = getSocket();
-    socketRef.current = socket;
-
-    // Conexão estabelecida
-    socket.on('connect', async () => {
-      setSocketStatus('online');
-      if (userEmail && userFilas.length) {
-        const sessionId = socket.id;
-        // envia sessão via API
-        try {
-          await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
-        } catch (err) {
-          console.error('Erro ao informar sessão ao servidor:', err);
-        }
-        // identifica no socket
-        socket.emit('identify', { email: userEmail, rooms: userFilas });
-      }
-    });
-
-    // Desconexão
-    socket.on('disconnect', () => {
-      setSocketStatus('offline');
-    });
-
-    // Nova mensagem
-    socket.on('new_message', handleNewMessage);
-
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('new_message', handleNewMessage);
-    };
-  }, [userEmail, userFilas, setSocketStatus]);
-
-  // 5) Quando email/filas chegarem, carrega conversas e status
-  useEffect(() => {
-    if (!userEmail || userFilas.length === 0) return;
+    if (!userEmail || !userFilas.length) return;
+    let mounted = true;
     (async () => {
       try {
         await Promise.all([
@@ -141,19 +110,46 @@ export default function App() {
           loadLastReadTimes(),
           loadUnreadCounts(),
         ]);
+        if (!mounted) return;
+
+        connectSocket();
+        const socket = getSocket();
+        socketRef.current = socket;
+
+        socket.on('connect', async () => {
+          setSocketStatus('online');
+          const sessionId = socket.id;
+          try {
+            await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
+          } catch (err) {
+            console.error('Erro ao informar sessão:', err);
+          }
+          socket.emit('identify', { email: userEmail, rooms: userFilas });
+        });
+
+        socket.on('disconnect', () => setSocketStatus('offline'));
+        socket.on('new_message', handleNewMessage);
       } catch (err) {
-        console.error('Erro ao inicializar dados:', err);
+        console.error('Erro na inicialização:', err);
       }
     })();
-  }, [userEmail, userFilas, loadLastReadTimes, loadUnreadCounts]);
+
+    return () => {
+      mounted = false;
+      const socket = getSocket();
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [userEmail, userFilas]);
 
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
-    const isFromMe = message.direction === 'outgoing';
+    if (message.assigned_to !== userEmail) return;
+    const isFromMe     = message.direction === 'outgoing';
     const isActiveChat = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
-    if (message.assigned_to !== userEmail) return;
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
       timestamp: message.timestamp,
@@ -163,58 +159,43 @@ export default function App() {
     if (isFromMe) return;
 
     if (isActiveChat && isWindowFocused) {
-      await apiPut(`/messages/read-status/${message.user_id}`, {
-        last_read: new Date().toISOString(),
-      });
-    } else {
+      await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
       await loadUnreadCounts();
-      if (!notifiedConversations[message.user_id] && !isWindowFocused) {
+    } else {
+      incrementUnread(message.user_id, message.timestamp);
+      await loadUnreadCounts();
+
+      if (!isWindowFocused && !notifiedConversations[message.user_id]) {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
+        try { audioPlayer.current.currentTime = 0; await audioPlayer.current.play(); } catch {}
         markNotified(message.user_id);
       }
     }
-
-    if (isWindowActive) {
-      try {
-        audioPlayer.current.currentTime = 0;
-        await audioPlayer.current.play();
-      } catch {}
-    }
   };
 
-  // Busca todas as conversas atribuídas ao atendente
+  // Busca conversas
   const fetchConversations = async () => {
     try {
       const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
       const data = await apiGet(`/chats?${params.toString()}`);
-      data.forEach((conv) => mergeConversation(conv.user_id, conv));
+      data.forEach(conv => mergeConversation(conv.user_id, conv));
     } catch (err) {
       console.error('Erro ao buscar /chats:', err);
     }
   };
 
-  // Exibe notificações do browser
+  // Notificação visual
   const showNotification = (message, contactName) => {
-    if (isWindowActive || !('Notification' in window)) return;
+    if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
       const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
-        { body: getMessagePreview(message.content), icon: '/icons/whatsapp.png', vibrate: [200, 100, 200] }
+        { body: message.content.length>50? message.content.slice(0,47)+'...':message.content }
       );
       notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then((p) => p === 'granted' && showNotification(message, contactName));
-    }
-  };
-
-  // Gera preview de mensagem
-  const getMessagePreview = (content) => {
-    try {
-      const parsed = JSON.parse(content);
-      return parsed.text || parsed.caption || '[Arquivo]';
-    } catch {
-      return content.length > 50 ? content.slice(0, 47) + '...' : content;
+      Notification.requestPermission().then(p => p==='granted' && showNotification(message, contactName));
     }
   };
 
@@ -225,15 +206,11 @@ export default function App() {
       <SocketDisconnectedModal />
       <div className="app-layout">
         <div className="app-container section-wrapper">
-          <aside className="sidebar">
-            <Sidebar />
-          </aside>
+          <aside className="sidebar"><Sidebar/></aside>
           <main className="chat-container">
             <ChatWindow userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
           </main>
-          <aside className="details-panel">
-            <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
-          </aside>
+          <aside className="details-panel"><DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} /></aside>
         </div>
       </div>
     </>
