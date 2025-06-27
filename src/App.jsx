@@ -89,8 +89,9 @@ export default function App() {
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
 
+    // Solicita permissão de notificação ao iniciar
     if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission().then(p => console.log('🔔 Permissão:', p));
+      Notification.requestPermission().then(p => console.log('🔔 Permissão de notificação:', p));
     }
 
     return () => {
@@ -122,7 +123,7 @@ export default function App() {
           try {
             await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
           } catch (err) {
-            console.error('Erro ao informar sessão:', err);
+            console.error('Erro ao informar sessão ao servidor:', err);
           }
           socket.emit('identify', { email: userEmail, rooms: userFilas });
         });
@@ -146,29 +147,36 @@ export default function App() {
   // Handler de nova mensagem
   const handleNewMessage = async (message) => {
     if (message.assigned_to !== userEmail) return;
-    const isFromMe     = message.direction === 'outgoing';
-    const isActiveChat = message.user_id === selectedUserId;
+    const isFromMe       = message.direction === 'outgoing';
+    const isActiveChat   = message.user_id === selectedUserId;
     const isWindowFocused = isWindowActive;
 
+    // Atualiza conversa no store
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
-      timestamp: message.timestamp,
-      content: message.content,
-      channel: message.channel,
+      timestamp:     message.timestamp,
+      content:       message.content,
+      channel:       message.channel,
     });
     if (isFromMe) return;
 
     if (isActiveChat && isWindowFocused) {
+      // Marca como lida no backend e atualiza contagens
       await apiPut(`/messages/read-status/${message.user_id}`, { last_read: new Date().toISOString() });
       await loadUnreadCounts();
     } else {
+      // Incrementa badge e atualiza contagens imediatamente
       incrementUnread(message.user_id, message.timestamp);
       await loadUnreadCounts();
 
+      // Notificação visual e sonora apenas com aba inativa
       if (!isWindowFocused && !notifiedConversations[message.user_id]) {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
-        try { audioPlayer.current.currentTime = 0; await audioPlayer.current.play(); } catch {}
+        try {
+          audioPlayer.current.currentTime = 0;
+          await audioPlayer.current.play();
+        } catch {}
         markNotified(message.user_id);
       }
     }
@@ -191,11 +199,18 @@ export default function App() {
     if (Notification.permission === 'granted') {
       const notif = new Notification(
         `Nova mensagem de ${contactName || message.user_id}`,
-        { body: message.content.length>50? message.content.slice(0,47)+'...':message.content }
+        {
+          body:    message.content.length > 50 ? message.content.slice(0, 47) + '...' : message.content,
+          icon:    '/icons/whatsapp.png',
+          vibrate: [200, 100, 200],
+        }
       );
-      notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
+      notif.onclick = () => {
+        window.focus();
+        setSelectedUserId(message.user_id);
+      };
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => p==='granted' && showNotification(message, contactName));
+      Notification.requestPermission().then(p => p === 'granted' && showNotification(message, contactName));
     }
   };
 
