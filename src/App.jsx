@@ -9,7 +9,7 @@ import useConversationsStore from './store/useConversationsStore';
 import notificationSound from './assets/notification.mp3';
 import './App.css';
 
-// Decode JWT helper
+// Utility to decode JWT
 const parseJwt = (token) => {
   try {
     const base64Url = token.split('.')[1];
@@ -48,7 +48,7 @@ export default function App() {
 
   const [isWindowActive, setIsWindowActive] = useState(true);
 
-  // 1) Parse token and load attendant info
+  // 1) Parse JWT and load attendant info
   useEffect(() => {
     let token = new URLSearchParams(window.location.search).get('token');
     if (token) {
@@ -66,21 +66,23 @@ export default function App() {
     (async () => {
       try {
         const data = await apiGet(`/atendentes/${email}`);
-        if (data?.email) setUserInfo({ email: data.email, filas: data.filas || [] });
+        if (data?.email) {
+          setUserInfo({ email: data.email, filas: data.filas || [] });
+        }
       } catch (err) {
         console.error('Erro ao buscar atendente:', err);
       }
     })();
   }, [setUserInfo]);
 
-  // 2) Setup notification sound
+  // 2) Initialize notification sound
   useEffect(() => {
     audioPlayer.current = new Audio(notificationSound);
     audioPlayer.current.volume = 0.3;
     return () => audioPlayer.current?.pause();
   }, []);
 
-  // 3) Track window focus and request notifications
+  // 3) Track window focus and request notification permission
   useEffect(() => {
     const onFocus = () => setIsWindowActive(true);
     const onBlur = () => setIsWindowActive(false);
@@ -103,23 +105,23 @@ export default function App() {
     let mounted = true;
     (async () => {
       try {
-        await Promise.all([
-          apiGet(`/chats?${new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') }).toString()}`)
-            .then(data => data.forEach(conv => mergeConversation(conv.user_id, conv))),
-          loadLastReadTimes(),
-          loadUnreadCounts(),
-        ]);
+        // Load chats, read times, and unread counts
+        const params = new URLSearchParams({ assigned_to: userEmail, filas: userFilas.join(',') });
+        const chats = await apiGet(`/chats?${params.toString()}`);
+        chats.forEach(conv => mergeConversation(conv.user_id, conv));
+        await loadLastReadTimes();
+        await loadUnreadCounts();
         if (!mounted) return;
 
+        // Connect socket
         connectSocket();
         const socket = getSocket();
         socketRef.current = socket;
 
         socket.on('connect', async () => {
           setSocketStatus('online');
-          const sessionId = socket.id;
           try {
-            await apiPut(`/atendentes/session/${userEmail}`, { session: sessionId });
+            await apiPut(`/atendentes/session/${userEmail}`, { session: socket.id });
           } catch (e) {
             console.error('Erro informar sessão:', e);
           }
@@ -129,7 +131,7 @@ export default function App() {
         socket.on('disconnect', () => setSocketStatus('offline'));
         socket.on('new_message', handleNewMessage);
       } catch (err) {
-        console.error('Erro initializing data/socket:', err);
+        console.error('Erro inicializando dados/socket:', err);
       }
     })();
 
@@ -142,7 +144,7 @@ export default function App() {
     };
   }, [userEmail, userFilas]);
 
-  // Handler de nova mensagem
+  // 5) Handle incoming messages
   const handleNewMessage = useCallback(async (message) => {
     if (message.assigned_to !== userEmail) return;
     const isFromMe = message.direction === 'outgoing';
@@ -150,9 +152,9 @@ export default function App() {
 
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
-      timestamp: message.timestamp,
-      content: message.content,
-      channel: message.channel,
+      timestamp:     message.timestamp,
+      content:       message.content,
+      channel:       message.channel,
     });
     if (isFromMe) return;
 
@@ -172,20 +174,18 @@ export default function App() {
     }
   }, [userEmail, selectedUserId, isWindowActive, notifiedConversations]);
 
-  // Notificação visual
+  // 6) Show browser notification
   const showNotification = (message, contactName) => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-      const notif = new Notification(
-        `Nova mensagem de ${contactName || message.user_id}`,
-        {
-          body: message.content.length > 50 ? `${message.content.slice(0,47)}...` : message.content,
-          icon: '/icons/whatsapp.png',
-          vibrate: [200,100,200],
-        }
-      );
-      notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
-    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const notif = new Notification(
+      `Nova mensagem de ${contactName || message.user_id}`,
+      {
+        body:   message.content.length > 50 ? `${message.content.slice(0,47)}...` : message.content,
+        icon:   '/icons/whatsapp.png',
+        vibrate:[200,100,200],
+      }
+    );
+    notif.onclick = () => { window.focus(); setSelectedUserId(message.user_id); };
   };
 
   const conversaSelecionada = conversations[selectedUserId] || null;
@@ -195,8 +195,12 @@ export default function App() {
       <SocketDisconnectedModal />
       <div className="app-layout">
         <aside className="sidebar"><Sidebar/></aside>
-        <main className="chat-container"><ChatWindow userIdSelecionado={selectedUserId} /></main>
-        <aside className="details-panel"><DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada}/></aside>
+        <main className="chat-container">
+          <ChatWindow userIdSelecionado={selectedUserId} />
+        </main>
+        <aside className="details-panel">
+          <DetailsPanel userIdSelecionado={selectedUserId} conversaSelecionada={conversaSelecionada} />
+        </aside>
       </div>
     </>
   );
