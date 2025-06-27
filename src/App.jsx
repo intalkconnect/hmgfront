@@ -28,7 +28,6 @@ const parseJwt = (token) => {
 export default function App() {
   const audioPlayer = useRef(null);
   const socketRef = useRef(null);
-  const isWindowActiveRef = useRef(true);
 
   const selectedUserId        = useConversationsStore(s => s.selectedUserId);
   const setSelectedUserId     = useConversationsStore(s => s.setSelectedUserId);
@@ -80,14 +79,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onFocus = () => {
-      isWindowActiveRef.current = true;
-      setIsWindowActive(true);
-    };
-    const onBlur = () => {
-      isWindowActiveRef.current = false;
-      setIsWindowActive(false);
-    };
+    const onFocus = () => setIsWindowActive(true);
+    const onBlur = () => setIsWindowActive(false);
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
 
@@ -102,11 +95,11 @@ export default function App() {
   }, []);
 
   const handleNewMessage = useCallback(async (message) => {
-    if (!message || !message.content || message.assigned_to !== userEmail) return;
+    if (message.assigned_to !== userEmail) return;
 
     const isFromMe         = message.direction === 'outgoing';
     const isActiveChat     = message.user_id === selectedUserId;
-    const isWindowFocused  = isWindowActiveRef.current;
+    const isWindowFocused  = isWindowActive;
 
     mergeConversation(message.user_id, {
       ticket_number: message.ticket_number || message.ticket,
@@ -127,19 +120,15 @@ export default function App() {
         const contactName = getContactName(message.user_id);
         showNotification(message, contactName);
         try {
-          const player = audioPlayer.current;
-          if (player) {
-            await player.pause();
-            player.currentTime = 0;
-            await player.play();
-          }
+          audioPlayer.current.currentTime = 0;
+          await audioPlayer.current.play();
         } catch (err) {
           console.error('Erro ao tocar som de notificação:', err);
         }
         markNotified(message.user_id);
       }
     }
-  }, [userEmail, selectedUserId, mergeConversation, incrementUnread, loadUnreadCounts, getContactName, markNotified, notifiedConversations]);
+  }, [userEmail, selectedUserId, isWindowActive, mergeConversation, incrementUnread, loadUnreadCounts, getContactName, markNotified, notifiedConversations]);
 
   useEffect(() => {
     if (!userEmail || !userFilas.length) return;
@@ -196,16 +185,6 @@ export default function App() {
 
   const showNotification = (message, contactName) => {
     if (!('Notification' in window)) return;
-
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          showNotification(message, contactName);
-        }
-      });
-      return;
-    }
-
     if (Notification.permission !== 'granted') return;
 
     let body;
