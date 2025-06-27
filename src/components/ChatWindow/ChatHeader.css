@@ -28,9 +28,10 @@
   text-overflow: ellipsis;
 }
 
-.chat-header-ticket {
+.chat-header-center {
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .ticket-numero {
@@ -46,6 +47,7 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .chat-header-right button {
@@ -92,10 +94,10 @@
   }
 
   .chat-header-left {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
-  .chat-header-ticket {
+  .chat-header-center {
     justify-content: center;
   }
 
