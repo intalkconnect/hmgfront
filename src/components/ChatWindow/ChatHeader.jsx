@@ -36,9 +36,14 @@ export default function ChatHeader({ userIdSelecionado }) {
   return (
     <>
       <div className="chat-header">
-        <div className="chat-header-left">
-          <span className="chat-header-nome">{name}</span>
-        </div>
+<div className="chat-header-left">
+  <div className="nome-e-telefone">
+    <span className="chat-header-nome">{name}</span>
+    {clienteAtivo?.phone && (
+      <span className="chat-header-phone">{clienteAtivo.phone}</span>
+    )}
+  </div>
+</div>
 
         <div className="chat-header-center">
           <span className="ticket-numero">#{ticket_number}</span>
