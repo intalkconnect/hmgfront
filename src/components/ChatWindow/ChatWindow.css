@@ -123,6 +123,14 @@
   gap: 8px;
 }
 
+.chat-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scroll-behavior: smooth;
+  padding: 12px 16px;
+}
+
 
 /* 3.2 Messages List */
 .messages-list {
