@@ -5,10 +5,11 @@
 .send-message-form {
   width: 100%;
   background-color: #ffffff;
-  padding: 0 16px;      /* só padding horizontal */
+  padding: 0 16px;
   box-sizing: border-box;
-  
+  position: relative; /* ← necessário para posicionamento absoluto dos filhos */
 }
+
 
 /* =================================================
    2) Textarea: altura fixa maior e linha inferior
@@ -152,11 +153,11 @@
 /* Container do picker para posicionar */
 .emoji-picker-container {
   position: absolute;
-  bottom: 60px;
-  left: 16px;
+  bottom: 60px; /* ← distancia do input */
+  left: 0px;    /* ← alinhar com o começo do campo */
   z-index: 1000;
-  background-color: transparent;
 }
+
 
 /* Força a largura fixa e fundo branco geral */
 .emoji-picker-container .emoji-mart {
