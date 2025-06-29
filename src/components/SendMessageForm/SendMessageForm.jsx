@@ -63,6 +63,7 @@ export default function SendMessageForm({
     stopRecording,
     recordedFile,
     clearRecordedFile,
+    recordingTime,
   } = useAudioRecorder();
 
   /* ------------------------------------------------------------------ */
@@ -159,6 +160,13 @@ export default function SendMessageForm({
   /* ------------------------------------------------------------------ */
   return (
     <>
+      {isRecording && (
+  <div className="recording-timer">
+    ⏱ {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:
+    {String(recordingTime % 60).padStart(2, '0')}
+  </div>
+)}
+
       <form className="send-message-form" onSubmit={(e) => e.preventDefault()}>
         {/* Campo de mensagem + ícone hash */}
         <div className="message-input-wrapper">
