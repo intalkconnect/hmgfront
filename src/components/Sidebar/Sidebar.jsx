@@ -211,25 +211,24 @@ useEffect(() => {
         })}
       </ul>
       <div className="sidebar-user-footer">
-  <div className="status-indicator">
-    <span className={`status-dot ${status}`} />
+  <div className="user-status-box">
+    <span className={`status-icon ${status}`} title={status}></span>
     <select
       value={status}
       onChange={(e) => setStatus(e.target.value)}
-      className="status-select"
+      className="status-dropdown"
     >
-      <option value="online">🟢 Online</option>
-      <option value="pausado">⏸️ Pausado</option>
-      <option value="offline">🔴 Offline</option>
+      <option value="online">Online</option>
+      <option value="pausado">Pausado</option>
+      <option value="offline">Offline</option>
     </select>
   </div>
-  <button
-    className="edit-user-button"
-    onClick={() => alert('Abrir modal de edição de dados cadastrais')}
-  >
-    ⚙️ Meus dados
+
+  <button className="user-settings-button" onClick={() => alert('Abrir modal')}>
+    <img src="/icons/settings.svg" alt="Configurações" />
   </button>
 </div>
+
 
     </div>
   );
