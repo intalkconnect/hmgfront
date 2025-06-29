@@ -26,6 +26,7 @@ const setSettings = useConversationsStore(state => state.setSettings);
   const [distribuicaoTickets, setDistribuicaoTickets] = useState('manual');
   const [filaCount, setFilaCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [status, setStatus] = useState('online'); // 'online' | 'offline' | 'pausado'
 
   const fetchSettingsAndFila = async () => {
     try {
@@ -209,6 +210,27 @@ useEffect(() => {
           );
         })}
       </ul>
+      <div className="sidebar-user-footer">
+  <div className="status-indicator">
+    <span className={`status-dot ${status}`} />
+    <select
+      value={status}
+      onChange={(e) => setStatus(e.target.value)}
+      className="status-select"
+    >
+      <option value="online">🟢 Online</option>
+      <option value="pausado">⏸️ Pausado</option>
+      <option value="offline">🔴 Offline</option>
+    </select>
+  </div>
+  <button
+    className="edit-user-button"
+    onClick={() => alert('Abrir modal de edição de dados cadastrais')}
+  >
+    ⚙️ Meus dados
+  </button>
+</div>
+
     </div>
   );
 }
