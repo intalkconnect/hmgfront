@@ -309,6 +309,51 @@
   align-self: flex-start;
 }
 
+.sidebar-user-footer {
+  border-top: 1px solid var(--sidebar-border);
+  padding: 0.75rem 1rem;
+  background: var(--sidebar-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot.online { background-color: #25d366; }
+.status-dot.pausado { background-color: #f0ad4e; }
+.status-dot.offline { background-color: #d9534f; }
+
+.status-select {
+  border: 1px solid var(--sidebar-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  background: white;
+  cursor: pointer;
+}
+
+.edit-user-button {
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+
 /* ===================================================================
   Animações
 =================================================================== */
