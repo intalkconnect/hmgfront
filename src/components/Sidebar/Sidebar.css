@@ -310,74 +310,62 @@
 }
 
 .sidebar-user-footer {
-  display: flex;
-  flex-direction: column;
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--sidebar-border);
   background-color: var(--sidebar-bg);
   position: sticky;
   bottom: 0;
   z-index: 10;
-  gap: 0.5rem;
 }
 
-.user-status-row {
+.user-footer-content {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.status-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  flex-shrink: 0;
+  align-items: center;
 }
 
 .user-status {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex-grow: 1;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.status-label {
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .status-select {
   border: none;
   background: transparent;
-  color: var(--text-primary);
   font-size: 0.85rem;
   cursor: pointer;
-  padding: 4px 6px;
-  appearance: none;
+  padding: 2px 4px;
 }
 
 .status-select:focus {
   outline: none;
 }
 
-.footer-divider {
-  height: 1px;
-  background-color: var(--sidebar-border);
-  margin: 0.5rem 0;
-}
-
 .profile-button {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   background: none;
   border: none;
   color: var(--text-primary);
   font-size: 0.85rem;
   cursor: pointer;
-  padding: 4px 0;
+  padding: 4px 6px;
   transition: color 0.2s ease;
 }
 
 .profile-button:hover {
   color: var(--whatsapp-dark-green);
 }
+
 
 
 /* ===================================================================
