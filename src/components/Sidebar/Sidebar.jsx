@@ -231,7 +231,7 @@ useEffect(() => {
       className="status-select"
     >
       <option value="online">Online</option>
-      <option value="pausado">Pausado</option>
+      <option value="pausado">Pausa</option>
       <option value="offline">Offline</option>
     </select>
   </div>
