@@ -210,39 +210,42 @@ useEffect(() => {
           );
         })}
       </ul>
-     <div className="sidebar-user-footer">
-  <div className="user-status">
-    <Circle
-      size={10}
-      color={
-        status === 'online' ? '#25D366' :
-        status === 'pausado' ? '#f0ad4e' :
-        '#d9534f'
-      }
-      fill={
-        status === 'online' ? '#25D366' :
-        status === 'pausado' ? '#f0ad4e' :
-        '#d9534f'
-      }
-    />
-    <select
-      value={status}
-      onChange={(e) => setStatus(e.target.value)}
-      className="status-select"
-    >
-      <option value="online">Online</option>
-      <option value="pausado">Pausa</option>
-      <option value="offline">Offline</option>
-    </select>
+<div className="sidebar-user-footer">
+  <div className="user-status-row">
+    <span className="status-label">Status:</span>
+    <div className="user-status">
+      <Circle
+        size={10}
+        color={
+          status === 'online' ? '#25D366' :
+          status === 'pausado' ? '#f0ad4e' :
+          '#d9534f'
+        }
+        fill={
+          status === 'online' ? '#25D366' :
+          status === 'pausado' ? '#f0ad4e' :
+          '#d9534f'
+        }
+      />
+      <select
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        className="status-select"
+      >
+        <option value="online">Online</option>
+        <option value="pausado">Pausado</option>
+        <option value="offline">Offline</option>
+      </select>
+    </div>
   </div>
 
-  <button className="settings-button" onClick={() => alert('Abrir modal')}>
+  <div className="footer-divider"></div>
+
+  <button className="profile-button" onClick={() => alert('Abrir tela de perfil')}>
     <Settings size={18} strokeWidth={1.75} />
-    <span>Configurações</span>
+    <span>Perfil</span>
   </button>
 </div>
-
-
 
     </div>
   );
