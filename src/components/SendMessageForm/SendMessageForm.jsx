@@ -262,11 +262,12 @@ export default function SendMessageForm({
         </div>
 
         {/* Emoji-picker */}
-        {showEmoji && (
-          <div ref={emojiPickerRef} className="emoji-picker-wrapper">
-            <EmojiPicker onSelect={(emoji) => setText((p) => p + emoji)} />
-          </div>
-        )}
+{showEmoji && (
+  <div ref={emojiPickerRef} className="emoji-picker-container">
+    <EmojiPicker onSelect={(emoji) => setText((p) => p + emoji)} />
+  </div>
+)}
+
       </form>
 
       {/* Quick Replies dropdown */}
