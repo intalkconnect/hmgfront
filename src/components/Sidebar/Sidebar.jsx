@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiPut } from '../../services/apiClient';
-import { File, Mic } from 'lucide-react';
+import { File, Mic, Settings, Circle } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
 
@@ -210,13 +210,25 @@ useEffect(() => {
           );
         })}
       </ul>
-      <div className="sidebar-user-footer">
-  <div className="user-status-box">
-    <span className={`status-icon ${status}`} title={status}></span>
+     <div className="sidebar-user-footer">
+  <div className="user-status">
+    <Circle
+      size={10}
+      color={
+        status === 'online' ? '#25D366' :
+        status === 'pausado' ? '#f0ad4e' :
+        '#d9534f'
+      }
+      fill={
+        status === 'online' ? '#25D366' :
+        status === 'pausado' ? '#f0ad4e' :
+        '#d9534f'
+      }
+    />
     <select
       value={status}
       onChange={(e) => setStatus(e.target.value)}
-      className="status-dropdown"
+      className="status-select"
     >
       <option value="online">Online</option>
       <option value="pausado">Pausado</option>
@@ -224,10 +236,12 @@ useEffect(() => {
     </select>
   </div>
 
-  <button className="user-settings-button" onClick={() => alert('Abrir modal')}>
-    <img src="/icons/settings.svg" alt="Configurações" />
+  <button className="settings-button" onClick={() => alert('Abrir modal')}>
+    <Settings size={18} strokeWidth={1.75} />
+    <span>Configurações</span>
   </button>
 </div>
+
 
 
     </div>
