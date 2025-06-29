@@ -160,36 +160,30 @@ export default function SendMessageForm({
   /* ------------------------------------------------------------------ */
   return (
     <>
-      {isRecording && (
-  <div className="recording-timer">
-    ⏱ {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:
-    {String(recordingTime % 60).padStart(2, '0')}
-  </div>
-)}
-
       <form className="send-message-form" onSubmit={(e) => e.preventDefault()}>
         {/* Campo de mensagem + ícone hash */}
         <div className="message-input-wrapper">
           {hasQuickReplies && <span className="quick-reply-hash">/</span>}
 
-          <AutoResizingTextarea
-            ref={textareaRef}
-            className="send-message-textarea"
-            placeholder={
-              file
-                ? file.type.startsWith('audio/')
-                  ? 'Gravação pronta...'
-                  : 'Digite legenda...'
-                : isRecording
-                ? 'Gravando áudio...'
-                : 'Escreva uma mensagem...'
-            }
-            value={text}
-            onChange={handleTextChange}
-            onSubmit={handleSend}
-            disabled={isSending || isRecording}
-            rows={1}
-          />
+<AutoResizingTextarea
+  ref={textareaRef}
+  className="send-message-textarea"
+  placeholder={
+    file
+      ? file.type.startsWith('audio/')
+        ? 'Gravação pronta...'
+        : 'Digite legenda...'
+      : isRecording
+      ? `⏱ ${String(Math.floor(recordingTime / 60)).padStart(2, '0')}:${String(recordingTime % 60).padStart(2, '0')}`
+      : 'Escreva uma mensagem...'
+  }
+  value={text}
+  onChange={handleTextChange}
+  onSubmit={handleSend}
+  disabled={isSending || isRecording}
+  rows={1}
+/>
+
         </div>
 
         {/* Botões */}
