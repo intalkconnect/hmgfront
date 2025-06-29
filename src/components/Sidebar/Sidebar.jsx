@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiPut } from '../../services/apiClient';
-import { File, Mic, Settings, Circle } from 'lucide-react';
+import { File, Mic, User, Circle } from 'lucide-react';
 import useConversationsStore from '../../store/useConversationsStore';
 import './Sidebar.css';
 
@@ -210,20 +210,21 @@ useEffect(() => {
           );
         })}
       </ul>
+
 <div className="sidebar-user-footer">
-  <div className="user-status-row">
-    <span className="status-label">Status:</span>
+  <div className="user-footer-content">
     <div className="user-status">
+      <span className="status-label">Status:</span>
       <Circle
         size={10}
         color={
           status === 'online' ? '#25D366' :
-          status === 'pausado' ? '#f0ad4e' :
+          status === 'pausa' ? '#f0ad4e' :
           '#d9534f'
         }
         fill={
           status === 'online' ? '#25D366' :
-          status === 'pausado' ? '#f0ad4e' :
+          status === 'pausa' ? '#f0ad4e' :
           '#d9534f'
         }
       />
@@ -233,19 +234,18 @@ useEffect(() => {
         className="status-select"
       >
         <option value="online">Online</option>
-        <option value="pausado">Pausado</option>
+        <option value="pausado">Pausa</option>
         <option value="offline">Offline</option>
       </select>
     </div>
+
+    <button className="profile-button" onClick={() => alert('Abrir tela de perfil')}>
+      <User size={18} strokeWidth={1.75} />
+      <span>Perfil</span>
+    </button>
   </div>
-
-  <div className="footer-divider"></div>
-
-  <button className="profile-button" onClick={() => alert('Abrir tela de perfil')}>
-    <Settings size={18} strokeWidth={1.75} />
-    <span>Perfil</span>
-  </button>
 </div>
+
 
     </div>
   );
