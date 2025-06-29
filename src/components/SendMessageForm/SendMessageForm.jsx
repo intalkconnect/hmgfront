@@ -180,7 +180,12 @@ export default function SendMessageForm({
   value={text}
   onChange={handleTextChange}
   onSubmit={handleSend}
-  disabled={isSending || isRecording}
+  disabled={
+  isSending ||
+  isRecording ||
+  (file && file.type.startsWith('audio/'))
+}
+
   rows={1}
 />
 
