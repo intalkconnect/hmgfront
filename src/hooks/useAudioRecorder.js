@@ -1,14 +1,14 @@
-// src/hooks/useAudioRecorder.js
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
-// Hook que encapsula toda a lógica de gravação por MediaRecorder.
-// Retorna: { isRecording, startRecording, stopRecording, recordedFile }
 export function useAudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedFile, setRecordedFile] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0); // <-- novo estado
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const timerRef = useRef(null); // <-- novo ref
 
   const startRecording = useCallback(async () => {
     if (
@@ -37,6 +37,7 @@ export function useAudioRecorder() {
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm; codecs=opus',
       });
+
       audioChunksRef.current = [];
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -44,11 +45,9 @@ export function useAudioRecorder() {
         }
       };
       mediaRecorder.onstop = () => {
-        // Ao parar gravação, cria o File e guarda em recordedFile
-        const mime = mediaRecorder.mimeType; // ex: audio/webm; codecs=opus
+        const mime = mediaRecorder.mimeType;
         const blob = new Blob(audioChunksRef.current, { type: mime });
         if (blob.size > 5 * 1024 * 1024) {
-          // 5MB
           toast.error('Áudio muito grande. Máximo permitido: 5 MB.', {
             position: 'bottom-right',
             autoClose: 2000,
@@ -59,9 +58,15 @@ export function useAudioRecorder() {
         const fileObj = new File([blob], filename, { type: mime });
         setRecordedFile(fileObj);
       };
+
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
+      setRecordingTime(0); // zerar contador
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+
       toast.info('Gravando áudio… clique novamente para parar.', {
         position: 'bottom-right',
         autoClose: 1500,
@@ -77,6 +82,7 @@ export function useAudioRecorder() {
       mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      clearInterval(timerRef.current);     // <-- limpar o contador
     }
   }, []);
 
@@ -85,6 +91,7 @@ export function useAudioRecorder() {
     startRecording,
     stopRecording,
     recordedFile,
+    recordingTime,                         // <-- exporta o tempo
     clearRecordedFile: () => setRecordedFile(null),
   };
 }
