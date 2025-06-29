@@ -264,3 +264,13 @@
   color: #555;
 }
 
+.recording-timer {
+  font-size: 0.9rem;
+  color: #e3342f; /* vermelho suave */
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
